@@ -1,3 +1,3 @@
 [submodule "src/powergrid-db"]
 	path = src/powergrid-db
-	url = git@github.com:simonzg/powergrid-db
+	url = https://github.com/dfinlab/powergrid-db
