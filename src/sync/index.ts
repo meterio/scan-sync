@@ -98,9 +98,7 @@ export class Foundation {
         await sleep(SAMPLING_INTERVAL);
 
         let head = await this.getHead();
-        console.log('head:', head);
         const best = (await this.meter.getBlock('best', 'expanded'))!;
-        console.log('best:', best);
 
         if (!head) {
           await this.fastForward(best.number);
