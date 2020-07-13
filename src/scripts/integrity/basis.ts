@@ -1,15 +1,12 @@
-import { Persist } from '../../sync/persist';
 import { getConnection, MoreThan, createConnection } from 'typeorm';
 import { Block } from '../../powergrid-db/entity/block';
 import { displayID, blockIDtoNum, getMeterREST } from '../../utils';
 import { Meter } from '../../meter-rest';
 import { Net } from '../../net';
 import { getNetwork, checkNetworkWithDB } from '../network';
-import { getExpandedBlockByID } from '../../service/block';
-
+import { Basis } from '../../processor/basis';
 const net = getNetwork();
 const STOP_NUMBER = 0;
-const persist = new Persist();
 const meter = new Meter(new Net(getMeterREST()), net);
 
 const getBlockFromREST = async (id: string) => {
@@ -27,8 +24,8 @@ createConnection()
   .then(async () => {
     // await checkNetworkWithDB(net)
 
-    const head = (await persist.getHead())!;
-    const headNum = blockIDtoNum(head.value);
+    const head = (await this.configs.loadHead(Basis.HEAD_KEY))!;
+    const headNum = blockIDtoNum(head.hash);
 
     const count = await getConnection()
       .getRepository(Block)
@@ -37,9 +34,9 @@ createConnection()
       throw new Error('larger number block exist than head');
     }
 
-    let current = head.value;
+    let current = head.hash;
     for (;;) {
-      const { block, txs } = await getExpandedBlockByID(current);
+      const { block, txs } = await this.blocks.getExpandedBlockByID(current);
       if (!block) {
         throw new Error(
           `Continuity failed: Block(${displayID(current)}) missing`

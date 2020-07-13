@@ -7,20 +7,10 @@ import { EntityManager } from 'typeorm';
 import { Snapshot } from '../../powergrid-db/entity/snapshot';
 import { SnapType } from '../../powergrid-db/types';
 
-export interface SnapAccount {
-  address: string;
-  balance: string;
-  energy: string;
-  blockTime: number;
-  firstSeen: number;
-  code: string | null;
-}
-
 export class BlockProcessor {
   public Movement: AssetMovement[] = [];
 
   private acc = new Map<string, Account>();
-  private snap = new Map<string, SnapAccount>();
   private updateCode = new Set<string>();
   private updateMTR = new Set<string>();
 

@@ -69,12 +69,16 @@ class Metric {
 export class InterruptedError extends Error {
   constructor() {
     super('interrupted');
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, InterruptedError.prototype);
   }
 }
 
 export class WaitNextTickError extends Error {
   constructor() {
     super();
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, WaitNextTickError.prototype);
   }
 }
 

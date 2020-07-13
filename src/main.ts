@@ -1,5 +1,5 @@
 import { Network, getVIP180Token } from './const';
-import { Foundation } from './sync';
+import { Basis } from './processor/basis';
 import { Meter } from './meter-rest';
 import { createConnection } from 'typeorm';
 import { Net } from './net';
@@ -39,28 +39,12 @@ switch (process.argv[2]) {
 
 const meter = new Meter(new Net(getMeterREST()), net!);
 
-let task: Foundation | Processor;
+let task: Processor;
 switch (process.argv[3]) {
-  case 'sync':
-    task = new Foundation(meter);
+  case 'basis':
+    task = new Basis(meter);
     break;
-  case 'expand-tx':
-    task = new ExpandTX(meter);
-    break;
-  case 'dual-token':
-    task = new DualToken(meter);
-    break;
-  case 'token':
-    if (!process.argv[4]) {
-      printUsage('token symbol needed');
-    }
-    try {
-      const token = getVIP180Token(net!, process.argv[4]);
-      task = new VIP180Transfer(meter, token);
-    } catch (e) {
-      printUsage(e.message);
-    }
-    break;
+
   default:
     printUsage('invalid task name');
 }
