@@ -2,20 +2,16 @@ import { Meter } from '../../meter-rest';
 import { EntityManager } from 'typeorm';
 import * as logger from '../../logger';
 import { Transaction } from '../../powergrid-db/entity/transaction';
-import { Processor, BlockSource } from '../processor';
+import { PosProcessor, BlockSource } from '../pos-processor';
 
 import { Block } from '../../powergrid-db/entity/block';
 
-export class ChainSync extends Processor {
-  static HEAD_KEY = 'meter-head';
-  static SOURCE = BlockSource.FullNode;
+const HEAD_KEY = 'pos-chain-head';
+const SOURCE = BlockSource.FullNode;
 
-  protected get headKey() {
-    return ChainSync.HEAD_KEY;
-  }
-
+export class PosChain extends PosProcessor {
   constructor(readonly meter: Meter) {
-    super(ChainSync.SOURCE, meter);
+    super(HEAD_KEY, SOURCE, meter);
   }
 
   protected bornAt() {
@@ -27,7 +23,7 @@ export class ChainSync extends Processor {
     txs: Transaction[],
     manager: EntityManager
   ) {
-    logger.log(`processing block: (${b.number}) ${b.id}`);
+    logger.log(`processing: (${b.number}) ${b.id}`);
     let score = 0;
     let gasChanged = 0;
 

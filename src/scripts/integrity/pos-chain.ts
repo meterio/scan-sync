@@ -4,7 +4,7 @@ import { displayID, blockIDtoNum, getMeterREST } from '../../utils';
 import { Meter } from '../../meter-rest';
 import { Net } from '../../net';
 import { getNetwork, checkNetworkWithDB } from '../network';
-import { Basis } from '../../processor/basis';
+import { PosChain } from '../../processor/pos-chain';
 const net = getNetwork();
 const STOP_NUMBER = 0;
 const meter = new Meter(new Net(getMeterREST()), net);
@@ -24,7 +24,7 @@ createConnection()
   .then(async () => {
     // await checkNetworkWithDB(net)
 
-    const head = (await this.configs.loadHead(Basis.HEAD_KEY))!;
+    const head = (await this.configs.loadHead(PosChain.HEAD_KEY))!;
     const headNum = blockIDtoNum(head.hash);
 
     const count = await getConnection()

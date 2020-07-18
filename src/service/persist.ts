@@ -1,7 +1,7 @@
 import { getConnection, MoreThan, EntityManager, In } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { Block } from '../powergrid-db/entity/block';
-import { ChainIndicator } from '../processor/processor';
+import { ChainIndicator } from '../processor/pos-processor';
 import { Transaction } from '../powergrid-db/entity/transaction';
 import { Config } from '../powergrid-db/entity/config';
 import { Account } from '../powergrid-db/entity/account';
@@ -45,7 +45,7 @@ export class PersistService {
   // -----------------------------------------------------------------------
   // Block
   // -----------------------------------------------------------------------
-  public getBest() {
+  public getBest(): Promise<ChainIndicator | null> {
     return this.manager
       .getRepository(Block)
       .findOne({

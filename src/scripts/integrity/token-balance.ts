@@ -7,7 +7,7 @@ import { Persist } from '../../processor/vip180/persist';
 import { Net } from '../../net';
 import { getNetwork, checkNetworkWithDB } from '../network';
 import { getMeterREST } from '../../utils';
-import { getBlockByNumber } from '../../service/block';
+import { getBlockByNumber } from '../../service/persist';
 import { Block } from '../../powergrid-db/entity/block';
 
 const net = getNetwork();

@@ -6,14 +6,14 @@ import {
   getConnection,
   In,
 } from 'typeorm';
-import { Persist } from '../../processor/dual-token/persist';
+import { Persist } from '../../processor/asset-track/persist';
 import { Meter } from '../../meter-rest';
 import { Account } from '../../powergrid-db/entity/account';
 import { PrototypeAddress, ZeroAddress, prototype } from '../../const';
 import { Net } from '../../net';
 import { getNetwork, checkNetworkWithDB } from '../network';
 import { getMeterREST } from '../../utils';
-import { getBlockByNumber } from '../../service/block';
+import { getBlockByNumber } from '../../service/persist';
 import { Block } from '../../powergrid-db/entity/block';
 import { AssetMovement } from '../../powergrid-db/entity/movement';
 import { AggregatedMovement } from '../../powergrid-db/entity/aggregated-move';
