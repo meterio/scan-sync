@@ -268,6 +268,16 @@ export abstract class PosProcessor extends Processor {
           case BlockSource.FullNode:
             const blk = await this.meter.getBlock(i, 'expanded');
 
+            // fast load later blocks into cache if possible
+            if (blk.number < endNum - 10) {
+              (async () => {
+                for (let i = 0; i <= 10; i++) {
+                  const ref = blk;
+                  await this.meter.getBlock(ref.number + i, 'expanded');
+                }
+              })().catch();
+            }
+
             let prevBlock: Meter.ExpandedBlock = null;
             if (blk.number > 0) {
               prevBlock = (await this.meter.getBlock(
