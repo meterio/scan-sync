@@ -1,5 +1,10 @@
 import { EntityManager, getConnection } from 'typeorm';
-import { sleep, InterruptedError, WaitNextTickError } from '../utils';
+import {
+  sleep,
+  InterruptedError,
+  WaitNextTickError,
+  displayID,
+} from '../utils';
 import { EventEmitter } from 'events';
 import { PersistService } from '../service';
 import * as logger from '../logger';
@@ -145,6 +150,9 @@ export abstract class PosProcessor extends Processor {
 
         if (best.number > head.number) {
           // head = await this.getHead();
+          if (best.number - 10 > head.number) {
+            await this.fastForward(best.number - 10);
+          }
           await this.batchProcess(head.number, best.number); // import blocks [head+1, best]
         }
       } catch (e) {
@@ -302,5 +310,82 @@ export abstract class PosProcessor extends Processor {
         }
       }
     });
+  }
+
+  private async fastForward(endNum: number) {
+    console.log(`fast forward to ${endNum}`);
+    let head = await this.getHead();
+    for (let i = head.number + 1; i <= endNum; ) {
+      if (this.shutdown) {
+        break;
+      }
+
+      let count = 0;
+      await getConnection().transaction(async (manager) => {
+        let batchPersist = new PersistService(manager);
+        for (; i <= endNum; i++) {
+          if (this.shutdown) {
+            break;
+          }
+          const startNum = i;
+          let block: Block;
+          let txs: Transaction[];
+          switch (this.source) {
+            case BlockSource.LocalDB:
+              const result = await batchPersist.getExpandedBlockByNumber(i);
+              block = result.block;
+              txs = result.txs;
+              break;
+            case BlockSource.FullNode:
+              const blk = await this.meter.getBlock(i, 'expanded');
+
+              // fast load later blocks into cache if possible
+              if (blk.number < endNum - 10) {
+                (async () => {
+                  for (let i = 0; i <= 10; i++) {
+                    const ref = blk;
+                    await this.meter.getBlock(ref.number + i, 'expanded');
+                  }
+                })().catch();
+              }
+
+              let prevBlock: Meter.ExpandedBlock = null;
+              if (blk.number > 0) {
+                prevBlock = (await this.meter.getBlock(
+                  blk.parentID,
+                  'expanded'
+                ))!;
+              }
+              const normalized = this.normalize(blk, prevBlock);
+              block = normalized.block;
+              txs = normalized.txs;
+          }
+
+          // only process block that extend head
+          if (
+            block.number === head.number + 1 &&
+            block.parentID === head.hash
+          ) {
+            await this.processBlock(block!, txs, manager);
+
+            head = new ChainIndicator(block.number, block.id);
+            this.head = head;
+            process.stdout.write(`imported: (${i}) ${block.id}`);
+            count++;
+            console.timeEnd('time');
+            console.time('time');
+          }
+
+          if (count >= 500 || i === endNum + 1) {
+            await this.saveHead(head);
+            process.stdout.write(
+              `imported (${i - startNum} at block(${displayID(block.id)})`
+            );
+            console.timeEnd('time');
+            count = 0;
+          }
+        }
+      });
+    }
   }
 }
