@@ -65,15 +65,13 @@ export class PersistService {
   }
 
   public getBlockByNumber(num: number) {
-    return this.manager
-      .getRepository(Block)
-      .findOne({ number: num, isTrunk: true });
+    return this.manager.getRepository(Block).findOne({ number: num });
   }
 
   public async getExpandedBlockByNumber(num: number) {
     const block = await this.manager
       .getRepository(Block)
-      .findOne({ number: num, isTrunk: true });
+      .findOne({ number: num });
 
     if (!block) {
       return { block, txs: [] } as {

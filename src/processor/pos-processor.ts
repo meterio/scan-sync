@@ -321,6 +321,8 @@ export abstract class PosProcessor extends Processor {
         break;
       }
 
+      console.time('time');
+
       let count = 0;
       await getConnection().transaction(async (manager) => {
         let batchPersist = new PersistService(manager);
@@ -334,12 +336,9 @@ export abstract class PosProcessor extends Processor {
           console.log('source:', this.source);
           switch (this.source) {
             case BlockSource.LocalDB:
-              console.time('getBlock');
               const result = await batchPersist.getExpandedBlockByNumber(i);
               block = result.block;
               txs = result.txs;
-              console.log('get block');
-              console.timeEnd('getBlock');
               break;
             case BlockSource.FullNode:
               const blk = await this.meter.getBlock(i, 'expanded');
@@ -371,10 +370,8 @@ export abstract class PosProcessor extends Processor {
             block.number === head.number + 1 &&
             block.parentID === head.hash
           ) {
-            console.time('process');
             await this.processBlock(block!, txs, manager);
             process.stdout.write('process block: ');
-            console.timeEnd('process');
 
             head = new ChainIndicator(block.number, block.id);
             this.head = head;
