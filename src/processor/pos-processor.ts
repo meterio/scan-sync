@@ -12,6 +12,7 @@ import { Block } from '../powergrid-db/entity/block';
 import { Transaction } from '../powergrid-db/entity/transaction';
 import { Meter } from '../meter-rest';
 import { Processor } from './processor';
+import { stderr } from 'process';
 
 const SAMPLING_INTERVAL = 500;
 export class ChainIndicator {
@@ -330,11 +331,15 @@ export abstract class PosProcessor extends Processor {
           const startNum = i;
           let block: Block;
           let txs: Transaction[];
+          console.log('source:', this.source);
           switch (this.source) {
             case BlockSource.LocalDB:
+              console.time('getBlock');
               const result = await batchPersist.getExpandedBlockByNumber(i);
               block = result.block;
               txs = result.txs;
+              console.log('get block');
+              console.timeEnd('getBlock');
               break;
             case BlockSource.FullNode:
               const blk = await this.meter.getBlock(i, 'expanded');
@@ -366,7 +371,10 @@ export abstract class PosProcessor extends Processor {
             block.number === head.number + 1 &&
             block.parentID === head.hash
           ) {
+            console.time('process');
             await this.processBlock(block!, txs, manager);
+            process.stdout.write('process block: ');
+            console.timeEnd('process');
 
             head = new ChainIndicator(block.number, block.id);
             this.head = head;
