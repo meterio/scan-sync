@@ -14,7 +14,7 @@ export class PowChain extends PowProcessor {
     return PowChain.HEAD_KEY;
   }
 
-  constructor(readonly meter: Meter) {
+  constructor(readonly rpc: RpcBitcoin) {
     super(PowChain.SOURCE, meter);
   }
 

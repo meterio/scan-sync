@@ -68,6 +68,7 @@ export class BlockProcessor {
     for (const [_, acc] of this.acc.entries()) {
       if (this.updateMTR.has(acc.address)) {
         const ret = await this.meter.getAccount(acc.address, this.block.id);
+        acc.mtrg = BigInt(ret.balance);
         acc.mtr = BigInt(ret.energy);
         acc.blockTime = this.block.timestamp;
 
