@@ -45,10 +45,6 @@ export const isBytes32 = (val: string) => {
   return /^0x[0-9a-fA-f]{64}/i.test(val);
 };
 
-export const getMeterREST = () => {
-  return process.env.METER_REST || 'http://localhost:8669';
-};
-
 class Metric {
   private duration = BigInt(0);
   constructor(readonly name: string) {}

@@ -7,10 +7,10 @@ import { PowTx } from '../model/powTx.interface';
 import BigNumber from 'bignumber.js';
 var bitcoin = require('bitcoinjs-lib');
 const client = new Client({
-  username: 'testuser',
-  password: 'testpass',
-  host: '18.136.189.43',
-  port: 8332,
+  username: process.env.POW_RPC_USER,
+  password: process.env.POW_RPC_PWD,
+  host: process.env.POW_RPC_HOST,
+  port: process.env.POW_RPC_PORT,
 });
 
 export namespace Pow {

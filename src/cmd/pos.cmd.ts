@@ -30,17 +30,32 @@ const meterify = require('meterify').meterify;
 const SAMPLING_INTERVAL = 500;
 const PRELOAD_WINDOW = 10;
 
+const getGenesisId = (network: string) => {
+  switch (network.toLowerCase()) {
+    case 'devnet':
+      return Network.DevNet;
+    case 'testnet':
+      return Network.TestNet;
+    case 'mainnet':
+      return Network.MainNet;
+  }
+  return Network.TestNet;
+};
+
 export class PosCMD {
   private shutdown = false;
   private ev = new EventEmitter();
   private name = 'pos';
   private logger = Logger.createLogger({ name: this.name });
-  private web3 = meterify(new Web3(), 'http://shoal.meter.io:8669');
+  private web3 = meterify(new Web3(), process.env.POS_PROVIDER_URL);
   private blockRepo = new BlockRepo();
   private txRepo = new TxRepo();
   private accountRepo = new AccountRepo();
   private transferRepo = new TransferRepo();
-  private pos = new Pos(new Net('http://tetra.meter.io:8669'), Network.DevNet);
+  private pos = new Pos(
+    new Net(process.env.POS_PROVIDER_URL),
+    getGenesisId(process.env.POS_NETWORK)
+  );
 
   public async start() {
     this.logger.info(`${this.name}: start`);
