@@ -45,6 +45,7 @@ export class Pow {
   }
 
   public async getBlock(height: number): Promise<PowBlock | null> {
+    // console.log('get block: ', height);
     const cacheOrLoad = async (func: () => Promise<PowBlock | null>) => {
       let key = 'b' + height.toString();
 
@@ -81,7 +82,6 @@ export class Pow {
     return cacheOrLoad(() => {
       return this.getTransactionRPC(txhash);
     });
-    return;
   }
 
   public async getBlockchainInfo() {

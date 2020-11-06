@@ -1,6 +1,5 @@
 import { Net } from '../utils/net';
-import { Meter } from '../utils/meter-rest';
-import { isCanonicalScriptSignature } from 'bitcoinjs-lib/types/script';
+import { Pos } from '../utils/pos-rest';
 import * as Logger from 'bunyan';
 import { EventEmitter } from 'events';
 import BlockRepo from '../repo/block.repo';
@@ -29,24 +28,22 @@ const Web3 = require('web3');
 const meterify = require('meterify').meterify;
 
 const SAMPLING_INTERVAL = 500;
+const PRELOAD_WINDOW = 10;
 
 export class PosCMD {
   private shutdown = false;
   private ev = new EventEmitter();
-  private name = 'pos-block';
+  private name = 'pos';
   private logger = Logger.createLogger({ name: this.name });
   private web3 = meterify(new Web3(), 'http://shoal.meter.io:8669');
   private blockRepo = new BlockRepo();
   private txRepo = new TxRepo();
   private accountRepo = new AccountRepo();
   private transferRepo = new TransferRepo();
-  private meter = new Meter(
-    new Net('http://tetra.meter.io:8669'),
-    Network.DevNet
-  );
+  private pos = new Pos(new Net('http://tetra.meter.io:8669'), Network.DevNet);
 
   public async start() {
-    console.log('START');
+    this.logger.info(`${this.name}: start`);
     this.loop();
     return;
   }
@@ -61,19 +58,23 @@ export class PosCMD {
   }
 
   private async getBlockFromREST(num: number) {
-    const b = await this.meter.getBlock(num, 'expanded');
-    // cache for the following blocks
+    const b = await this.pos.getBlock(num, 'expanded');
+
+    // preload blocks
     (async () => {
-      for (let i = 1; i <= 10; i++) {
-        await this.meter.getBlock(num + i, 'expanded');
+      for (let i = 1; i <= PRELOAD_WINDOW; i++) {
+        await this.pos.getBlock(num + i, 'expanded');
       }
     })().catch();
     return b;
   }
 
   public async loop() {
+    const localBestBlock = await this.blockRepo.getBestBlock();
+    const localBestNum = !!localBestBlock ? localBestBlock.number : 0;
+    this.logger.info(`start import block from number ${localBestNum}`);
+
     for (;;) {
-      console.log('LOOP ');
       try {
         if (this.shutdown) {
           throw new InterruptedError();
@@ -107,7 +108,7 @@ export class PosCMD {
     }
   }
 
-  getTransfers(blk: Meter.ExpandedBlock, txModel: Tx) {
+  getTransfers(blk: Pos.ExpandedBlock, txModel: Tx) {
     const fromAddr = txModel.origin;
     let transfers = [];
     for (const c of txModel.clauses) {
@@ -126,7 +127,7 @@ export class PosCMD {
   }
 
   async processTx(
-    blk: Meter.ExpandedBlock,
+    blk: Pos.ExpandedBlock,
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
     txIndex: number
   ): Promise<Tx> {
@@ -190,13 +191,13 @@ export class PosCMD {
     return txModel;
   }
 
-  async processBlock(blk: Meter.ExpandedBlock) {
+  async processBlock(blk: Pos.ExpandedBlock) {
     let score = 0;
     let gasChanged = 0;
     let reward = new BigNumber(0);
     let txCount = blk.transactions.length;
     if (blk.number > 0) {
-      const prevBlk = await this.meter.getBlock(blk.parentID, 'regular');
+      const prevBlk = await this.pos.getBlock(blk.parentID, 'regular');
       score = blk.totalScore - prevBlk.totalScore;
       gasChanged = blk.gasLimit - prevBlk.gasLimit;
     }
@@ -207,6 +208,7 @@ export class PosCMD {
     let transfers = [];
     let acctDeltas: { [key: string]: BigNumber } = {};
     for (const tx of blk.transactions) {
+      console.log('tx: ', tx);
       const txModel = await this.processTx(blk, tx, index);
       const blockTranfers = this.getTransfers(blk, txModel);
       transfers = transfers.concat(blockTranfers);
@@ -222,12 +224,8 @@ export class PosCMD {
     for (const act of accts) {
       acctMap[getAccountID(act)] = act;
     }
-    for (const addr in acctDeltas) {
-      const delta = acctDeltas[addr];
-    }
     await this.txRepo.bulkInsert(...txs);
     await this.transferRepo.bulkInsert(...transfers);
-
     await this.blockRepo.create({
       ...blk,
       hash: blk.id,
@@ -238,6 +236,9 @@ export class PosCMD {
       txCount,
       blockType: blk.isKBlock ? BlockType.KBlock : BlockType.MBlock,
     });
-    console.log('Processed block: ', blk.number, blk.id);
+    this.logger.info(
+      { number: blk.number, id: blk.id },
+      `processed block ${blk.number}`
+    );
   }
 }

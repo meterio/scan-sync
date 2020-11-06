@@ -7,18 +7,19 @@ import { PowBlock } from '../model/powBlock.interface';
 import PowTxRepo from '../repo/powTx.repo';
 
 const SAMPLING_INTERVAL = 500;
+const PRELOAD_WINDOW = 5;
 
 export class PowCMD {
   private shutdown = false;
   private ev = new EventEmitter();
-  private name = 'pos-block';
+  private name = 'pos';
   private logger = Logger.createLogger({ name: this.name });
   private powBlockRepo = new PowBlockRepo();
   private powTxRepo = new PowTxRepo();
   private pow = new Pow();
 
   public async start() {
-    console.log('START');
+    this.logger.info('start');
     this.loop();
     return;
   }
@@ -36,19 +37,22 @@ export class PowCMD {
     if (blk.tx && blk.tx.length > 0) {
       for (const txhash of blk.tx) {
         const powTx = await this.pow.getTx(txhash);
-        // txs.push(powTx);
         await this.powTxRepo.create(powTx);
       }
     }
     await this.powBlockRepo.create(blk);
-    console.log('processed block: ', blk.height, ', nTx:', blk.nTx);
+    this.logger.info(
+      { height: blk.height, hash: blk.hash },
+      `processed block: ${blk.height}`
+    );
   }
 
   private async getBlockFromRPC(num: number) {
     const b = await this.pow.getBlock(num);
-    // cache for the following blocks
+
+    // preload blocks
     (async () => {
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= PRELOAD_WINDOW; i++) {
         await this.pow.getBlock(num + i);
       }
     })().catch();
@@ -56,8 +60,11 @@ export class PowCMD {
   }
 
   public async loop() {
+    const localBestBlock = await this.powBlockRepo.getBestBlock();
+    const localBestNum = localBestBlock ? localBestBlock.height : 0;
+    this.logger.info(`start import block from height ${localBestNum}`);
+
     for (;;) {
-      console.log('LOOP ');
       try {
         if (this.shutdown) {
           throw new InterruptedError();

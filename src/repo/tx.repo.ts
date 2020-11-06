@@ -19,7 +19,7 @@ export class TxRepo {
   }
 
   public async bulkInsert(...tx: Tx[]) {
-    return this.tx.collection.insertMany(tx);
+    return this.tx.create(tx);
   }
 }
 

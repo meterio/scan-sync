@@ -46,6 +46,7 @@ export class Pos {
     revision: string | number,
     type: T
   ): Promise<Pos.Block<T> | null> {
+    // console.log('get block: ', revision);
     const expanded = type === 'expanded';
     const cacheOrLoad = async (func: () => Promise<Pos.Block<T> | null>) => {
       if (revision === 'best') {

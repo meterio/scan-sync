@@ -28,7 +28,7 @@ export class BlockRepo {
   }
 
   public async bulkInsert(...block: Block[]) {
-    return this.block.collection.insertMany(block);
+    return this.block.create(block);
   }
 }
 

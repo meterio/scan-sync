@@ -28,7 +28,7 @@ export class TransferRepo {
   }
 
   public async bulkInsert(...transfer: Transfer[]) {
-    return this.transfer.collection.insertMany(transfer);
+    return this.transfer.create(transfer);
   }
 }
 
