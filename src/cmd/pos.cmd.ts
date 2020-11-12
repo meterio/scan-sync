@@ -103,10 +103,12 @@ export class PosCMD {
         const tgtNum =
           bestNum - localBestNum > 1000 ? localBestNum + 1000 : bestNum;
 
+        console.log('LOCAL BEST: ', localBestNum);
         for (let num = localBestNum + 1; num <= tgtNum; num++) {
           if (this.shutdown) {
             throw new InterruptedError();
           }
+          console.log(`start to process block ${num}`);
           const blk = await this.getBlockFromREST(num);
           await this.processBlock(blk);
         }
@@ -126,6 +128,7 @@ export class PosCMD {
   getTransfers(blk: Pos.ExpandedBlock, txModel: Tx) {
     const fromAddr = txModel.origin;
     let transfers = [];
+    let index = 0;
     for (const c of txModel.clauses) {
       const toAddr = c.to;
       const transfer: Transfer = {
@@ -133,10 +136,16 @@ export class PosCMD {
         to: toAddr,
         amount: new BigNumber(c.value),
         token: c.token,
+        block: {
+          hash: blk.id,
+          timestamp: blk.timestamp,
+          number: blk.number,
+        },
         txHash: txModel.hash,
-        blockHash: blk.id,
+        clauseIndex: index,
       };
       transfers.push(transfer);
+      index++;
     }
     return transfers;
   }
@@ -223,7 +232,7 @@ export class PosCMD {
     let transfers = [];
     let acctDeltas: { [key: string]: BigNumber } = {};
     for (const tx of blk.transactions) {
-      console.log('tx: ', tx);
+      console.log('tx: ', tx.id);
       const txModel = await this.processTx(blk, tx, index);
       const blockTranfers = this.getTransfers(blk, txModel);
       transfers = transfers.concat(blockTranfers);
@@ -239,8 +248,18 @@ export class PosCMD {
     for (const act of accts) {
       acctMap[getAccountID(act)] = act;
     }
-    await this.txRepo.bulkInsert(...txs);
-    await this.transferRepo.bulkInsert(...transfers);
+    if (txs.length > 0) {
+      let clauseCount = 0;
+      for (const t of txs) {
+        clauseCount += t.clauseCount;
+      }
+      console.log(`saving ${txs.length} txs, ${clauseCount} clauses`);
+      await this.txRepo.bulkInsert(...txs);
+    }
+    if (transfers.length > 0) {
+      console.log(`saving ${transfers.length} transfers`);
+      await this.transferRepo.bulkInsert(...transfers);
+    }
     await this.blockRepo.create({
       ...blk,
       hash: blk.id,

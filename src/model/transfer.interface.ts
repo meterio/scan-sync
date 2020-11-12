@@ -1,5 +1,6 @@
 import { Token } from '../const/model';
 import BigNumber from 'bignumber.js';
+import { BlockConcise } from './blockConcise.interface';
 
 export interface Transfer {
   from: string;
@@ -7,6 +8,7 @@ export interface Transfer {
   amount: BigNumber;
   token: Token;
 
+  block: BlockConcise;
   txHash: string;
-  blockHash: string;
+  clauseIndex: number;
 }

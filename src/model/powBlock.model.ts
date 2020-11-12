@@ -3,12 +3,12 @@ import BigNumber from 'bignumber.js';
 import { PowBlock } from './powBlock.interface';
 
 const powBlockSchema = new mongoose.Schema({
-  hash: { type: String, required: true },
+  hash: { type: String, required: true, index: { unique: true } },
   confirmations: { type: Number, required: true },
   strippedSize: { type: Number, required: true },
   size: { type: Number, required: true },
   weight: { type: Number, required: true },
-  height: { type: Number, required: true },
+  height: { type: Number, required: true, index: { unique: true } },
   version: { type: Number, required: true },
   versionHex: { type: String, required: true },
   merkleRoot: { type: String, required: true },

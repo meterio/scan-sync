@@ -28,7 +28,18 @@ export class TransferRepo {
   }
 
   public async bulkInsert(...transfer: Transfer[]) {
-    return this.transfer.create(transfer);
+    console.log(`bulk insert ${transfer.length} transfers`);
+    for (const t of transfer) {
+      const exist = await this.transfer.exists({
+        txHash: t.txHash,
+        clauseIndex: t.clauseIndex,
+      });
+      if (!exist) {
+        console.log('saving transfers: ', t.txHash, t.clauseIndex);
+        await this.transfer.create(t);
+      }
+    }
+    return Promise.resolve();
   }
 }
 

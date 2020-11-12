@@ -21,7 +21,7 @@ const powOutSchema = new mongoose.Schema(
 );
 
 const powTxSchema = new mongoose.Schema({
-  hash: { type: String, required: true },
+  hash: { type: String, required: true, index: { unique: true } },
   version: { type: Number, required: true },
   locktime: { type: Number, required: true },
   ins: [powInSchema],

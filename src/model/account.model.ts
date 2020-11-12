@@ -19,6 +19,8 @@ const accountSchema = new mongoose.Schema({
   lastUpdate: blockConciseSchema,
 });
 
+accountSchema.index({ token: 1, address: 1 }, { unique: true });
+
 const accountModel = mongoose.model<Account & mongoose.Document>(
   'Account',
   accountSchema

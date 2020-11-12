@@ -23,16 +23,16 @@ const log = Logger.createLogger({ name: 'main' });
       if (!shutdown) {
         shutdown = true;
         await mongoose.disconnect();
-        await posCMD.stop();
-        // await powCMD.stop();
+        // await posCMD.stop();
+        await powCMD.stop();
         process.exit(0);
       }
     });
   });
 
   try {
-    await posCMD.start();
-    // await powCMD.start();
+    // await posCMD.start();
+    await powCMD.start();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

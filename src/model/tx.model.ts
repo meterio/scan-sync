@@ -53,7 +53,7 @@ const txOutputSchema = new mongoose.Schema(
 );
 
 const txSchema = new mongoose.Schema({
-  hash: { type: String, required: true },
+  hash: { type: String, required: true, index: { unique: true } },
 
   block: blockConciseSchema,
   txIndex: { type: Number, required: true },

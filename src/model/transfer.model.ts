@@ -4,33 +4,26 @@ import { Token, enumKeys } from '../const/model';
 import { Transfer } from './transfer.interface';
 import { blockConciseSchema } from './blockConcise.model';
 
-const transferSchema = new mongoose.Schema(
-  {
-    from: { type: String, required: true },
-    to: { type: String, required: true },
-    amount: { type: String, required: true },
-    token: {
-      type: String,
-      enum: enumKeys(Token),
-      get: (enumValue: string) => Token[enumValue as keyof typeof Token],
-      set: (enumValue: Token) => Token[enumValue],
-      required: true,
-    },
-
-    txHash: { type: String, required: true },
-    block: blockConciseSchema,
-
-    createdAt: Number,
-    updatedAt: Number,
+const transferSchema = new mongoose.Schema({
+  from: { type: String, required: true },
+  to: { type: String, required: true },
+  amount: { type: String, required: true },
+  token: {
+    type: String,
+    enum: enumKeys(Token),
+    get: (enumValue: string) => Token[enumValue as keyof typeof Token],
+    set: (enumValue: Token) => Token[enumValue],
+    required: true,
   },
-  {
-    timestamps: {
-      currentTime: () => Math.floor(Date.now() / 1000),
-    },
-  }
-);
 
-transferSchema.index({ network: 1, hash: 1, logId: 1 }, { unique: true });
+  block: blockConciseSchema,
+  txHash: { type: String, required: true },
+  clauseIndex: { type: Number, required: true },
+
+  createdAt: Number,
+});
+
+transferSchema.index({ txHash: 1, clauseIndex: 1 }, { unique: true });
 
 transferSchema.set('toJSON', {
   virtuals: false,

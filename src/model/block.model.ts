@@ -4,8 +4,8 @@ import { Block } from './block.interface';
 import { BlockType, enumKeys } from '../const/model';
 
 const blockSchema = new mongoose.Schema({
-  hash: { type: String, required: true },
-  number: { type: Number, required: true },
+  hash: { type: String, required: true, index: { unique: true } },
+  number: { type: Number, required: true, index: { unique: true } },
   parentID: { type: String, required: true },
   timestamp: { type: Number, required: true },
   gasLimit: { type: Number, required: true },
