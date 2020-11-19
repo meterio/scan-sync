@@ -10,7 +10,6 @@ function validateEnv() {
 
     // pos
     POS_PROVIDER_URL: str(),
-    POS_NETWORK: str(),
 
     // pow
     POW_RPC_HOST: str(),

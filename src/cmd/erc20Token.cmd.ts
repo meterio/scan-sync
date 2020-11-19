@@ -47,7 +47,6 @@ export class ERC20TokenCMD extends BlockReviewer {
     if (token === undefined) {
       throw new Error(`unknown token: ${tokenName}|`);
     }
-    console.log('TOKEN: ', token);
     this.name = 'erc20-token';
     this.token = getERC20Token(this.network, token);
     this.logger = Logger.createLogger({ name: this.name });
