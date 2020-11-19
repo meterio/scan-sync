@@ -6,13 +6,8 @@ import LRU from 'lru-cache';
 import { blockIDtoNum, isBytes32 } from './utils';
 
 export namespace Pos {
-  export type ExpandedBlock = Omit<
-    Required<Flex.Meter.Block>,
-    'transactions'
-  > & {
-    transactions: Array<
-      Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>
-    >;
+  export type ExpandedBlock = Omit<Required<Flex.Meter.Block>, 'transactions'> & {
+    transactions: Array<Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>>;
   };
   export type Block<T extends 'expanded' | 'regular'> = T extends 'expanded'
     ? ExpandedBlock
@@ -46,7 +41,6 @@ export class Pos {
     revision: string | number,
     type: T
   ): Promise<Pos.Block<T> | null> {
-    // console.log('get block: ', revision);
     const expanded = type === 'expanded';
     const cacheOrLoad = async (func: () => Promise<Pos.Block<T> | null>) => {
       if (revision === 'best') {
@@ -81,9 +75,7 @@ export class Pos {
         if (expanded) {
           const regular = {
             ...b,
-            transactions: (b as Pos.ExpandedBlock).transactions.map(
-              (x) => x.id
-            ),
+            transactions: (b as Pos.ExpandedBlock).transactions.map((x) => x.id),
           };
           this.cache.set('b-r' + b.number, regular);
           this.cache.set('b-r' + b.id, regular);
@@ -105,23 +97,14 @@ export class Pos {
     });
   }
   public getTransaction(id: string, head?: string) {
-    return this.httpGet<Pos.Transaction>(
-      `transactions/${id}`,
-      head ? { head } : {}
-    );
+    return this.httpGet<Pos.Transaction>(`transactions/${id}`, head ? { head } : {});
   }
   public getReceipt(id: string, head?: string) {
-    return this.httpGet<Pos.Receipt>(
-      `transactions/${id}/receipt`,
-      head ? { head } : {}
-    );
+    return this.httpGet<Pos.Receipt>(`transactions/${id}/receipt`, head ? { head } : {});
   }
   public async getAccount(addr: string, revision?: string) {
     const get = () => {
-      return this.httpGet<Pos.Account>(
-        `accounts/${addr}`,
-        revision ? { revision } : {}
-      );
+      return this.httpGet<Pos.Account>(`accounts/${addr}`, revision ? { revision } : {});
     };
     if (revision && isBytes32(revision)) {
       const key = 'a' + revision + addr;
@@ -137,16 +120,10 @@ export class Pos {
     return get();
   }
   public getCode(addr: string, revision?: string) {
-    return this.httpGet<Pos.Code>(
-      `accounts/${addr}/code`,
-      revision ? { revision } : {}
-    );
+    return this.httpGet<Pos.Code>(`accounts/${addr}/code`, revision ? { revision } : {});
   }
   public getStorage(addr: string, key: string, revision?: string) {
-    return this.httpGet<Pos.Storage>(
-      `accounts/${addr}/storage/${key}`,
-      revision ? { revision } : {}
-    );
+    return this.httpGet<Pos.Storage>(`accounts/${addr}/storage/${key}`, revision ? { revision } : {});
   }
 
   public filterEventLogs(arg: Flex.Driver.FilterEventLogsArg) {
@@ -157,11 +134,7 @@ export class Pos {
     return this.httpPost<Pos.VMOutput[]>('accounts/*', arg, { revision });
   }
 
-  public httpPost<T>(
-    path: string,
-    body: object,
-    query?: Record<string, string>
-  ): Promise<T> {
+  public httpPost<T>(path: string, body: object, query?: Record<string, string>): Promise<T> {
     return this.net.http('POST', path, {
       query,
       body,

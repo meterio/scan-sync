@@ -14,13 +14,8 @@ const client = new Client({
 });
 
 export namespace Pow {
-  export type ExpandedBlock = Omit<
-    Required<Flex.Meter.Block>,
-    'transactions'
-  > & {
-    transactions: Array<
-      Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>
-    >;
+  export type ExpandedBlock = Omit<Required<Flex.Meter.Block>, 'transactions'> & {
+    transactions: Array<Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>>;
   };
   export type Block<T extends 'expanded' | 'regular'> = T extends 'expanded'
     ? ExpandedBlock
@@ -45,7 +40,6 @@ export class Pow {
   }
 
   public async getBlock(height: number): Promise<PowBlock | null> {
-    // console.log('get block: ', height);
     const cacheOrLoad = async (func: () => Promise<PowBlock | null>) => {
       let key = 'b' + height.toString();
 
@@ -65,7 +59,6 @@ export class Pow {
   }
 
   public async getTx(txhash: string): Promise<PowTx | null> {
-    // console.log('get tx: ', txhash);
     const cacheOrLoad = async (func: () => Promise<PowTx | null>) => {
       let key = 't' + txhash;
 
@@ -102,7 +95,6 @@ export class Pow {
       chainWork: blk.chainwork,
       merkleRoot: blk.merkleroot,
     };
-    // console.log(result);
     return result;
   }
 
@@ -134,7 +126,6 @@ export class Pow {
         script: '0x' + o.script.toString('hex'),
       });
     }
-    // console.log(powTx);
     return powTx;
   }
 }

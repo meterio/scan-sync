@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const { MONGO_USER, MONGO_PWD, MONGO_PATH, MONGO_SSL_CA } = process.env;
 
-export const connectDB = () => {
+export const connectDB = async () => {
   let url = `mongodb://${MONGO_USER}:${MONGO_PWD}@${MONGO_PATH}`;
   let options: mongoose.ConnectionOptions = {
     useNewUrlParser: true,
@@ -23,5 +23,5 @@ export const connectDB = () => {
     };
   }
   // mongoose.set("debug", true);
-  mongoose.connect(url, options);
+  await mongoose.connect(url, options);
 };
