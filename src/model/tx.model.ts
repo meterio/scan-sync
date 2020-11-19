@@ -1,8 +1,9 @@
-import * as mongoose from 'mongoose';
 import BigNumber from 'bignumber.js';
-import { Tx } from './tx.interface';
-import { Token, enumKeys } from '../const/model';
+import * as mongoose from 'mongoose';
+
+import { Token, enumKeys } from '../const';
 import { blockConciseSchema } from './blockConcise.model';
+import { Tx } from './tx.interface';
 
 const clauseSchema = new mongoose.Schema(
   {
@@ -52,45 +53,63 @@ const txOutputSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const txSchema = new mongoose.Schema({
-  hash: { type: String, required: true, index: { unique: true } },
+const txSchema = new mongoose.Schema(
+  {
+    hash: { type: String, required: true, index: { unique: true } },
 
-  block: blockConciseSchema,
-  txIndex: { type: Number, required: true },
+    block: blockConciseSchema,
+    txIndex: { type: Number, required: true },
 
-  chainTag: { type: Number, required: true },
-  blockRef: { type: String, required: true },
-  expiration: { type: Number, required: true },
-  gasPriceCoef: { type: Number, required: true },
-  gas: { type: Number, required: true },
-  nonce: { type: String, required: true },
-  dependsOn: { type: String, required: false },
-  origin: { type: String, required: true },
+    chainTag: { type: Number, required: true },
+    blockRef: { type: String, required: true },
+    expiration: { type: Number, required: true },
+    gasPriceCoef: { type: Number, required: true },
+    gas: { type: Number, required: true },
+    nonce: { type: String, required: true },
+    dependsOn: { type: String, required: false },
+    origin: { type: String, required: true },
 
-  clauses: [clauseSchema],
-  clauseCount: { type: Number, required: true },
-  size: { type: Number, required: true },
+    clauses: [clauseSchema],
+    clauseCount: { type: Number, required: true },
+    size: { type: Number, required: true },
 
-  // receipt
-  gasUsed: { type: Number, required: true },
-  gasPayer: { type: String, required: true },
-  paid: {
-    type: String,
-    get: (num: string) => new BigNumber(num),
-    set: (bnum: BigNumber) => bnum.toFixed(0),
-    required: true,
+    // receipt
+    gasUsed: { type: Number, required: true },
+    gasPayer: { type: String, required: true },
+    paid: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    reward: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    reverted: {
+      type: Boolean,
+      required: true,
+    },
+    outputs: [txOutputSchema],
+
+    createdAt: { type: Number, index: true },
   },
-  reward: {
-    type: String,
-    get: (num: string) => new BigNumber(num),
-    set: (bnum: BigNumber) => bnum.toFixed(0),
-    required: true,
+  {
+    timestamps: {
+      currentTime: () => Math.floor(Date.now() / 1000),
+      updatedAt: false,
+    },
+  }
+);
+
+txSchema.set('toJSON', {
+  transform: (doc, ret, options) => {
+    delete ret.__v;
+    delete ret._id;
+    return ret;
   },
-  reverted: {
-    type: Boolean,
-    required: true,
-  },
-  outputs: [txOutputSchema],
 });
 
 const txModel = mongoose.model<Tx & mongoose.Document>('tx', txSchema, 'txs');

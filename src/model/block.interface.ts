@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { BlockType } from '../const/model';
+import { BlockType } from '../const';
 
 export interface Block {
   // basics
