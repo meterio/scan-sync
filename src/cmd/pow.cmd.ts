@@ -5,18 +5,26 @@ import { Pow } from '../utils/pow-rpc';
 import { sleep, InterruptedError } from '../utils/utils';
 import { PowBlock } from '../model/powBlock.interface';
 import PowTxRepo from '../repo/powTx.repo';
+import HeadRepo from '../repo/head.repo';
+import { CMD } from './cmd';
+import { Network } from '../const';
 
 const SAMPLING_INTERVAL = 500;
 const PRELOAD_WINDOW = 5;
 
-export class PowCMD {
+export class PowCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
-  private name = 'pos';
+  private name = 'pow';
   private logger = Logger.createLogger({ name: this.name });
   private powBlockRepo = new PowBlockRepo();
   private powTxRepo = new PowTxRepo();
+  private headRepo = new HeadRepo();
   private pow = new Pow();
+
+  constructor(net: Network) {
+    super();
+  }
 
   public async start() {
     this.logger.info('start');
@@ -34,17 +42,18 @@ export class PowCMD {
   }
 
   public async processBlock(blk: PowBlock) {
-    if (blk.tx && blk.tx.length > 0) {
+    if (blk.height > 0) {
+      const prevBlock = await this.getBlockFromRPC(blk.height - 1);
+      blk.previousBlockHash = prevBlock.hash;
+      await this.powBlockRepo.create(blk);
+    }
+    if (blk.height > 0 && blk.tx && blk.tx.length > 0) {
       for (const txhash of blk.tx) {
         const powTx = await this.pow.getTx(txhash);
         await this.powTxRepo.create(powTx);
       }
     }
-    await this.powBlockRepo.create(blk);
-    this.logger.info(
-      { height: blk.height, hash: blk.hash },
-      `processed block: ${blk.height}`
-    );
+    this.logger.info({ height: blk.height, hash: blk.hash }, `processed block: ${blk.height}`);
   }
 
   private async getBlockFromRPC(num: number) {
@@ -60,10 +69,6 @@ export class PowCMD {
   }
 
   public async loop() {
-    const localBestBlock = await this.powBlockRepo.getBestBlock();
-    const localBestNum = localBestBlock ? localBestBlock.height : 0;
-    this.logger.info(`start import block from height ${localBestNum}`);
-
     for (;;) {
       try {
         if (this.shutdown) {
@@ -71,20 +76,37 @@ export class PowCMD {
         }
         await sleep(SAMPLING_INTERVAL);
 
-        const localBestBlock = await this.powBlockRepo.getBestBlock();
-        const localBestNum = localBestBlock ? localBestBlock.height : 0;
+        let head = await this.headRepo.findByKey(this.name);
+        let headNum = !!head ? head.num : -1;
+
+        // delete invalid/incomplete blocks
+        const futureBlocks = await this.powBlockRepo.findFutureBlocks(headNum);
+        for (const blk of futureBlocks) {
+          for (const txHash of blk.tx) {
+            await this.powTxRepo.delete(txHash);
+            this.logger.info({ txHash }, 'deleted tx in blocks higher than head');
+          }
+          await this.powBlockRepo.delete(blk.hash);
+          this.logger.info({ height: blk.height, hash: blk.hash }, 'deleted block higher than head ');
+        }
         const info = await this.pow.getBlockchainInfo();
         const bestNum = info.blocks;
+        const tgtNum = bestNum - headNum > 1000 ? headNum + 1000 : bestNum;
+        this.logger.info(`start to import PoW block from height ${headNum + 1} to ${tgtNum}`);
 
-        const tgtNum =
-          bestNum - localBestNum > 1000 ? localBestNum + 1000 : bestNum;
-
-        for (let num = localBestNum + 1; num <= tgtNum; num++) {
+        for (let num = headNum + 1; num <= tgtNum; num++) {
           if (this.shutdown) {
             throw new InterruptedError();
           }
           const blk = await this.getBlockFromRPC(num);
           await this.processBlock(blk);
+          this.logger.info({ height: blk.height, hash: blk.hash }, 'imported PoW block');
+
+          if (!head) {
+            head = await this.headRepo.create(this.name, blk.height, blk.hash);
+          } else {
+            head = await this.headRepo.update(this.name, blk.height, blk.hash);
+          }
         }
       } catch (e) {
         if (!(e instanceof InterruptedError)) {

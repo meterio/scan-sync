@@ -4,58 +4,35 @@ import * as Logger from 'bunyan';
 import { EventEmitter } from 'events';
 import BlockRepo from '../repo/block.repo';
 import { sleep, InterruptedError } from '../utils/utils';
-import { Network } from '../const';
 import BigNumber from 'bignumber.js';
-import {
-  Tx,
-  Clause,
-  TxOutput,
-  PosEvent,
-  PosTransfer,
-} from '../model/tx.interface';
-import { BlockType } from '../const/model';
+import { Tx, Clause, TxOutput, PosEvent, PosTransfer } from '../model/tx.interface';
+import { BlockType, Network } from '../const';
 import TxRepo from '../repo/tx.repo';
-import { Transfer } from '../model/transfer.interface';
-import AccountRepo from '../repo/account.repo';
-import TransferRepo from '../repo/transfer.repo';
-import { Token } from '../const/model';
-import { Account } from '../model/account.interface';
+import HeadRepo from '../repo/head.repo';
+import { CMD } from './cmd';
 
-const getAccountID = (act: Account): string => {
-  return `${act.address}_${Token[act.token]}`;
-};
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
 
 const SAMPLING_INTERVAL = 500;
 const PRELOAD_WINDOW = 10;
 
-const getGenesisId = (network: string) => {
-  switch (network.toLowerCase()) {
-    case 'devnet':
-      return Network.DevNet;
-    case 'testnet':
-      return Network.TestNet;
-    case 'mainnet':
-      return Network.MainNet;
-  }
-  return Network.TestNet;
-};
-
-export class PosCMD {
+export class PosCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
   private name = 'pos';
   private logger = Logger.createLogger({ name: this.name });
   private web3 = meterify(new Web3(), process.env.POS_PROVIDER_URL);
+
   private blockRepo = new BlockRepo();
   private txRepo = new TxRepo();
-  private accountRepo = new AccountRepo();
-  private transferRepo = new TransferRepo();
-  private pos = new Pos(
-    new Net(process.env.POS_PROVIDER_URL),
-    getGenesisId(process.env.POS_NETWORK)
-  );
+  private headRepo = new HeadRepo();
+  private pos: Pos;
+
+  constructor(net: Network) {
+    super();
+    this.pos = new Pos(new Net(process.env.POS_PROVIDER_URL), net);
+  }
 
   public async start() {
     this.logger.info(`${this.name}: start`);
@@ -85,10 +62,6 @@ export class PosCMD {
   }
 
   public async loop() {
-    const localBestBlock = await this.blockRepo.getBestBlock();
-    const localBestNum = !!localBestBlock ? localBestBlock.number : 0;
-    this.logger.info(`start import block from number ${localBestNum}`);
-
     for (;;) {
       try {
         if (this.shutdown) {
@@ -96,21 +69,38 @@ export class PosCMD {
         }
         await sleep(SAMPLING_INTERVAL);
 
-        const localBestBlock = await this.blockRepo.getBestBlock();
-        const localBestNum = !!localBestBlock ? localBestBlock.number : 0;
+        let head = await this.headRepo.findByKey(this.name);
+        let headNum = !!head ? head.num : -1;
+
+        // delete invalid/incomplete blocks
+        const futureBlocks = await this.blockRepo.findFutureBlocks(headNum);
+        for (const blk of futureBlocks) {
+          for (const txHash of blk.txHashs) {
+            await this.txRepo.delete(txHash);
+            this.logger.info({ txHash }, 'deleted tx in blocks higher than head');
+          }
+          await this.blockRepo.delete(blk.hash);
+          this.logger.info({ number: blk.number, hash: blk.hash }, 'deleted block higher than head ');
+        }
+
         const bestNum = await this.web3.eth.getBlockNumber();
+        const tgtNum = bestNum - headNum > 1000 ? headNum + 1000 : bestNum;
 
-        const tgtNum =
-          bestNum - localBestNum > 1000 ? localBestNum + 1000 : bestNum;
-
-        console.log('LOCAL BEST: ', localBestNum);
-        for (let num = localBestNum + 1; num <= tgtNum; num++) {
+        this.logger.info(`start import PoS block from number ${headNum + 1} to ${tgtNum}`);
+        for (let num = headNum + 1; num <= tgtNum; num++) {
           if (this.shutdown) {
             throw new InterruptedError();
           }
-          console.log(`start to process block ${num}`);
           const blk = await this.getBlockFromREST(num);
           await this.processBlock(blk);
+          this.logger.info({ number: blk.number, hash: blk.id }, 'imported PoS block');
+
+          // update head
+          if (!head) {
+            head = await this.headRepo.create(this.name, blk.number, blk.id);
+          } else {
+            head = await this.headRepo.update(this.name, blk.number, blk.id);
+          }
         }
       } catch (e) {
         if (!(e instanceof InterruptedError)) {
@@ -123,31 +113,6 @@ export class PosCMD {
         }
       }
     }
-  }
-
-  getTransfers(blk: Pos.ExpandedBlock, txModel: Tx) {
-    const fromAddr = txModel.origin;
-    let transfers = [];
-    let index = 0;
-    for (const c of txModel.clauses) {
-      const toAddr = c.to;
-      const transfer: Transfer = {
-        from: fromAddr,
-        to: toAddr,
-        amount: new BigNumber(c.value),
-        token: c.token,
-        block: {
-          hash: blk.id,
-          timestamp: blk.timestamp,
-          number: blk.number,
-        },
-        txHash: txModel.hash,
-        clauseIndex: index,
-      };
-      transfers.push(transfer);
-      index++;
-    }
-    return transfers;
   }
 
   async processTx(
@@ -167,6 +132,8 @@ export class PosCMD {
 
     let outputs: TxOutput[] = [];
     let outIndex = 0;
+
+    // prepare events and outputs
     for (const o of tx.outputs) {
       let evts: PosEvent[] = [];
       let transfers: PosTransfer[] = [];
@@ -174,7 +141,7 @@ export class PosCMD {
         evts.push({ ...evt });
       }
       for (const tr of o.transfers) {
-        transfers.push({ ...tr, token: clauses[outIndex].token });
+        transfers.push({ ...tr });
       }
       outputs.push({
         contractAddress: o.contractAddress,
@@ -211,7 +178,7 @@ export class PosCMD {
       outputs: outputs,
     };
 
-    console.log('processed tx: ', txModel.hash);
+    this.logger.info({ hash: txModel }, 'processed tx');
     return txModel;
   }
 
@@ -229,36 +196,12 @@ export class PosCMD {
     let txs: Tx[] = [];
     let txHashs: string[] = [];
     let index = 0;
-    let transfers = [];
-    let acctDeltas: { [key: string]: BigNumber } = {};
     for (const tx of blk.transactions) {
-      console.log('tx: ', tx.id);
       const txModel = await this.processTx(blk, tx, index);
-      const blockTranfers = this.getTransfers(blk, txModel);
-      transfers = transfers.concat(blockTranfers);
       txHashs.push(tx.id);
       txs.push(txModel);
       index++;
       reward = reward.plus(tx.reward);
-    }
-    const accts = await this.accountRepo.findByAddressList(
-      Object.keys(acctDeltas)
-    );
-    let acctMap: { [key: string]: Account } = {};
-    for (const act of accts) {
-      acctMap[getAccountID(act)] = act;
-    }
-    if (txs.length > 0) {
-      let clauseCount = 0;
-      for (const t of txs) {
-        clauseCount += t.clauseCount;
-      }
-      console.log(`saving ${txs.length} txs, ${clauseCount} clauses`);
-      await this.txRepo.bulkInsert(...txs);
-    }
-    if (transfers.length > 0) {
-      console.log(`saving ${transfers.length} transfers`);
-      await this.transferRepo.bulkInsert(...transfers);
     }
     await this.blockRepo.create({
       ...blk,
@@ -270,9 +213,13 @@ export class PosCMD {
       txCount,
       blockType: blk.isKBlock ? BlockType.KBlock : BlockType.MBlock,
     });
-    this.logger.info(
-      { number: blk.number, id: blk.id },
-      `processed block ${blk.number}`
-    );
+    if (txs.length > 0) {
+      let clauseCount = 0;
+      for (const t of txs) {
+        clauseCount += t.clauseCount;
+      }
+      await this.txRepo.bulkInsert(...txs);
+      this.logger.info(`saved ${txs.length} txs, ${clauseCount} clauses`);
+    }
   }
 }

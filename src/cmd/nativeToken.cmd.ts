@@ -1,0 +1,165 @@
+import * as Logger from 'bunyan';
+import BigNumber from 'bignumber.js';
+import { Tx } from '../model/tx.interface';
+import { Transfer } from '../model/transfer.interface';
+import { Token, Network, getERC20Token, TransferEvent } from '../const';
+import { BlockReviewer } from './blockReviewer';
+import { Block } from '../model/block.interface';
+
+interface AccountDelta {
+  mtr: BigNumber;
+  mtrg: BigNumber;
+}
+
+class AccountDeltaMap {
+  private accts: { [key: string]: AccountDelta } = {};
+
+  public minus(addr: string, token: Token, amount: string | BigNumber) {
+    if (!(addr in this.accts)) {
+      this.accts[addr] = { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
+    }
+    if (token === Token.MTR) {
+      this.accts[addr].mtr = this.accts[addr].mtr.minus(amount);
+    }
+    if (token === Token.MTRG) {
+      this.accts[addr].mtrg = this.accts[addr].mtrg.minus(amount);
+    }
+  }
+
+  public plus(addr: string, token: Token, amount: string | BigNumber) {
+    if (!(addr in this.accts)) {
+      this.accts[addr] = { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
+    }
+    if (token === Token.MTR) {
+      this.accts[addr].mtr = this.accts[addr].mtr.plus(amount);
+    }
+    if (token === Token.MTRG) {
+      this.accts[addr].mtrg = this.accts[addr].mtrg.plus(amount);
+    }
+  }
+
+  public addresses(): string[] {
+    return Object.keys(this.accts);
+  }
+
+  public getDelta(addr: string): AccountDelta {
+    if (addr in this.accts) {
+      return this.accts[addr];
+    }
+    return { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
+  }
+}
+
+export class NativeTokenCMD extends BlockReviewer {
+  constructor(net: Network) {
+    super(net);
+    this.name = 'native-token';
+    this.logger = Logger.createLogger({ name: this.name });
+  }
+
+  public async start() {
+    this.logger.info(`${this.name}: start`);
+    this.loop();
+    return;
+  }
+
+  public stop() {
+    this.shutdown = true;
+
+    return new Promise((resolve) => {
+      this.logger.info('shutting down......');
+      this.ev.on('closed', resolve);
+    });
+  }
+
+  processTx(tx: Tx, txIndex: number): Transfer[] {
+    let transfers: Transfer[] = [];
+    if (tx.reverted) {
+      return [];
+    }
+    const mtrToken = getERC20Token(this.network, Token.MTR);
+    const mtrgToken = getERC20Token(this.network, Token.MTRG);
+    for (const [clauseIndex, o] of tx.outputs.entries()) {
+      const clause = tx.clauses[clauseIndex];
+      for (const [logIndex, t] of o.transfers.entries()) {
+        transfers.push({
+          from: tx.origin,
+          to: clause.to,
+          token: clause.token,
+          amount: new BigNumber(clause.value),
+          address: '',
+          txHash: tx.hash,
+          block: tx.block,
+          clauseIndex,
+          logIndex,
+        });
+      }
+      for (const [logIndex, e] of o.events.entries()) {
+        if (e.topics[0] === TransferEvent.signature) {
+          const decoded = TransferEvent.decode(e.data, e.topics);
+          let transfer = {
+            from: decoded._from,
+            to: decoded._to,
+            token: Token.MTR,
+            amount: new BigNumber(decoded._value),
+            address: decoded._from,
+            txHash: tx.hash,
+            block: tx.block,
+            clauseIndex,
+            logIndex,
+          };
+          if (e.address === mtrToken.address) {
+            transfer.token = Token.MTR;
+            transfers.push(transfer);
+          }
+          if (e.address === mtrgToken.address) {
+            transfer.token = Token.MTRG;
+            transfers.push(transfer);
+          }
+        }
+      }
+    }
+    return transfers;
+  }
+
+  async processBlock(blk: Block) {
+    let transfers = [];
+    for (const [txIndex, txHash] of blk.txHashs.entries()) {
+      const txModel = await this.txRepo.findByHash(txHash);
+      const txTranfers = this.processTx(txModel, txIndex);
+      transfers = transfers.concat(txTranfers);
+    }
+    await this.transferRepo.bulkInsert(...transfers);
+
+    let accts = new AccountDeltaMap();
+    for (const tr of transfers) {
+      const from = tr.from;
+      const to = tr.to;
+      accts.minus(from, tr.token, tr.amount);
+      accts.plus(to, tr.token, tr.amount);
+      this.logger.info({ from, to, amount: tr.amount.toFixed(0), token: Token[tr.token] }, 'transfer');
+    }
+
+    for (const addr of accts.addresses()) {
+      const delta = accts.getDelta(addr);
+      let acct = await this.accountRepo.findByAddress(addr);
+      if (!acct) {
+        const blockConcise = {
+          number: blk.number,
+          hash: blk.hash,
+          timestamp: blk.timestamp,
+        };
+        acct = await this.accountRepo.create(addr, blockConcise, blockConcise);
+        acct.mtrBalance = delta.mtr;
+        acct.mtrgBalance = delta.mtrg;
+      } else {
+        acct.mtrBalance = acct.mtrBalance.plus(delta.mtr);
+        acct.mtrgBalance = acct.mtrgBalance.plus(delta.mtrg);
+      }
+      this.logger.info({ addr: acct.address, mtr: acct.mtrBalance, mtrg: acct.mtrgBalance }, 'account updated');
+      await acct.save();
+    }
+
+    this.logger.info({ number: blk.number, id: blk.hash }, `processed block ${blk.number}`);
+  }
+}
