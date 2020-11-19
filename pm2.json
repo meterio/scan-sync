@@ -1,0 +1,13 @@
+{
+  "apps": [
+    {
+      "name": "scan-sync",
+      "instances": "1",
+      "script": "./src/main.ts",
+      "interpreter": "ts-node",
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  ]
+}
