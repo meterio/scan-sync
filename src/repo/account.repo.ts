@@ -1,6 +1,5 @@
 import accountModel from '../model/account.model';
 import { BlockConcise } from '../model/blockConcise.interface';
-import { Token } from '../const/model';
 import BigNumber from 'bignumber.js';
 export class AccountRepo {
   private account = accountModel;
@@ -21,16 +20,12 @@ export class AccountRepo {
     });
   }
 
-  public async create(
-    address: string,
-    firstSeen: BlockConcise,
-    token: Token,
-    lastUpdate: BlockConcise
-  ) {
+  public async create(address: string, firstSeen: BlockConcise, lastUpdate: BlockConcise) {
     return this.account.create({
       address,
-      balance: new BigNumber('0'),
-      token,
+      mtrBalance: new BigNumber('0'),
+      mtrgBalance: new BigNumber('0'),
+
       firstSeen,
       lastUpdate,
     });

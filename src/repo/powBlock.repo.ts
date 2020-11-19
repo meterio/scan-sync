@@ -1,5 +1,6 @@
-import powBlockModel from '../model/powBlock.model';
 import { PowBlock } from '../model/powBlock.interface';
+import powBlockModel from '../model/powBlock.model';
+import { RECENT_WINDOW } from './const';
 
 export class PowBlockRepo {
   private powBlock = powBlockModel;
@@ -10,6 +11,10 @@ export class PowBlockRepo {
 
   public async findAll() {
     return this.powBlock.find();
+  }
+
+  public async findRecent() {
+    return this.powBlock.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
   }
 
   public async findByHeight(num: number) {
@@ -24,8 +29,16 @@ export class PowBlockRepo {
     });
   }
 
+  public async findFutureBlocks(num: number) {
+    return this.powBlock.find({ height: { $gt: num } });
+  }
+
   public async create(powBlock: PowBlock) {
     return this.powBlock.create(powBlock);
+  }
+
+  public async delete(hash: string) {
+    return this.powBlock.deleteOne({ hash });
   }
 }
 

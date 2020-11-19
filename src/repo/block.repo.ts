@@ -1,5 +1,7 @@
-import blockModel from '../model/block.model';
+import { Document } from 'mongoose';
 import { Block } from '../model/block.interface';
+import blockModel from '../model/block.model';
+import { RECENT_WINDOW } from './const';
 
 export class BlockRepo {
   private block = blockModel;
@@ -11,10 +13,18 @@ export class BlockRepo {
     return this.block.find();
   }
 
+  public async findRecent() {
+    return this.block.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
+  }
+
   public async findByNumber(num: number) {
     return this.block.findOne({
       number: num,
     });
+  }
+
+  public async findFutureBlocks(num: number): Promise<(Block & Document)[]> {
+    return this.block.find({ number: { $gt: num } });
   }
 
   public async findByHash(hash: string) {
@@ -29,6 +39,10 @@ export class BlockRepo {
 
   public async bulkInsert(...block: Block[]) {
     return this.block.create(block);
+  }
+
+  public async delete(hash: string) {
+    return this.block.deleteOne({ hash });
   }
 }
 
