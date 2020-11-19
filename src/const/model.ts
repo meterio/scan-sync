@@ -3,11 +3,6 @@ export enum Token {
   MTRG,
 }
 
-export enum TxStatus {
-  Success,
-  Reverted,
-}
-
 export enum BlockType {
   MBlock,
   KBlock,

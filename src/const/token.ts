@@ -1,74 +1,51 @@
-import { Network } from './network'
+import { Token } from './model';
+import { Network } from './network';
 
 export interface TokenBasic {
-    name: string
-    address: string
-    symbol: string
-    decimals: number,
+  name: string;
+  address: string;
+  token: Token;
+  decimals: number;
 }
 
-export interface TokenConfig {
-    genesis?: {
-        [address: string]: string
-    },
-    // Indicates special cases like EHrT: burn when transfer to zero address
-    burnOnZero?: boolean
-}
+const mtr = { token: Token.MTR, address: '', name: 'Meter ERC20', decimals: 18 };
+const mtrg = { token: Token.MTRG, address: '', name: 'Meter Governance ERC20', decimals: 18 };
 
-const main = new Map<string, TokenBasic&TokenConfig>()
-const test = new Map<string, TokenBasic&TokenConfig>()
+class TokenRegistry {
+  private registry = new Map<Token, TokenBasic>();
+  public add(tb: TokenBasic) {
+    this.registry.set(tb.token, tb);
+  }
 
-const pla = { symbol: 'PLA', address: '', name: 'Plair', decimals: 18 }
-const sha = { symbol: 'SHA', address: '', name: 'Safe Haven', decimals: 18 }
-const ehrt = { symbol: 'EHrT', address: '', name: 'Eight Hours Token', decimals: 18 }
-const dbet = { symbol: 'DBET', address: '', name: 'Decent.bet', decimals: 18 }
-const tic = { symbol: 'TIC', address: '', name: 'TicTalk', decimals: 18 }
-const oce = { symbol: 'OCE', address: '', name: 'OceanEx', decimals: 18 }
-const snk = { symbol: 'SNK', address: '', name: 'SneakerCoin', decimals: 18 }
-const jur = { symbol: 'JUR', address: '', name: 'Jur', decimals: 18 }
-const aqd = { symbol: 'AQD', address: '', name: 'Aqua Diamond Token', decimals: 18 }
-const yeet = { symbol: 'YEET', address: '', name: 'Yeet Coin', decimals: 18 }
-const hai = { symbol: 'HAI', address: '', name: 'HackenAI', decimals: 8 }
-
-main.set(pla.symbol, { ...pla, address: '0x89827f7bb951fd8a56f8ef13c5bfee38522f2e1f' })
-main.set(sha.symbol, { ...sha, address: '0x5db3c8a942333f6468176a870db36eef120a34dc' })
-main.set(ehrt.symbol, { ...ehrt, address: '0xf8e1faa0367298b55f57ed17f7a2ff3f5f1d1628',
-    burnOnZero: true,
-    genesis: { '0x8d8d8a0c77628926908dedaf3fbffce3d416fc2d': '10000000000000000000000000000' }
-})
-main.set(dbet.symbol, { ...dbet, address: '0x1b8ec6c2a45cca481da6f243df0d7a5744afc1f8', genesis: {'0x1b8ec6c2a45cca481da6f243df0d7a5744afc1f8': '205903294831970956466297922'} })
-main.set(tic.symbol, { ...tic, address: '0xa94a33f776073423e163088a5078feac31373990' })
-main.set(oce.symbol, { ...oce, address: '0x0ce6661b4ba86a0ea7ca2bd86a0de87b0b860f14' })
-main.set(snk.symbol, { ...snk, address: '0x540768b909782c430cc321192e6c2322f77494ec' })
-main.set(jur.symbol, { ...jur, address: '0x46209d5e5a49c1d403f4ee3a0a88c3a27e29e58d' })
-main.set(aqd.symbol, { ...aqd, address: '0xf9fc8681bec2c9f35d0dd2461d035e62d643659b' })
-main.set(yeet.symbol, { ...yeet, address: '0xae4c53b120cba91a44832f875107cbc8fbee185c' })
-main.set(hai.symbol, { ...hai, address: '0xacc280010b2ee0efc770bce34774376656d8ce14' })
-
-test.set(pla.symbol, { ...pla, address: '0x645d2019ed39e58db76af602317d177b53ba8b9d' })
-test.set(sha.symbol, { ...sha, address: '0x9c6e62b3334294d70c8e410941f52d482557955b' })
-test.set(ehrt.symbol, { ...ehrt, address: '0xdeff1d52f3fbf551b3337b9a02f719cd21da956b',
-    burnOnZero: true,
-    genesis: { '0xb5d8da87b6a92cc37477048b4bcd7b8070c843a7': '10000000000000000000000000000' }})
-test.set(dbet.symbol, { ...dbet, address: '0x510fcddc9424b1bbb328a574f45bfddb130e1f03', genesis: {'0x510fcddc9424b1bbb328a574f45bfddb130e1f03': '205903294831970956466297922'} })
-test.set(oce.symbol, { ...oce, address: '0x9652aead889e8df7b5717ed984f147c132f85a69' })
-test.set(jur.symbol, { ...jur, address: '0x602b7a4309b3412d269c6cdddad962c0b94494d8' })
-test.set(yeet.symbol, { ...yeet, address: '0x32456c328f647f5b35757d38fe634868d9fe3808' })
-
-export const getVIP180Token = (net: Network, symbol: string) => {
-    if (net === Network.MainNet) {
-        if (main.has(symbol)) {
-            return main.get(symbol)!
-        } else {
-            throw new Error('unknown token ' + symbol)
-        }
-    } else if (net === Network.TestNet) {
-        if (test.has(symbol)) {
-            return test.get(symbol)!
-        } else {
-            throw new Error('unknown token ' + symbol)
-        }
-    } else {
-        throw new Error('unknown network: ' + net)
+  public get(token: Token) {
+    if (this.registry.has(token)) {
+      return this.registry.get(token);
     }
+  }
+
+  public has(token: Token) {
+    return this.registry.has(token);
+  }
 }
+const mainnet = new TokenRegistry();
+const testnet = new TokenRegistry();
+const devnet = new TokenRegistry();
+const knownTokens = new Map<Network, TokenRegistry>();
+
+mainnet.add({ ...mtr, address: '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2' });
+mainnet.add({ ...mtrg, address: '0x89827f7bb951fd8a56f8ef13c5bfee38522f2e1f' });
+
+testnet.add({ ...mtr, address: '' });
+testnet.add({ ...mtrg, address: '' });
+
+knownTokens.set(Network.MainNet, mainnet);
+knownTokens.set(Network.TestNet, testnet);
+knownTokens.set(Network.DevNet, devnet);
+
+export const getERC20Token = (net: Network, token: Token) => {
+  const registry = knownTokens.get(net);
+  if (registry.has(token)) {
+    return registry.get(token);
+  }
+  return undefined;
+};
