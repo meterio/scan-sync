@@ -86,7 +86,10 @@ export class PosCMD extends CMD {
         const bestNum = await this.web3.eth.getBlockNumber();
         const tgtNum = bestNum - headNum > 1000 ? headNum + 1000 : bestNum;
 
-        this.logger.info(`start import PoS block from number ${headNum + 1} to ${tgtNum}`);
+        this.logger.info(
+          { best: bestNum, head: headNum },
+          `start import PoS block from number ${headNum + 1} to ${tgtNum}`
+        );
         for (let num = headNum + 1; num <= tgtNum; num++) {
           if (this.shutdown) {
             throw new InterruptedError();

@@ -2,13 +2,15 @@ import { EventEmitter } from 'events';
 
 import * as Logger from 'bunyan';
 
-import { Network, getNetwork } from '../const';
+import { Network } from '../const';
 import { Block } from '../model/block.interface';
 import AccountRepo from '../repo/account.repo';
 import BlockRepo from '../repo/block.repo';
 import HeadRepo from '../repo/head.repo';
 import TransferRepo from '../repo/transfer.repo';
 import TxRepo from '../repo/tx.repo';
+import { Net } from '../utils/net';
+import { Pos } from '../utils/pos-rest';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 
@@ -20,6 +22,7 @@ export abstract class BlockReviewer extends CMD {
   protected name = '-';
   protected logger: Logger;
   protected network: Network;
+  protected pos: Pos;
 
   protected headRepo = new HeadRepo();
   protected txRepo = new TxRepo();
@@ -31,9 +34,28 @@ export abstract class BlockReviewer extends CMD {
     super();
     this.logger = Logger.createLogger({ name: this.name });
     this.network = net;
+    this.pos = new Pos(new Net(process.env.POS_PROVIDER_URL), net);
+  }
+
+  protected async processGenesis(): Promise<void> {
+    return;
+  }
+
+  public async beforeStart() {
+    let head = await this.headRepo.findByKey(this.name);
+    if (!head || head.num === 0) {
+      await this.processGenesis();
+      const genesis = await this.blockRepo.findByNumber(0);
+      if (!head) {
+        await this.headRepo.create(this.name, 0, genesis.hash);
+      } else {
+        await this.headRepo.update(this.name, 0, genesis.hash);
+      }
+    }
   }
 
   public async start() {
+    await this.beforeStart();
     this.logger.info(`${this.name}: start`);
     this.loop();
     return;

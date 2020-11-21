@@ -19,7 +19,8 @@ const accountSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: true,
     },
-    code: { type: Buffer, required: false },
+    code: { type: String, required: false },
+    master: { type: String, required: false },
 
     firstSeen: blockConciseSchema,
     lastUpdate: blockConciseSchema,

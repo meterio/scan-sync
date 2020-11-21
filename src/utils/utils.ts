@@ -44,24 +44,6 @@ export const hexToBuffer = (val: string) => {
 export const isBytes32 = (val: string) => {
   return /^0x[0-9a-fA-f]{64}/i.test(val);
 };
-
-class Metric {
-  private duration = BigInt(0);
-  constructor(readonly name: string) {}
-  public start() {
-    const s = process.hrtime.bigint();
-    return () => {
-      this.duration += process.hrtime.bigint() - s;
-    };
-  }
-  public stats() {
-    console.log(
-      `Task[${this.name}] duration: ${this.duration / BigInt(1e6)}ms`
-    );
-    this.duration = BigInt(0);
-  }
-}
-
 export class InterruptedError extends Error {
   constructor() {
     super('interrupted');

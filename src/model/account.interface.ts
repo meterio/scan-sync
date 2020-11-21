@@ -6,6 +6,9 @@ export interface Account {
   mtrBalance: BigNumber;
   mtrgBalance: BigNumber;
 
+  code?: string;
+  master?: string;
+
   firstSeen: BlockConcise;
   lastUpdate: BlockConcise;
 }

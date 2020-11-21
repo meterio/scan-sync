@@ -18,8 +18,8 @@ export class TokenBalanceRepo {
     return this.tokenBalance.exists({ address, token });
   }
 
-  public async create(address: string, token: Token) {
-    return this.tokenBalance.create({ address, token, balance: new BigNumber(0) });
+  public async create(address: string, contractAddress: string) {
+    return this.tokenBalance.create({ address, balance: new BigNumber(0), contractAddress });
   }
 }
 

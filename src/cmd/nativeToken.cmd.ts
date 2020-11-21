@@ -2,7 +2,7 @@ import * as Logger from 'bunyan';
 import BigNumber from 'bignumber.js';
 import { Tx } from '../model/tx.interface';
 import { Transfer } from '../model/transfer.interface';
-import { Token, Network, getERC20Token, TransferEvent } from '../const';
+import { getPreAllocAccount, Token, Network, getERC20Token, TransferEvent } from '../const';
 import { BlockReviewer } from './blockReviewer';
 import { Block } from '../model/block.interface';
 
@@ -55,21 +55,6 @@ export class NativeTokenCMD extends BlockReviewer {
     super(net);
     this.name = 'native-token';
     this.logger = Logger.createLogger({ name: this.name });
-  }
-
-  public async start() {
-    this.logger.info(`${this.name}: start`);
-    this.loop();
-    return;
-  }
-
-  public stop() {
-    this.shutdown = true;
-
-    return new Promise((resolve) => {
-      this.logger.info('shutting down......');
-      this.ev.on('closed', resolve);
-    });
   }
 
   processTx(tx: Tx, txIndex: number): Transfer[] {
@@ -161,5 +146,29 @@ export class NativeTokenCMD extends BlockReviewer {
     }
 
     this.logger.info({ number: blk.number, id: blk.hash }, `processed block ${blk.number}`);
+  }
+
+  protected async processGenesis() {
+    const genesis = (await this.blockRepo.findByNumber(0))!;
+    this.logger.info({ number: genesis.number, hash: genesis.hash }, 'process genesis');
+
+    for (const addr of getPreAllocAccount(this.network)) {
+      const chainAcc = await this.pos.getAccount(addr, genesis.hash);
+
+      const blockConcise = { number: genesis.number, hash: genesis.hash, timestamp: genesis.timestamp };
+      let acct = await this.accountRepo.create(addr, blockConcise, blockConcise);
+      acct.mtrgBalance = new BigNumber(chainAcc.balance);
+      acct.mtrBalance = new BigNumber(chainAcc.energy);
+
+      if (chainAcc.hasCode) {
+        const chainCode = await this.pos.getCode(addr, genesis.hash);
+        acct.code = chainCode.code;
+      }
+      this.logger.info(
+        { address: addr, MTR: acct.mtrBalance.toFixed(), MTRG: acct.mtrgBalance.toFixed() },
+        `saving genesis account`
+      );
+      await acct.save();
+    }
   }
 }

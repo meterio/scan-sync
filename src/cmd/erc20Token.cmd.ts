@@ -52,21 +52,6 @@ export class ERC20TokenCMD extends BlockReviewer {
     this.logger = Logger.createLogger({ name: this.name });
   }
 
-  public async start() {
-    this.logger.info(`${this.name}: start`);
-    this.loop();
-    return;
-  }
-
-  public stop() {
-    this.shutdown = true;
-
-    return new Promise((resolve) => {
-      this.logger.info('shutting down......');
-      this.ev.on('closed', resolve);
-    });
-  }
-
   processTx(tx: Tx, txIndex: number): Transfer[] {
     let transfers: Transfer[] = [];
     for (const [clauseIndex, o] of tx.outputs.entries()) {
@@ -118,12 +103,15 @@ export class ERC20TokenCMD extends BlockReviewer {
           hash: blk.hash,
           timestamp: blk.timestamp,
         };
-        acct = await this.tokenBalanceRepo.create(addr, this.token.token);
+        acct = await this.tokenBalanceRepo.create(addr, this.token.address);
         acct.balance = delta;
       } else {
         acct.balance = acct.balance.plus(delta);
       }
       await acct.save();
     }
+  }
+  async processGenesis() {
+    return;
   }
 }

@@ -13,13 +13,7 @@ const tokenBalanceSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: true,
     },
-    token: {
-      type: String,
-      enum: enumKeys(Token),
-      get: (enumValue: string) => Token[enumValue as keyof typeof Token],
-      set: (enumValue: Token) => Token[enumValue],
-      required: true,
-    },
+    contractAddress: { type: String, required: true },
 
     createdAt: { type: Number, index: true },
     updatedAt: { type: Number },

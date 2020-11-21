@@ -92,7 +92,10 @@ export class PowCMD extends CMD {
         const info = await this.pow.getBlockchainInfo();
         const bestNum = info.blocks;
         const tgtNum = bestNum - headNum > 1000 ? headNum + 1000 : bestNum;
-        this.logger.info(`start to import PoW block from height ${headNum + 1} to ${tgtNum}`);
+        this.logger.info(
+          { best: bestNum, head: headNum },
+          `start import PoW block from height ${headNum + 1} to ${tgtNum}`
+        );
 
         for (let num = headNum + 1; num <= tgtNum; num++) {
           if (this.shutdown) {
