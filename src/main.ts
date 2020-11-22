@@ -7,10 +7,10 @@ import mongoose from 'mongoose';
 import { connectDB } from './utils/db';
 import { PosCMD } from './cmd/pos.cmd';
 import { PowCMD } from './cmd/pow.cmd';
-import { NativeTokenCMD } from './cmd/nativeToken.cmd';
+import { AccountCMD } from './cmd/account.cmd';
 import { Network } from './const/network';
 import { CMD } from './cmd/cmd';
-import { ERC20TokenCMD } from './cmd/erc20Token.cmd';
+import { ERC20CMD } from './cmd/erc20.cmd';
 
 const log = Logger.createLogger({ name: 'main' });
 
@@ -25,7 +25,7 @@ const printUsage = (msg = '') => {
   error(`${msg ? msg + '\n\n' : ''}Usage: node index.js [Network][Task][...Args]
 --------
 Network:    [main|test]
-Task:       [pos|pow|native-token|erc20-token]`);
+Task:       [pos|pow|account|erc20]`);
   process.exit(-1);
 };
 
@@ -57,15 +57,15 @@ switch (process.argv[3]) {
   case 'pow':
     cmd = new PowCMD(net);
     break;
-  case 'native-token':
-    cmd = new NativeTokenCMD(net);
+  case 'account':
+    cmd = new AccountCMD(net);
     break;
-  case 'erc20-token':
+  case 'erc20':
     if (!process.argv[4]) {
       printUsage('token symbol needed');
     }
     try {
-      cmd = new ERC20TokenCMD(net, process.argv[4]);
+      cmd = new ERC20CMD(net, process.argv[4]);
     } catch (e) {
       printUsage(e.message);
     }

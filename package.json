@@ -1,6 +1,6 @@
 {
-  "name": "scan-sync",
-  "version": "0.0.1",
+  "name": "@meterio/scan-sync",
+  "version": "0.0.5",
   "description": "Collect blocks/txs/metrics from meter network",
   "license": "MIT",
   "readmeFilename": "README.md",
@@ -10,15 +10,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/simonzg/powergrid-sync.git"
+    "url": "https://github.com/meterio/scan-sync.git"
   },
   "bugs": {
-    "url": "https://github.com/typeorm/powergrid-sync/issues"
+    "url": "https://github.com/meterio/scan-sync/issues"
   },
   "tags": [
     "typescript",
     "meter",
-    "sync"
+    "sync",
+    "Defi"
   ],
   "devDependencies": {
     "@types/lru-cache": "^5.1.0",
@@ -54,6 +55,9 @@
   "scripts": {
     "start": "ts-node src/main.ts",
     "build": "rm -fr dist && tsc -p ."
+  },
+  "bin": {
+    "scan-sync": "dist/src/main.js"
   },
   "importSort": {
     ".js, .jsx, .ts, .tsx": {

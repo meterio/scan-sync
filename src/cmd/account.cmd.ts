@@ -2,9 +2,10 @@ import * as Logger from 'bunyan';
 import BigNumber from 'bignumber.js';
 import { Tx } from '../model/tx.interface';
 import { Transfer } from '../model/transfer.interface';
-import { getPreAllocAccount, Token, Network, getERC20Token, TransferEvent } from '../const';
+import { prototype, getPreAllocAccount, Token, Network, getERC20Token, TransferEvent } from '../const';
 import { BlockReviewer } from './blockReviewer';
 import { Block } from '../model/block.interface';
+import { decode } from 'punycode';
 
 interface AccountDelta {
   mtr: BigNumber;
@@ -50,10 +51,11 @@ class AccountDeltaMap {
   }
 }
 
-export class NativeTokenCMD extends BlockReviewer {
+export class AccountCMD extends BlockReviewer {
+  private contracts: { [key: string]: string } = {};
   constructor(net: Network) {
     super(net);
-    this.name = 'native-token';
+    this.name = 'account';
     this.logger = Logger.createLogger({ name: this.name });
   }
 
@@ -80,6 +82,13 @@ export class NativeTokenCMD extends BlockReviewer {
         });
       }
       for (const [logIndex, e] of o.events.entries()) {
+        // contract creation
+        if (e.topics[0] === prototype.$Master.signature) {
+          const decoded = prototype.$Master.decode(e.data, e.topics);
+          this.contracts[e.address] = decoded.newMaster;
+          // await proc.master(e.address, decoded.newMaster);
+        }
+
         if (e.topics[0] === TransferEvent.signature) {
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
@@ -125,15 +134,17 @@ export class NativeTokenCMD extends BlockReviewer {
       this.logger.info({ from, to, amount: tr.amount.toFixed(0), token: Token[tr.token] }, 'transfer');
     }
 
+    const blockConcise = {
+      number: blk.number,
+      hash: blk.hash,
+      timestamp: blk.timestamp,
+    };
+
+    // account balance update
     for (const addr of accts.addresses()) {
       const delta = accts.getDelta(addr);
       let acct = await this.accountRepo.findByAddress(addr);
       if (!acct) {
-        const blockConcise = {
-          number: blk.number,
-          hash: blk.hash,
-          timestamp: blk.timestamp,
-        };
         acct = await this.accountRepo.create(addr, blockConcise, blockConcise);
         acct.mtrBalance = delta.mtr;
         acct.mtrgBalance = delta.mtrg;
@@ -142,6 +153,19 @@ export class NativeTokenCMD extends BlockReviewer {
         acct.mtrgBalance = acct.mtrgBalance.plus(delta.mtrg);
       }
       this.logger.info({ addr: acct.address, mtr: acct.mtrBalance, mtrg: acct.mtrgBalance }, 'account updated');
+      await acct.save();
+    }
+
+    // contract creation
+    for (const address in this.contracts) {
+      let acct = await this.accountRepo.findByAddress(address);
+      if (!acct) {
+        acct = await this.accountRepo.create(address, blockConcise, blockConcise);
+      }
+      const code = await this.pos.getCode(address, blk.hash);
+      if (code && code.code !== '0x') {
+        acct.code = code.code;
+      }
       await acct.save();
     }
 

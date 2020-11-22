@@ -38,7 +38,7 @@ class TokenDeltaMap {
   }
 }
 
-export class ERC20TokenCMD extends BlockReviewer {
+export class ERC20CMD extends BlockReviewer {
   private token: TokenBasic;
   private tokenBalanceRepo = new TokenBalanceRepo();
   constructor(net: Network, tokenName: string) {
@@ -47,7 +47,7 @@ export class ERC20TokenCMD extends BlockReviewer {
     if (token === undefined) {
       throw new Error(`unknown token: ${tokenName}|`);
     }
-    this.name = 'erc20-token';
+    this.name = 'erc20';
     this.token = getERC20Token(this.network, token);
     this.logger = Logger.createLogger({ name: this.name });
   }
