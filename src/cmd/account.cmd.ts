@@ -5,7 +5,6 @@ import { Transfer } from '../model/transfer.interface';
 import { prototype, getPreAllocAccount, Token, Network, getERC20Token, TransferEvent } from '../const';
 import { BlockReviewer } from './blockReviewer';
 import { Block } from '../model/block.interface';
-import { decode } from 'punycode';
 
 interface AccountDelta {
   mtr: BigNumber;
@@ -68,13 +67,15 @@ export class AccountCMD extends BlockReviewer {
     const mtrgToken = getERC20Token(this.network, Token.MTRG);
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       const clause = tx.clauses[clauseIndex];
+
+      // track native transfers
       for (const [logIndex, t] of o.transfers.entries()) {
         transfers.push({
           from: tx.origin,
           to: clause.to,
           token: clause.token,
+          tokenAddress: '',
           amount: new BigNumber(clause.value),
-          address: '',
           txHash: tx.hash,
           block: tx.block,
           clauseIndex,
@@ -89,14 +90,15 @@ export class AccountCMD extends BlockReviewer {
           // await proc.master(e.address, decoded.newMaster);
         }
 
+        // track system contract transfers
         if (e.topics[0] === TransferEvent.signature) {
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
             from: decoded._from,
             to: decoded._to,
-            token: Token.MTR,
+            token: Token.ERC20,
             amount: new BigNumber(decoded._value),
-            address: decoded._from,
+            tokenAddress: '',
             txHash: tx.hash,
             block: tx.block,
             clauseIndex,

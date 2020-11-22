@@ -7,7 +7,7 @@ export interface Transfer {
   to: string;
   amount: BigNumber;
   token: Token;
-  address: string;
+  tokenAddress: string;
 
   block: BlockConcise;
   txHash: string;

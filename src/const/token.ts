@@ -8,8 +8,18 @@ export interface TokenBasic {
   decimals: number;
 }
 
-const mtr = { token: Token.MTR, address: '', name: 'Meter ERC20', decimals: 18 };
-const mtrg = { token: Token.MTRG, address: '', name: 'Meter Governance ERC20', decimals: 18 };
+export const MTRSystemContract = {
+  token: Token.MTR,
+  address: '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2',
+  name: 'Meter ERC20',
+  decimals: 18,
+};
+export const MTRGSystemContract = {
+  token: Token.MTRG,
+  address: '0x89827f7bb951fd8a56f8ef13c5bfee38522f2e1f',
+  name: 'Meter Governance ERC20',
+  decimals: 18,
+};
 
 class TokenRegistry {
   private registry = new Map<Token, TokenBasic>();
@@ -32,11 +42,11 @@ const testnet = new TokenRegistry();
 const devnet = new TokenRegistry();
 const knownTokens = new Map<Network, TokenRegistry>();
 
-mainnet.add({ ...mtr, address: '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2' });
-mainnet.add({ ...mtrg, address: '0x89827f7bb951fd8a56f8ef13c5bfee38522f2e1f' });
+mainnet.add(MTRSystemContract);
+mainnet.add(MTRGSystemContract);
 
-testnet.add({ ...mtr, address: '' });
-testnet.add({ ...mtrg, address: '' });
+testnet.add({ ...MTRSystemContract, address: '' });
+testnet.add({ ...MTRGSystemContract, address: '' });
 
 knownTokens.set(Network.MainNet, mainnet);
 knownTokens.set(Network.TestNet, testnet);

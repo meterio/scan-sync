@@ -61,14 +61,7 @@ switch (process.argv[3]) {
     cmd = new AccountCMD(net);
     break;
   case 'erc20':
-    if (!process.argv[4]) {
-      printUsage('token symbol needed');
-    }
-    try {
-      cmd = new ERC20CMD(net, process.argv[4]);
-    } catch (e) {
-      printUsage(e.message);
-    }
+    cmd = new ERC20CMD(net);
     break;
   default:
     printUsage('invalid cmd name');

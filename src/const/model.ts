@@ -1,6 +1,7 @@
 export enum Token {
   MTR = 0,
   MTRG,
+  ERC20,
 }
 
 export enum BlockType {
@@ -8,5 +9,4 @@ export enum BlockType {
   KBlock,
 }
 
-export const enumKeys = (es: any) =>
-  Object.values(es).filter((x) => typeof x === 'string');
+export const enumKeys = (es: any) => Object.values(es).filter((x) => typeof x === 'string');

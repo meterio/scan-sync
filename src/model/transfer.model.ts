@@ -16,7 +16,7 @@ const transferSchema = new mongoose.Schema(
       set: (enumValue: Token) => Token[enumValue],
       required: true,
     },
-    address: { type: String, required: false },
+    tokenAddress: { type: String, required: false },
 
     block: blockConciseSchema,
     txHash: { type: String, required: true },

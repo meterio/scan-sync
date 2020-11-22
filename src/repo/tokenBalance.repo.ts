@@ -1,6 +1,5 @@
 import BigNumber from 'bignumber.js';
 
-import { Token } from '../const';
 import tokenBalanceModel from '../model/tokenBalance.model';
 
 export class TokenBalanceRepo {
@@ -10,16 +9,16 @@ export class TokenBalanceRepo {
     return this.tokenBalance.find();
   }
 
-  public async findByAddress(address: string, token: Token) {
-    return this.tokenBalance.findOne({ address, token });
+  public async findByAddress(address: string, tokenAddress: string) {
+    return this.tokenBalance.findOne({ address, tokenAddress });
   }
 
-  public async exist(address: string, token: Token) {
-    return this.tokenBalance.exists({ address, token });
+  public async exist(address: string, tokenAddress: string) {
+    return this.tokenBalance.exists({ address, tokenAddress });
   }
 
-  public async create(address: string, contractAddress: string) {
-    return this.tokenBalance.create({ address, balance: new BigNumber(0), contractAddress });
+  public async create(address: string, tokenAddress: string) {
+    return this.tokenBalance.create({ address, balance: new BigNumber(0), tokenAddress });
   }
 }
 

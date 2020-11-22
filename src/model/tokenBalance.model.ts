@@ -1,19 +1,18 @@
 import * as mongoose from 'mongoose';
 
-import { Token, enumKeys } from '../const';
 import BigNumber from 'bignumber.js';
 import { TokenBalance } from './tokenBalance.interface';
 
 const tokenBalanceSchema = new mongoose.Schema(
   {
     address: { type: String, required: true },
+    tokenAddress: { type: String, required: true },
     balance: {
       type: String,
       get: (num: string) => new BigNumber(num),
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: true,
     },
-    contractAddress: { type: String, required: true },
 
     createdAt: { type: Number, index: true },
     updatedAt: { type: Number },
@@ -23,7 +22,7 @@ const tokenBalanceSchema = new mongoose.Schema(
   }
 );
 
-tokenBalanceSchema.index({ address: 1, token: 1 }, { unique: true });
+tokenBalanceSchema.index({ address: 1, tokenAddress: 1 }, { unique: true });
 tokenBalanceSchema.index({ address: 1 });
 
 tokenBalanceSchema.set('toJSON', {
