@@ -125,6 +125,9 @@ export class AccountCMD extends BlockReviewer {
       const txTranfers = this.processTx(txModel, txIndex);
       transfers = transfers.concat(txTranfers);
     }
+    for (const tr of transfers) {
+      console.log(tr.from, tr.to, tr.amount.toFixed(), '>', tr.txHash, tr.clauseIndex);
+    }
     await this.transferRepo.bulkInsert(...transfers);
 
     let accts = new AccountDeltaMap();

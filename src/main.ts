@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 require('./utils/validateEnv');
 
 // other imports
