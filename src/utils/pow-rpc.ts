@@ -81,6 +81,10 @@ export class Pow {
     return this.btc.getBlockchainInfo();
   }
 
+  public async getMiningInfo() {
+    return this.btc.getMiningInfo();
+  }
+
   private async getBlockRPC(height: number): Promise<PowBlock | null> {
     const hash = await this.btc.getBlockHash(height);
     const blk = await this.btc.getBlock(hash);

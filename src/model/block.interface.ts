@@ -1,5 +1,19 @@
 import BigNumber from 'bignumber.js';
+import { QueryCursor } from 'mongoose';
 import { BlockType } from '../const';
+
+export interface CommitteeMember {
+  index: number;
+  netAddr: string;
+  pubKey: string;
+}
+
+export interface QC {
+  qcHeight: number;
+  qcRound: number;
+  voterBitArrayStr: string;
+  epochID: number;
+}
 
 export interface Block {
   // basics
@@ -15,6 +29,10 @@ export interface Block {
   signer: string;
   beneficiary: string;
   size: number;
+  nonce: string;
+  lastKBlockHeight: number;
+  committee: CommitteeMember[];
+  qc: QC;
 
   // calculated
   txHashs: string[];

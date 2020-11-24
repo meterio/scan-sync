@@ -10,6 +10,7 @@ import { BlockType, Network } from '../const';
 import TxRepo from '../repo/tx.repo';
 import HeadRepo from '../repo/head.repo';
 import { CMD } from './cmd';
+import { CommitteeMember } from '../model/block.interface';
 
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
@@ -198,6 +199,7 @@ export class PosCMD extends CMD {
 
     let txs: Tx[] = [];
     let txHashs: string[] = [];
+    let committee: CommitteeMember[] = [];
     let index = 0;
     for (const tx of blk.transactions) {
       const txModel = await this.processTx(blk, tx, index);
@@ -205,6 +207,11 @@ export class PosCMD extends CMD {
       txs.push(txModel);
       index++;
       reward = reward.plus(tx.reward);
+    }
+    for (const m of blk.committee) {
+      const buf = Buffer.from(m.pubKey, 'hex');
+      const base64PK = buf.toString('base64');
+      committee.push({ ...m, pubKey: base64PK });
     }
     await this.blockRepo.create({
       ...blk,
@@ -215,6 +222,10 @@ export class PosCMD extends CMD {
       score,
       txCount,
       blockType: blk.isKBlock ? BlockType.KBlock : BlockType.MBlock,
+
+      committee,
+      nonce: String(blk.nonce),
+      qc: { ...blk.qc },
     });
     if (txs.length > 0) {
       let clauseCount = 0;

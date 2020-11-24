@@ -4,6 +4,25 @@ import * as mongoose from 'mongoose';
 import { BlockType, enumKeys } from '../const';
 import { Block } from './block.interface';
 
+const committeeMemberSchema = new mongoose.Schema(
+  {
+    index: { type: Number, required: true },
+    netAddr: { type: String, required: true },
+    pubKey: { type: String, required: true }, // Base64 ECDSA
+  },
+  { _id: false }
+);
+
+const qcSchema = new mongoose.Schema(
+  {
+    qcHeight: { type: Number, required: true },
+    qcRound: { type: Number, required: true },
+    voterBitArrayStr: { type: String, required: false },
+    epochID: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
 const blockSchema = new mongoose.Schema(
   {
     hash: { type: String, required: true, index: { unique: true } },
@@ -18,6 +37,11 @@ const blockSchema = new mongoose.Schema(
     signer: { type: String, required: true, index: true },
     beneficiary: { type: String, required: true },
     size: { type: Number, required: true },
+
+    nonce: { type: String, required: true },
+    lastKBlockHeight: { type: Number, required: true },
+    committee: [{ type: committeeMemberSchema, required: false }],
+    qc: { type: qcSchema, required: false },
 
     txHashs: [{ type: String }],
     totalScore: { type: Number, required: true },

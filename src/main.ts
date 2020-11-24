@@ -12,6 +12,7 @@ import { AccountCMD } from './cmd/account.cmd';
 import { Network } from './const/network';
 import { CMD } from './cmd/cmd';
 import { ERC20CMD } from './cmd/erc20.cmd';
+import { MetricCMD } from './cmd/metric.cmd';
 
 const log = Logger.createLogger({ name: 'main' });
 
@@ -63,6 +64,9 @@ switch (process.argv[3]) {
     break;
   case 'erc20':
     cmd = new ERC20CMD(net);
+    break;
+  case 'metric':
+    cmd = new MetricCMD(net);
     break;
   default:
     printUsage('invalid cmd name');
