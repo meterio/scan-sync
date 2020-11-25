@@ -31,7 +31,7 @@ class MetricCache {
   private metricRepo = new MetricRepo();
 
   public async init() {
-    const metrics = await this.metricRepo.findByKeys(METRIC_DEFS.map((item) => item.key));
+    const metrics = await this.metricRepo.findByKeys(METRIC_DEFS.map((item) => item.key as string));
     for (const m of metrics) {
       this.map[m.key] = m.value;
     }
@@ -47,7 +47,6 @@ class MetricCache {
     if (key in this.map && value !== undefined) {
       if (value != this.map[key]) {
         this.map[key] = value;
-        console.log('update ', key, 'to ', value);
         await this.metricRepo.update(key, value);
       }
     }
