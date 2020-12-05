@@ -1,10 +1,11 @@
-import * as Logger from 'bunyan';
 import BigNumber from 'bignumber.js';
-import { Tx } from '../model/tx.interface';
-import { Transfer } from '../model/transfer.interface';
-import { prototype, getPreAllocAccount, Token, Network, getERC20Token, TransferEvent } from '../const';
-import { BlockReviewer } from './blockReviewer';
+import * as Logger from 'bunyan';
+
+import { Network, Token, TransferEvent, getERC20Token, getPreAllocAccount, prototype } from '../const';
 import { Block } from '../model/block.interface';
+import { Transfer } from '../model/transfer.interface';
+import { Tx } from '../model/tx.interface';
+import { BlockReviewer } from './blockReviewer';
 
 interface AccountDelta {
   mtr: BigNumber;
@@ -120,10 +121,14 @@ export class AccountCMD extends BlockReviewer {
 
   async processBlock(blk: Block) {
     let transfers = [];
+    let fees: { payer: string; paid: BigNumber }[] = [];
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
       const txTranfers = this.processTx(txModel, txIndex);
       transfers = transfers.concat(txTranfers);
+      if (txTranfers && txTranfers.length > 0) {
+        fees.push({ payer: txModel.gasPayer, paid: txModel.paid });
+      }
     }
     for (const tr of transfers) {
       console.log(tr.from, tr.to, tr.amount.toFixed(), '>', tr.txHash, tr.clauseIndex);
@@ -131,6 +136,11 @@ export class AccountCMD extends BlockReviewer {
     await this.transferRepo.bulkInsert(...transfers);
 
     let accts = new AccountDeltaMap();
+
+    // substract fee from gas payer
+    for (const fee of fees) {
+      accts.minus(fee.payer, Token.MTR, fee.paid);
+    }
     for (const tr of transfers) {
       const from = tr.from;
       const to = tr.to;

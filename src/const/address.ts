@@ -5,7 +5,6 @@ export const ExtensionAddress = '0x' + Buffer.from('Extension').toString('hex').
 export const MeasureAddress = '0x' + Buffer.from('Measure').toString('hex').padStart(40, '0');
 
 export const ZeroAddress = '0x'.padEnd(42, '0');
-
 export const KnowExchange = new Map<string, string>();
 
 // Thanks to Fabian(creator of vechainstats.com) for the information

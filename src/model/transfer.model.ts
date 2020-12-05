@@ -1,3 +1,4 @@
+import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
 import { Token, enumKeys } from '../const';
@@ -8,7 +9,12 @@ const transferSchema = new mongoose.Schema(
   {
     from: { type: String, required: true },
     to: { type: String, required: true },
-    amount: { type: String, required: true },
+    amount: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
     token: {
       type: String,
       enum: enumKeys(Token),

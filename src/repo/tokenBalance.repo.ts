@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js';
 
+import { BlockConcise } from '../model/blockConcise.interface';
 import tokenBalanceModel from '../model/tokenBalance.model';
 
 export class TokenBalanceRepo {
@@ -17,8 +18,8 @@ export class TokenBalanceRepo {
     return this.tokenBalance.exists({ address, tokenAddress });
   }
 
-  public async create(address: string, tokenAddress: string) {
-    return this.tokenBalance.create({ address, balance: new BigNumber(0), tokenAddress });
+  public async create(address: string, tokenAddress: string, lastUpdate: BlockConcise) {
+    return this.tokenBalance.create({ address, balance: new BigNumber(0), tokenAddress, lastUpdate });
   }
 }
 

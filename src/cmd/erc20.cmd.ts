@@ -1,3 +1,5 @@
+import { hasUncaughtExceptionCaptureCallback } from 'process';
+
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
@@ -75,13 +77,34 @@ export class ERC20CMD extends BlockReviewer {
     return transfers;
   }
 
+  isTransferOnly(tx: Tx): boolean {
+    for (const o of tx.outputs) {
+      if (o.events && o.events.length > 0) {
+        // if event is returned, it must be a call
+        return false;
+      }
+      if ((!o.transfers || o.transfers.length == 0) && (!o.events || o.events.length == 0)) {
+        // if no transfer/event found, it must not be transfer
+        return false;
+      }
+    }
+    return true;
+  }
+
   async processBlock(blk: Block) {
     let transfers = [];
     // extract ERC20 transfers
+    let fees: { payer: string; paid: BigNumber }[] = [];
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
       const erc20Tranfers = this.getERC20Transfers(txModel, txIndex);
       transfers = transfers.concat(erc20Tranfers);
+
+      // if the tx is not transfer only, meaning it's a call
+      // substract the fees from gasPayer
+      if (!this.isTransferOnly(txModel)) {
+        fees.push({ payer: txModel.gasPayer, paid: txModel.paid });
+      }
     }
     await this.transferRepo.bulkInsert(...transfers);
 
@@ -97,6 +120,11 @@ export class ERC20CMD extends BlockReviewer {
         'transfer'
       );
     }
+    const blockConcise = {
+      number: blk.number,
+      hash: blk.hash,
+      timestamp: blk.timestamp,
+    };
 
     // apply deltas to actual token balance
     for (const key of accts.keys()) {
@@ -106,17 +134,27 @@ export class ERC20CMD extends BlockReviewer {
       const delta = accts.getDelta(addr);
       let tb = await this.tokenBalanceRepo.findByAddress(addr, tokenAddr);
       if (!tb) {
-        const blockConcise = {
-          number: blk.number,
-          hash: blk.hash,
-          timestamp: blk.timestamp,
-        };
-        tb = await this.tokenBalanceRepo.create(addr, tokenAddr);
+        tb = await this.tokenBalanceRepo.create(addr, tokenAddr, blockConcise);
         tb.balance = delta;
       } else {
         tb.balance = tb.balance.plus(delta);
+        tb.lastUpdate = blockConcise;
       }
       await tb.save();
+    }
+
+    // substract fee from gas payer
+    for (const fee of fees) {
+      let acct = await this.accountRepo.findByAddress(fee.payer);
+      if (acct) {
+        acct.mtrBalance = acct.mtrBalance.minus(fee.paid);
+        if (acct.lastUpdate && acct.lastUpdate.number < blockConcise.number) {
+          acct.lastUpdate = blockConcise;
+        }
+      } else {
+        throw new Error("could not find payer's account");
+      }
+      await acct.save();
     }
   }
 
