@@ -5,14 +5,15 @@ require('./utils/validateEnv');
 import * as Logger from 'bunyan';
 import mongoose from 'mongoose';
 
-import { connectDB } from './utils/db';
-import { PosCMD } from './cmd/pos.cmd';
-import { PowCMD } from './cmd/pow.cmd';
+import * as pkg from '../package.json';
 import { AccountCMD } from './cmd/account.cmd';
-import { Network } from './const/network';
 import { CMD } from './cmd/cmd';
 import { ERC20CMD } from './cmd/erc20.cmd';
 import { MetricCMD } from './cmd/metric.cmd';
+import { PosCMD } from './cmd/pos.cmd';
+import { PowCMD } from './cmd/pow.cmd';
+import { Network } from './const/network';
+import { connectDB } from './utils/db';
 
 const log = Logger.createLogger({ name: 'main' });
 
@@ -21,6 +22,11 @@ export const error = (message: string) => {
     message = message + '\n';
   }
   process.stderr.write(message);
+};
+
+const printVersion = () => {
+  console.log('NAME: ', pkg.name);
+  console.log('VERSION: ', pkg.version);
 };
 
 const printUsage = (msg = '') => {
@@ -32,6 +38,10 @@ Task:       [pos|pow|account|erc20]`);
 };
 
 if (process.argv.length < 4) {
+  if ((process.argv.length >= 3 && process.argv[2] === '-v') || process.argv[2] === 'version') {
+    printVersion();
+    process.exit(0);
+  }
   printUsage();
   process.exit(-1);
 }
