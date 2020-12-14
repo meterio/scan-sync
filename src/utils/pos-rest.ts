@@ -1,8 +1,9 @@
 import '@meterio/flex';
-import '@meterio/flex-framework';
+
+import LRU from 'lru-cache';
+
 import { Network } from '../const';
 import { Net } from './net';
-import LRU from 'lru-cache';
 import { blockIDtoNum, isBytes32 } from './utils';
 
 export namespace Pos {

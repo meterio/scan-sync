@@ -1,10 +1,11 @@
 import '@meterio/flex';
-import '@meterio/flex-framework';
-import LRU from 'lru-cache';
+
+import BigNumber from 'bignumber.js';
 import Client from 'bitcoin-core';
+import LRU from 'lru-cache';
+
 import { PowBlock } from '../model/powBlock.interface';
 import { PowTx } from '../model/powTx.interface';
-import BigNumber from 'bignumber.js';
 var bitcoin = require('bitcoinjs-lib');
 const client = new Client({
   username: process.env.POW_RPC_USER,
