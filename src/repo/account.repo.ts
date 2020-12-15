@@ -1,27 +1,28 @@
+import BigNumber from 'bignumber.js';
+
 import accountModel from '../model/account.model';
 import { BlockConcise } from '../model/blockConcise.interface';
-import BigNumber from 'bignumber.js';
 export class AccountRepo {
-  private account = accountModel;
+  private model = accountModel;
 
   public async findAll() {
-    return this.account.find();
+    return this.model.find();
   }
 
   public async findByAddress(address: string) {
-    return this.account.findOne({
+    return this.model.findOne({
       address,
     });
   }
 
   public async findByAddressList(addressList: string[]) {
-    return this.account.find({
+    return this.model.find({
       address: { $in: addressList },
     });
   }
 
   public async create(address: string, firstSeen: BlockConcise, lastUpdate: BlockConcise) {
-    return this.account.create({
+    return this.model.create({
       address,
       mtrBalance: new BigNumber('0'),
       mtrgBalance: new BigNumber('0'),

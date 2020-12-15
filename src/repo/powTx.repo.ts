@@ -1,25 +1,25 @@
-import powTxModel from '../model/powTx.model';
 import { PowTx } from '../model/powTx.interface';
+import powTxModel from '../model/powTx.model';
 
 export class PowTxRepo {
-  private powTx = powTxModel;
+  private model = powTxModel;
 
   public async findAll() {
-    return this.powTx.find();
+    return this.model.find();
   }
 
   public async findByHash(hash: string) {
-    return this.powTx.findOne({
+    return this.model.findOne({
       hash,
     });
   }
 
   public async create(powPowTx: PowTx) {
-    return this.powTx.create(powPowTx);
+    return this.model.create(powPowTx);
   }
 
   public async delete(hash: string) {
-    return this.powTx.deleteOne({ hash });
+    return this.model.deleteOne({ hash });
   }
 }
 

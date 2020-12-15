@@ -4,22 +4,22 @@ import transferModel from '../model/transfer.model';
 import { RECENT_WINDOW } from './const';
 
 export class TransferRepo {
-  private transfer = transferModel;
+  private model = transferModel;
 
   public async findAll() {
-    return this.transfer.find();
+    return this.model.find();
   }
 
   public async findRecent() {
-    return this.transfer.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
+    return this.model.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
   }
 
   public async findByHash(hash: string) {
-    return this.transfer.findOne({ hash });
+    return this.model.findOne({ hash });
   }
 
   public async findByRange(token: Token, startTS: number, endTS: number) {
-    return this.transfer
+    return this.model
       .find({
         token,
         blockTimestamp: { $gte: startTS, $lt: endTS },
@@ -36,7 +36,7 @@ export class TransferRepo {
     if (!limit) {
       limit = RECENT_WINDOW;
     }
-    return this.transfer
+    return this.model
       .find({ $or: [{ from: addr }, { to: addr }] })
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -44,19 +44,19 @@ export class TransferRepo {
   }
 
   public async exist(txHash: string, clauseIndex: number) {
-    return this.transfer.exists({ txHash, clauseIndex });
+    return this.model.exists({ txHash, clauseIndex });
   }
 
   public async create(transfer: Transfer) {
-    return this.transfer.create(transfer);
+    return this.model.create(transfer);
   }
 
   public async deleteFutureTransfers(num: number) {
-    return this.transfer.find({ 'block.number': { $gt: num } });
+    return this.model.find({ 'block.number': { $gt: num } });
   }
 
   public async bulkInsert(...transfers: Transfer[]) {
-    return this.transfer.create(transfers);
+    return this.model.create(transfers);
   }
 }
 

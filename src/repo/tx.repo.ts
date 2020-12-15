@@ -3,18 +3,18 @@ import txModel from '../model/tx.model';
 import { RECENT_WINDOW } from './const';
 
 export class TxRepo {
-  private tx = txModel;
+  private model = txModel;
 
   public async findAll() {
-    return this.tx.find();
+    return this.model.find();
   }
 
   public async findRecent() {
-    return this.tx.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
+    return this.model.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
   }
 
   public async findByHash(hash: string) {
-    return this.tx.findOne({ hash });
+    return this.model.findOne({ hash });
   }
 
   public async findByAccount(addr: string, page?: number, limit?: number) {
@@ -26,7 +26,7 @@ export class TxRepo {
     if (!limit) {
       limit = RECENT_WINDOW;
     }
-    return this.tx
+    return this.model
       .find({ origin: addr })
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -34,23 +34,23 @@ export class TxRepo {
   }
 
   public async findByHashs(hashs: string[]) {
-    return this.tx.find({ hash: { $in: hashs } });
+    return this.model.find({ hash: { $in: hashs } });
   }
 
   public async exist(hash: string) {
-    return this.tx.exists({ hash });
+    return this.model.exists({ hash });
   }
 
   public async create(tx: Tx) {
-    return this.tx.create(tx);
+    return this.model.create(tx);
   }
 
   public async bulkInsert(...txs: Tx[]) {
-    await this.tx.create(txs);
+    await this.model.create(txs);
   }
 
   public async delete(hash: string) {
-    return this.tx.deleteOne({ hash });
+    return this.model.deleteOne({ hash });
   }
 }
 

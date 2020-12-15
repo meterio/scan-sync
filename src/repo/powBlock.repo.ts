@@ -3,42 +3,42 @@ import powBlockModel from '../model/powBlock.model';
 import { RECENT_WINDOW } from './const';
 
 export class PowBlockRepo {
-  private powBlock = powBlockModel;
+  private model = powBlockModel;
 
   public async getBestBlock() {
-    return this.powBlock.findOne({}).sort({ height: -1 });
+    return this.model.findOne({}).sort({ height: -1 });
   }
 
   public async findAll() {
-    return this.powBlock.find();
+    return this.model.find();
   }
 
   public async findRecent() {
-    return this.powBlock.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
+    return this.model.find().sort({ createdAt: -1 }).limit(RECENT_WINDOW);
   }
 
   public async findByHeight(num: number) {
-    return this.powBlock.findOne({
+    return this.model.findOne({
       height: num,
     });
   }
 
   public async findByHash(hash: string) {
-    return this.powBlock.findOne({
+    return this.model.findOne({
       hash,
     });
   }
 
   public async findFutureBlocks(num: number) {
-    return this.powBlock.find({ height: { $gt: num } });
+    return this.model.find({ height: { $gt: num } });
   }
 
   public async create(powBlock: PowBlock) {
-    return this.powBlock.create(powBlock);
+    return this.model.create(powBlock);
   }
 
   public async delete(hash: string) {
-    return this.powBlock.deleteOne({ hash });
+    return this.model.deleteOne({ hash });
   }
 }
 
