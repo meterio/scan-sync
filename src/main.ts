@@ -33,7 +33,7 @@ const printUsage = (msg = '') => {
   error(`${msg ? msg + '\n\n' : ''}Usage: node index.js [Network][Task][...Args]
 --------
 Network:    [main|test]
-Task:       [pos|pow|account|erc20]`);
+Task:       [pos|pow|account|erc20|metric|committee]`);
   process.exit(-1);
 };
 

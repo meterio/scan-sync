@@ -2,9 +2,12 @@ import { EventEmitter } from 'events';
 import { stringify } from 'querystring';
 
 import * as Logger from 'bunyan';
+import * as hash from 'object-hash';
 
-import { MetricName, MetricType, Network } from '../const';
+import { MetricName, MetricType, Network, ValidatorStatus } from '../const';
+import { Validator } from '../model/validator.interface';
 import MetricRepo from '../repo/metric.repo';
+import ValidatorRepo from '../repo/validator.repo';
 import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
 import { Pow } from '../utils/pow-rpc';
@@ -24,6 +27,14 @@ const METRIC_DEFS = [
   { key: MetricName.MTRG_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
   { key: MetricName.MTR_PRICE, type: MetricType.NUM, default: '0.5' },
   { key: MetricName.MTR_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
+  { key: MetricName.CANDIDATES, type: MetricType.STRING, default: '[]' },
+  { key: MetricName.DELEGATES, type: MetricType.STRING, default: '[]' },
+  { key: MetricName.BUCKETS, type: MetricType.STRING, default: '[]' },
+  { key: MetricName.JAILED, type: MetricType.STRING, default: '[]' },
+  { key: MetricName.CANDIDATE_COUNT, type: MetricType.NUM, default: '0' },
+  { key: MetricName.DELEGATE_COUNT, type: MetricType.NUM, default: '0' },
+  { key: MetricName.BUCKET_COUNT, type: MetricType.NUM, default: '0' },
+  { key: MetricName.JAILED_COUNT, type: MetricType.NUM, default: '0' },
 ];
 
 class MetricCache {
@@ -43,16 +54,25 @@ class MetricCache {
     }
   }
 
-  public async update(key: string, value: string) {
+  public async update(key: string, value: string): Promise<boolean> {
     if (key in this.map && value !== undefined) {
       if (value != this.map[key]) {
         this.map[key] = value;
+        console.log(`UPDATE ${key} with ${value}`);
         await this.metricRepo.update(key, value);
+        return true;
       }
     }
+    return false;
   }
 }
 
+const every = 1;
+const every24h = (3600 * 24) / (SAMPLING_INTERVAL / 1000); // count of index in 24 hours
+const every30s = 30 / (SAMPLING_INTERVAL / 1000); // count of index in 30 seconds
+const every1m = 60 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
+const every5m = (60 * 5) / (SAMPLING_INTERVAL / 1000); // count of index in 5 minutes
+const every10m = (60 * 10) / (SAMPLING_INTERVAL / 1000); // count of index in 10 minutes
 export class MetricCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
@@ -62,6 +82,7 @@ export class MetricCMD extends CMD {
   private pos: Pos;
   private pow = new Pow();
   private coingecko = new Net('https://api.coingecko.com/api/v3/');
+  private validatorRepo = new ValidatorRepo();
 
   private cache = new MetricCache();
 
@@ -97,12 +118,132 @@ export class MetricCMD extends CMD {
     });
   }
 
+  private async updatePowInfo(index: number, interval: number) {
+    if (index % interval === 0) {
+      const mining = await this.pow.getMiningInfo();
+      if (!!mining) {
+        await this.cache.update(MetricName.DIFFICULTY, mining.difficulty);
+        await this.cache.update(MetricName.HASHRATE, mining.networkhashps);
+        await this.cache.update(MetricName.POW_BEST, mining.blocks);
+      }
+    }
+  }
+
+  private async updatePosInfo(index: number, interval: number) {
+    const blk = await this.pos.getBlock('best', 'regular');
+    if (!!blk) {
+      const seq = blk.number - blk.lastKBlockHeight;
+      await this.cache.update(MetricName.POS_BEST, String(blk.number));
+      await this.cache.update(MetricName.KBLOCK, String(blk.lastKBlockHeight));
+      await this.cache.update(MetricName.SEQ, String(seq));
+    }
+  }
+
+  private async updateMarketPrice(index: number, interval: number) {
+    if (index % interval === 0) {
+      const price = await this.coingecko.http<any>('GET', 'simple/price', {
+        query: { ids: 'meter,meter-stable', vs_currencies: 'usd,usd', include_24hr_change: 'true' },
+      });
+      if (!!price) {
+        if (price.meter) {
+          const m = price.meter;
+          const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
+          this.cache.update(MetricName.MTRG_PRICE, String(m.usd));
+          this.cache.update(MetricName.MTRG_PRICE_CHANGE, `${percent20h}%`);
+        }
+        if (price['meter-stable']) {
+          const m = price['meter-stable'];
+          const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
+          this.cache.update(MetricName.MTR_PRICE, String(m.usd));
+          this.cache.update(MetricName.MTR_PRICE_CHANGE, `${percent20h}%`);
+        }
+      }
+    }
+  }
+
+  private async updateValidatorInfo(index: number, interval: number) {
+    // update staking/slashing every 5 minutes
+    if (index % interval === 0) {
+      let cUpdated = false,
+        jUpdated = false,
+        bUpdated = false,
+        dUpdated = false;
+      const candidates = await this.pos.getCandidates();
+      if (!!candidates) {
+        cUpdated = await this.cache.update(MetricName.CANDIDATES, JSON.stringify(candidates));
+        await this.cache.update(MetricName.CANDIDATE_COUNT, `${candidates.length}`);
+      }
+      const buckets = await this.pos.getBuckets();
+      if (!!buckets) {
+        bUpdated = await this.cache.update(MetricName.BUCKETS, JSON.stringify(buckets));
+        await this.cache.update(MetricName.BUCKET_COUNT, `${buckets.length}`);
+      }
+      const jailed = await this.pos.getJailed();
+      if (!!jailed) {
+        jUpdated = await this.cache.update(MetricName.JAILED, JSON.stringify(jailed));
+        await this.cache.update(MetricName.JAILED_COUNT, `${jailed.length}`);
+      }
+      const delegates = await this.pos.getDelegates();
+      if (!!delegates) {
+        dUpdated = await this.cache.update(MetricName.DELEGATES, JSON.stringify(delegates));
+        await this.cache.update(MetricName.DELEGATE_COUNT, `${delegates.length}`);
+      }
+
+      // if delegates/candidates/jailed all exists and any one of them got updated
+      if (!!delegates && !!candidates && jailed && (jUpdated || dUpdated || cUpdated)) {
+        let vs: { [key: string]: Validator } = {};
+        for (const c of candidates) {
+          if (!(c.pubKey in vs)) {
+            vs[c.pubKey] = {
+              ...c,
+              ipAddress: c.ipAddr,
+              status: ValidatorStatus.CANDIDATE,
+            };
+          } else {
+            // duplicate pubkey
+            // TODO: handle this
+          }
+        }
+        for (const d of delegates) {
+          if (d.pubKey in vs) {
+            let can = vs[d.pubKey];
+            vs[d.pubKey] = {
+              ...can,
+              commission: d.commission,
+              distributors: d.distributors,
+              status: ValidatorStatus.DELEGATE,
+            };
+          } else {
+            // delegate key is not in candiate list?
+            // TODO: handle this
+          }
+        }
+
+        for (const j of jailed) {
+          if (j.pubKey in vs) {
+            let can = vs[j.pubKey];
+            vs[j.pubKey] = {
+              ...can,
+              jailedTime: j.jailedTime,
+              totalPoints: j.totalPoints,
+              bailAmount: j.bailAmount,
+              status: ValidatorStatus.JAILED,
+            };
+          } else {
+            // jailed key not in candiate list ?
+            // TODO: handle this
+          }
+        }
+
+        await this.validatorRepo.deleteAll();
+        await this.validatorRepo.bulkInsert(...Object.values(vs));
+      }
+    }
+  }
+
   public async loop() {
     let index = 0;
-    const reset24h = (3600 * 24) / (SAMPLING_INTERVAL / 1000); // count of index in 24 hours
-    const reset30s = 30 / (SAMPLING_INTERVAL / 1000); // count of index in 30 seconds
-    const reset1m = 60 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
-    const reset5m = (60 * 5) / (SAMPLING_INTERVAL / 1000); // count of index in 5 minutes
+
     for (;;) {
       try {
         if (this.shutdown) {
@@ -111,45 +252,19 @@ export class MetricCMD extends CMD {
         await sleep(SAMPLING_INTERVAL);
         this.logger.info('collect metrics');
 
-        // update difficulty && hps
-        const mining = await this.pow.getMiningInfo();
-        if (!!mining) {
-          await this.cache.update(MetricName.DIFFICULTY, mining.difficulty);
-          await this.cache.update(MetricName.HASHRATE, mining.networkhashps);
-          await this.cache.update(MetricName.POW_BEST, mining.blocks);
-        }
+        // update pos best, difficulty && hps
+        await this.updatePowInfo(index, every10m);
 
-        // update epoch && round
-        const blk = await this.pos.getBlock('best', 'regular');
-        if (!!blk) {
-          const seq = blk.number - blk.lastKBlockHeight;
-          await this.cache.update(MetricName.POS_BEST, String(blk.number));
-          await this.cache.update(MetricName.KBLOCK, String(blk.lastKBlockHeight));
-          await this.cache.update(MetricName.SEQ, String(seq));
-        }
+        // update pos best, kblock & seq
+        await this.updatePosInfo(index, every);
 
-        // update every minute
-        if (index % reset1m === 0) {
-          const price = await this.coingecko.http<any>('GET', 'simple/price', {
-            query: { ids: 'meter,meter-stable', vs_currencies: 'usd,usd', include_24hr_change: 'true' },
-          });
-          if (!!price) {
-            if (price.meter) {
-              const m = price.meter;
-              const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
-              this.cache.update(MetricName.MTRG_PRICE, String(m.usd));
-              this.cache.update(MetricName.MTRG_PRICE_CHANGE, `${percent20h}%`);
-            }
-            if (price['meter-stable']) {
-              const m = price['meter-stable'];
-              const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
-              this.cache.update(MetricName.MTR_PRICE, String(m.usd));
-              this.cache.update(MetricName.MTR_PRICE_CHANGE, `${percent20h}%`);
-            }
-          }
-        }
+        // update price/change every 10 minutes
+        await this.updateMarketPrice(index, every10m);
 
-        index = (index + 1) % reset24h; // clear up 24hours
+        // update candidate/delegate/jailed info
+        await this.updateValidatorInfo(index, every1m);
+
+        index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {
         if (!(e instanceof InterruptedError)) {
           this.logger.error(this.name + 'loop: ' + (e as Error).stack);

@@ -6,6 +6,7 @@ import { Network } from '../const';
 import { Block } from '../model/block.interface';
 import AccountRepo from '../repo/account.repo';
 import BlockRepo from '../repo/block.repo';
+import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
 import TransferRepo from '../repo/transfer.repo';
 import TxRepo from '../repo/tx.repo';
@@ -29,6 +30,7 @@ export abstract class BlockReviewer extends CMD {
   protected blockRepo = new BlockRepo();
   protected accountRepo = new AccountRepo();
   protected transferRepo = new TransferRepo();
+  protected committeeRepo = new CommitteeRepo();
 
   constructor(net: Network) {
     super();

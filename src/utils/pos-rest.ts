@@ -20,6 +20,128 @@ export namespace Pos {
   export type Storage = Flex.Meter.Storage;
   export type Event = Flex.Meter.Event;
   export type VMOutput = Flex.Meter.VMOutput;
+
+  export type Candidate = {
+    name: string;
+    address: string;
+    pubKey: string;
+    ipAddr: string;
+    port: number;
+    totalVotes: string;
+    commission: number;
+    buckets: string[];
+  };
+
+  export type Stakeholder = {
+    holder: string;
+    totalStake: string;
+    buckets: string[];
+  };
+
+  export type Distributor = {
+    address: string;
+    shares: number;
+  };
+
+  export type Delegate = {
+    name: string;
+    address: string;
+    pubKey: string;
+    votingPower: string;
+    ipAddr: string;
+    port: number;
+    commission: number;
+    distributors: Distributor[];
+  };
+
+  export type Bucket = {
+    id: string;
+    owner: string;
+    value: string;
+    token: number;
+    nonce: number;
+    createTime: string;
+    unbounded: boolean;
+    candidate: string;
+    rate: number;
+    option: number;
+    bonusVotes: number;
+    totalVotes: string;
+    matureTime: string;
+    calcLastTime: string;
+  };
+
+  export type Jailed = {
+    address: string;
+    name: string;
+    pubKey: string;
+    totalPoints: number;
+    bailAmount: string;
+    jailedTime: string;
+  };
+
+  export type ValidatorReward = {
+    epoch: number;
+    baseReward: string;
+    expectDistribute: string;
+    actualDistribute: string;
+  };
+
+  // missing leader infraction
+  export type MissingLeaderInfo = {
+    epoch: number;
+    round: number;
+  };
+  export type MissingLeader = {
+    counter: string;
+    info: MissingLeaderInfo[];
+  };
+
+  // missing proposer infraction
+  export type MissingProposerInfo = {
+    epoch: number;
+    height: number;
+  };
+  export type MissingProposer = {
+    counter: string;
+    info: MissingProposerInfo[];
+  };
+
+  // missing voter infraction
+  export type MissingVoterInfo = {
+    epoch: number;
+    height: number;
+  };
+  export type MissingVoter = {
+    counter: string;
+    info: MissingVoterInfo[];
+  };
+
+  // double signer infraction
+  export type DoubleSignerInfo = {
+    epoch: number;
+    round: number;
+    height: number;
+  };
+  export type DoubleSigner = {
+    counter: string;
+    info: DoubleSignerInfo[];
+  };
+
+  export type Infraction = {
+    missingLeader?: MissingLeader;
+    missingProposer?: MissingProposer;
+    missingVoter?: MissingVoter;
+    doubleSigner?: DoubleSigner;
+  };
+
+  export type ValidatorStat = {
+    address: string;
+    name: string;
+    pubKey: string;
+    totalPoints: number;
+    infractions: Infraction[];
+  };
 }
 
 export class Pos {
@@ -100,9 +222,30 @@ export class Pos {
   public getTransaction(id: string, head?: string) {
     return this.httpGet<Pos.Transaction>(`transactions/${id}`, head ? { head } : {});
   }
+  // Staking related
   public getReceipt(id: string, head?: string) {
     return this.httpGet<Pos.Receipt>(`transactions/${id}/receipt`, head ? { head } : {});
   }
+  public getCandidates() {
+    return this.httpGet<Pos.Candidate[]>(`staking/candidates`);
+  }
+  public getStakeholders() {
+    return this.httpGet<Pos.Stakeholder[]>(`staking/stakeholders`);
+  }
+  public getDelegates() {
+    return this.httpGet<Pos.Delegate[]>(`staking/delegates`);
+  }
+  public getBuckets() {
+    return this.httpGet<Pos.Bucket[]>(`staking/buckets`);
+  }
+  // Slashing related
+  public getValidatorStats() {
+    return this.httpGet<Pos.ValidatorStat[]>(`slashing/statistics`);
+  }
+  public getJailed() {
+    return this.httpGet<Pos.Jailed[]>(`slashing/injail`);
+  }
+
   public async getAccount(addr: string, revision?: string) {
     const get = () => {
       return this.httpGet<Pos.Account>(`accounts/${addr}`, revision ? { revision } : {});
