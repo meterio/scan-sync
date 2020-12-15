@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js';
 import { QueryCursor } from 'mongoose';
+
 import { BlockType } from '../const';
 
 export interface CommitteeMember {
@@ -42,4 +43,7 @@ export interface Block {
   reward: BigNumber;
   gasChanged: number;
   blockType: BlockType;
+
+  epoch: number;
+  kblockData: string[];
 }

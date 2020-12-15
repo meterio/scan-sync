@@ -1,16 +1,22 @@
+import { EventEmitter } from 'events';
+
+import BigNumber from 'bignumber.js';
+import * as Logger from 'bunyan';
+
+import { BlockType, Network } from '../const';
+import { CommitteeMember } from '../model/block.interface';
+import { BlockConcise } from '../model/blockConcise.interface';
+import { blockConciseSchema } from '../model/blockConcise.model';
+import { Committee } from '../model/committee.interface';
+import { Clause, PosEvent, PosTransfer, Tx, TxOutput } from '../model/tx.interface';
+import BlockRepo from '../repo/block.repo';
+import CommitteeRepo from '../repo/committee.repo';
+import HeadRepo from '../repo/head.repo';
+import TxRepo from '../repo/tx.repo';
 import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
-import * as Logger from 'bunyan';
-import { EventEmitter } from 'events';
-import BlockRepo from '../repo/block.repo';
-import { sleep, InterruptedError } from '../utils/utils';
-import BigNumber from 'bignumber.js';
-import { Tx, Clause, TxOutput, PosEvent, PosTransfer } from '../model/tx.interface';
-import { BlockType, Network } from '../const';
-import TxRepo from '../repo/tx.repo';
-import HeadRepo from '../repo/head.repo';
+import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
-import { CommitteeMember } from '../model/block.interface';
 
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
@@ -28,6 +34,7 @@ export class PosCMD extends CMD {
   private blockRepo = new BlockRepo();
   private txRepo = new TxRepo();
   private headRepo = new HeadRepo();
+  private committeeRepo = new CommitteeRepo();
   private pos: Pos;
 
   constructor(net: Network) {
@@ -213,6 +220,38 @@ export class PosCMD extends CMD {
       const base64PK = buf.toString('base64');
       committee.push({ ...m, pubKey: base64PK });
     }
+
+    // update committee repo
+    const blockConcise = { ...blk, hash: blk.id } as BlockConcise;
+    if (!!blk.committee && blk.committee.length > 0) {
+      let members: CommitteeMember[] = [];
+      for (const cm of blk.committee) {
+        const member = cm as CommitteeMember;
+        members.push(member);
+      }
+      const committee: Committee = {
+        epoch: blk.qc.epochID + 1,
+        kblockHeight: blk.lastKBlockHeight,
+        startBlock: blockConcise,
+        members,
+      };
+      await this.committeeRepo.create(committee);
+      console.log(`update committee for epoch ${blk.qc.epochID}`);
+
+      if (blk.qc.epochID > 0) {
+        const prevEndBlock = await this.getBlockFromREST(blk.lastKBlockHeight);
+        const endBlock = { hash: prevEndBlock.id, ...prevEndBlock } as BlockConcise;
+        await this.committeeRepo.updateEndBlock(prevEndBlock.qc.epochID, endBlock);
+        console.log(`update epoch ${prevEndBlock.qc.epochID}  with endBlock: `, endBlock);
+      }
+    }
+
+    let epoch = 0;
+    if (blk.number === blk.lastKBlockHeight + 1) {
+      epoch = blk.epoch;
+    } else {
+      epoch = blk.qc.epochID;
+    }
     await this.blockRepo.create({
       ...blk,
       hash: blk.id,
@@ -223,6 +262,7 @@ export class PosCMD extends CMD {
       txCount,
       blockType: blk.isKBlock ? BlockType.KBlock : BlockType.MBlock,
 
+      epoch,
       committee,
       nonce: String(blk.nonce),
       qc: { ...blk.qc },

@@ -4,7 +4,7 @@ import * as mongoose from 'mongoose';
 import { BlockType, enumKeys } from '../const';
 import { Block } from './block.interface';
 
-const committeeMemberSchema = new mongoose.Schema(
+export const committeeMemberSchema = new mongoose.Schema(
   {
     index: { type: Number, required: true },
     netAddr: { type: String, required: true },
@@ -61,6 +61,8 @@ const blockSchema = new mongoose.Schema(
       set: (enumValue: BlockType) => BlockType[enumValue],
       required: true,
     },
+    epoch: { type: Number, required: true },
+    kblockData: [{ type: String }],
 
     createdAt: { type: Number, index: true },
   },
