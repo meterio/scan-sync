@@ -35,6 +35,8 @@ export enum MetricName {
   DELEGATE_COUNT = 'delegate_count',
   BUCKET_COUNT = 'bucket_count',
   JAILED_COUNT = 'jailed_count',
+  STAKEHOLDER_COUNT = 'stakehodler_count',
+  STAKEHOLDERS = 'stakeholders',
 }
 
 export enum ValidatorStatus {

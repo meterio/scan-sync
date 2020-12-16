@@ -1,11 +1,13 @@
 import { EventEmitter } from 'events';
-import { stringify } from 'querystring';
 
+import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 import * as hash from 'object-hash';
 
 import { MetricName, MetricType, Network, ValidatorStatus } from '../const';
+import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
+import BucketRepo from '../repo/bucket.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
 import { Net } from '../utils/net';
@@ -35,6 +37,8 @@ const METRIC_DEFS = [
   { key: MetricName.DELEGATE_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.BUCKET_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.JAILED_COUNT, type: MetricType.NUM, default: '0' },
+  { key: MetricName.STAKEHOLDER_COUNT, type: MetricType.NUM, default: '0' },
+  { key: MetricName.STAKEHOLDERS, type: MetricType.STRING, default: '0' },
 ];
 
 class MetricCache {
@@ -83,6 +87,7 @@ export class MetricCMD extends CMD {
   private pow = new Pow();
   private coingecko = new Net('https://api.coingecko.com/api/v3/');
   private validatorRepo = new ValidatorRepo();
+  private bucketRepo = new BucketRepo();
 
   private cache = new MetricCache();
 
@@ -167,8 +172,10 @@ export class MetricCMD extends CMD {
       let cUpdated = false,
         jUpdated = false,
         bUpdated = false,
-        dUpdated = false;
+        dUpdated = false,
+        sUpdated = false;
       const candidates = await this.pos.getCandidates();
+      const stakeholders = await this.pos.getStakeholders();
       if (!!candidates) {
         cUpdated = await this.cache.update(MetricName.CANDIDATES, JSON.stringify(candidates));
         await this.cache.update(MetricName.CANDIDATE_COUNT, `${candidates.length}`);
@@ -188,6 +195,10 @@ export class MetricCMD extends CMD {
         dUpdated = await this.cache.update(MetricName.DELEGATES, JSON.stringify(delegates));
         await this.cache.update(MetricName.DELEGATE_COUNT, `${delegates.length}`);
       }
+      if (!!stakeholders) {
+        sUpdated = await this.cache.update(MetricName.STAKEHOLDERS, JSON.stringify(stakeholders));
+        await this.cache.update(MetricName.STAKEHOLDER_COUNT, `${stakeholders.length}`);
+      }
 
       // if delegates/candidates/jailed all exists and any one of them got updated
       if (!!delegates && !!candidates && jailed && (jUpdated || dUpdated || cUpdated)) {
@@ -198,6 +209,7 @@ export class MetricCMD extends CMD {
               ...c,
               ipAddress: c.ipAddr,
               status: ValidatorStatus.CANDIDATE,
+              totalVotes: new BigNumber(c.totalVotes),
             };
           } else {
             // duplicate pubkey
@@ -209,8 +221,9 @@ export class MetricCMD extends CMD {
             let can = vs[d.pubKey];
             vs[d.pubKey] = {
               ...can,
-              commission: d.commission,
+              delegateCommission: d.commission,
               distributors: d.distributors,
+              votingPower: new BigNumber(d.votingPower),
               status: ValidatorStatus.DELEGATE,
             };
           } else {
@@ -237,6 +250,23 @@ export class MetricCMD extends CMD {
 
         await this.validatorRepo.deleteAll();
         await this.validatorRepo.bulkInsert(...Object.values(vs));
+      }
+
+      // refresh bucket collection if updated
+      if (bUpdated) {
+        const buckets = await this.pos.getBuckets();
+        const bkts: Bucket[] = [];
+
+        for (const b of buckets) {
+          bkts.push({
+            ...b,
+            value: new BigNumber(b.value),
+            bonusVotes: new BigNumber(b.bonusVotes),
+            totalVotes: new BigNumber(b.totalVotes),
+          });
+        }
+        await this.bucketRepo.deleteAll();
+        await this.bucketRepo.bulkInsert(...bkts);
       }
     }
   }

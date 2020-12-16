@@ -15,7 +15,7 @@ export interface Validator {
   address: string;
   ipAddress: string;
   port: number;
-  commission: number;
+  commission: number; // candidate commission （unit: shannon, aka 1e9)
 
   status: ValidatorStatus;
 
@@ -30,6 +30,7 @@ export interface Validator {
   infractions?: string;
 
   // only delegate has this field
+  delegateCommission?: number; // delegate commission （unit: shannon, aka 1e9)
   votingPower?: BigNumber;
   distributors?: Distributor[];
 }

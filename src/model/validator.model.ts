@@ -46,6 +46,7 @@ const validatorSchema = new mongoose.Schema({
   infractions: { type: String, required: false },
 
   // only delegate has this field
+  delegateCommission: { type: Number, required: false },
   votingPower: {
     type: String,
     get: (num: string) => new BigNumber(num),

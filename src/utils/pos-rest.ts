@@ -60,15 +60,15 @@ export namespace Pos {
     value: string;
     token: number;
     nonce: number;
-    createTime: string;
+    createTime: number;
     unbounded: boolean;
     candidate: string;
     rate: number;
     option: number;
     bonusVotes: number;
     totalVotes: string;
-    matureTime: string;
-    calcLastTime: string;
+    matureTime: number;
+    calcLastTime: number;
   };
 
   export type Jailed = {
@@ -77,7 +77,7 @@ export namespace Pos {
     pubKey: string;
     totalPoints: number;
     bailAmount: string;
-    jailedTime: string;
+    jailedTime: number;
   };
 
   export type ValidatorReward = {
