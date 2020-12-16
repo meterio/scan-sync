@@ -1,3 +1,4 @@
+import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
 import { ValidatorStatus, enumKeys } from '../const';
@@ -30,6 +31,12 @@ const validatorSchema = new mongoose.Schema({
   },
 
   // candidate
+  totalVotes: {
+    type: String,
+    get: (num: string) => new BigNumber(num),
+    set: (bnum: BigNumber) => bnum.toFixed(0),
+    required: true,
+  },
   buckets: [{ type: String }],
 
   // jailed fields
@@ -39,6 +46,12 @@ const validatorSchema = new mongoose.Schema({
   infractions: { type: String, required: false },
 
   // only delegate has this field
+  votingPower: {
+    type: String,
+    get: (num: string) => new BigNumber(num),
+    set: (bnum: BigNumber) => bnum.toFixed(0),
+    required: false,
+  },
   distributors: [distributorSchema],
 });
 
@@ -50,6 +63,6 @@ validatorSchema.set('toJSON', {
   },
 });
 
-const txModel = mongoose.model<Validator & mongoose.Document>('validator', validatorSchema, 'validators');
+const model = mongoose.model<Validator & mongoose.Document>('validator', validatorSchema, 'validators');
 
-export default txModel;
+export default model;

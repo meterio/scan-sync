@@ -32,6 +32,6 @@ metricSchema.set('toJSON', {
   },
 });
 
-const metricModel = mongoose.model<Metric & mongoose.Document>('Metric', metricSchema);
+const model = mongoose.model<Metric & mongoose.Document>('Metric', metricSchema);
 
-export default metricModel;
+export default model;

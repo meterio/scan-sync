@@ -74,8 +74,6 @@ const blockSchema = new mongoose.Schema(
   }
 );
 
-const blockModel = mongoose.model<Block & mongoose.Document>('block', blockSchema);
-
 blockSchema.set('toJSON', {
   transform: (doc, ret, options) => {
     delete ret.__v;
@@ -84,4 +82,22 @@ blockSchema.set('toJSON', {
   },
 });
 
-export default blockModel;
+blockSchema.methods.toSummary = function () {
+  return {
+    number: this.number,
+    hash: this.hash,
+    parentID: this.parentID,
+    timestamp: this.timestamp,
+    txHashs: this.txHashs,
+    lastKBlockHeight: this.lastKBlockHeight,
+    epoch: this.qc.epochID,
+    qcHeight: this.qc.qcHeight,
+    blockType: this.blockType,
+    gasUsed: this.gasUsed,
+    txCount: this.txCount,
+    signer: this.signer,
+  };
+};
+const model = mongoose.model<Block & mongoose.Document>('block', blockSchema);
+
+export default model;

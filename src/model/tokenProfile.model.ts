@@ -34,6 +34,6 @@ tokenProfileSchema.set('toJSON', {
   },
 });
 
-const tokenProfileModel = mongoose.model<TokenBalance & mongoose.Document>('TokenProfile', tokenProfileSchema);
+const model = mongoose.model<TokenBalance & mongoose.Document>('TokenProfile', tokenProfileSchema);
 
-export default tokenProfileModel;
+export default model;

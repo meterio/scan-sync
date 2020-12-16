@@ -1,8 +1,8 @@
+import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
 import { Account } from './account.interface';
 import { blockConciseSchema } from './blockConcise.model';
-import BigNumber from 'bignumber.js';
 
 const accountSchema = new mongoose.Schema(
   {
@@ -44,6 +44,6 @@ accountSchema.set('toJSON', {
   },
 });
 
-const accountModel = mongoose.model<Account & mongoose.Document>('Account', accountSchema);
+const model = mongoose.model<Account & mongoose.Document>('Account', accountSchema);
 
-export default accountModel;
+export default model;

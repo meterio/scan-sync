@@ -53,6 +53,6 @@ transferSchema.set('toJSON', {
   },
 });
 
-const transferModel = mongoose.model<Transfer & mongoose.Document>('Transfer', transferSchema);
+const model = mongoose.model<Transfer & mongoose.Document>('Transfer', transferSchema);
 
-export default transferModel;
+export default model;

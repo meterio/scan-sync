@@ -1,3 +1,5 @@
+import BigNumber from 'bignumber.js';
+
 import { ValidatorStatus } from '../const';
 
 export interface Distributor {
@@ -18,14 +20,16 @@ export interface Validator {
   status: ValidatorStatus;
 
   // candidate
+  totalVotes: BigNumber;
   buckets: string[];
 
   // jailed fields
   totalPoints?: number;
   bailAmount?: string;
-  jailedTime?: string;
+  jailedTime?: number;
   infractions?: string;
 
   // only delegate has this field
+  votingPower?: BigNumber;
   distributors?: Distributor[];
 }

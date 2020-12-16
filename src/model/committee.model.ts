@@ -12,8 +12,6 @@ const committeeSchema = new mongoose.Schema({
   endBlock: { type: blockConciseSchema, required: false },
 });
 
-const committeeModel = mongoose.model<Committee & mongoose.Document>('committee', committeeSchema);
-
 committeeSchema.set('toJSON', {
   transform: (doc, ret, options) => {
     delete ret.__v;
@@ -21,5 +19,6 @@ committeeSchema.set('toJSON', {
     return ret;
   },
 });
+const model = mongoose.model<Committee & mongoose.Document>('committee', committeeSchema);
 
-export default committeeModel;
+export default model;

@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
-import { Token, enumKeys } from '../const';
+import { Token, ZeroAddress, enumKeys } from '../const';
 import { blockConciseSchema } from './blockConcise.model';
 import { Tx } from './tx.interface';
 
@@ -112,6 +112,71 @@ txSchema.set('toJSON', {
   },
 });
 
-const txModel = mongoose.model<Tx & mongoose.Document>('tx', txSchema, 'txs');
+txSchema.methods.getType = function () {
+  for (const c of this.clauses) {
+    if (c.data !== '0x') {
+      return 'call';
+    }
+  }
+  if (this.origin === ZeroAddress) {
+    return 'reward';
+  }
+  return 'transfer';
+};
 
-export default txModel;
+txSchema.methods.getAmountStr = function () {
+  if (!this.clauses || this.clauses.length === 0) {
+    return '0 MTR';
+  }
+  if (this.clauses.length === 1) {
+    const c = this.clauses[0];
+    return `${new BigNumber(c.value).dividedBy(1e18)} ${Token[c.token]}`;
+  }
+  let mtr = new BigNumber(0);
+  let mtrg = new BigNumber(0);
+  let mtrUsed = false;
+  let amountStr = '';
+  for (const c of this.clauses) {
+    if (c.token === Token.MTR) {
+      mtr = mtr.plus(c.value);
+      mtrUsed = true;
+    }
+    if (c.token === Token.MTRG) {
+      mtrg = mtrg.plus(c.value);
+    }
+  }
+  if (mtr.isGreaterThan(0)) {
+    amountStr = `${mtr.dividedBy(1e18).toFixed()} MTR`;
+  }
+  if (mtrg.isGreaterThan(0)) {
+    if (amountStr) {
+      amountStr += ' & ';
+    }
+    amountStr += `${mtrg.dividedBy(1e18).toFixed()} MTRG`;
+  }
+  console.log(amountStr);
+  if (!amountStr) {
+    amountStr = mtrUsed ? '0 MTR' : '0 MTRG';
+  }
+  return amountStr;
+};
+
+txSchema.methods.toSummary = function () {
+  const a = this.getAmountStr();
+  console.log('tx: ', this.hash, 'amount: ', a);
+  return {
+    hash: this.hash,
+    block: this.block,
+    origin: this.origin,
+    clauseCount: this.clauses ? this.clauses.length : 0,
+    type: this.getType(),
+    paid: this.paid,
+    amountStr: a,
+    feeStr: `${new BigNumber(this.paid).dividedBy(1e18)} MTR`,
+    reverted: this.reverted,
+  };
+};
+
+const model = mongoose.model<Tx & mongoose.Document>('tx', txSchema, 'txs');
+
+export default model;
