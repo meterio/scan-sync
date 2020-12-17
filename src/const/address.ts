@@ -11,7 +11,29 @@ export const AuctionModuleAddress =
 
 export const ZeroAddress = '0x'.padEnd(42, '0');
 export const KnowExchange = new Map<string, string>();
+export const BridgePoolAddress = '0x5c5713656c6819ebe3921936fd28bed2a387cda5';
 
+export const LockedMeterGovAddrs: { [key: string]: true } = {
+  ZeroAddress: true,
+  BridgePoolAddress: true,
+  '0x2fa2d56e312c47709537acb198446205736022aa': true,
+  '0x08ebea6584b3d9bf6fbcacf1a1507d00a61d95b7': true,
+  '0x045df1ef32d6db371f1857bb60551ef2e43abb1e': true,
+  '0xbb8fca96089572f08736062b9c7da651d00011d0': true,
+  '0xab22ab75f8c42b6969c5d226f39aeb7be35bf24b': true,
+  '0x63723217e860bc409e29b46eec70101cd03d8242': true,
+  '0x0374f5867ab2effd2277c895e7d1088b10ec9452': true,
+  '0x5308b6f26f21238963d0ea0b391eafa9be53c78e': true,
+  '0xe9061c2517bba8a7e2d2c20053cd8323b577efe7': true,
+  '0xbb28e3212cf0df458cb3ba2cf2fd14888b2d7da7': true,
+  '0x78e6f3af2bf71afa209c6e81b161c6a41d2da79d': true,
+  '0x62e3e1df0430e6da83060b3cffc1adeb3792daf1': true,
+};
+
+export const LockedMeterAddrs: { [key: string]: true } = {
+  ZeroAddress: true,
+  BridgePoolAddress: true,
+};
 // Thanks to Fabian(creator of vechainstats.com) for the information
 KnowExchange.set('0x0f53ec6bbd2b6712c07d8880e5c8f08753d0d5d5', 'BigONE');
 KnowExchange.set('0xa4adafaef9ec07bc4dc6de146934c7119341ee25', 'Binance 1 (Hot wallet)');

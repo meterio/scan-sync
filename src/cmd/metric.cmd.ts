@@ -4,9 +4,10 @@ import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 import * as hash from 'object-hash';
 
-import { MetricName, MetricType, Network, ValidatorStatus } from '../const';
+import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, MetricType, Network, ValidatorStatus } from '../const';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
+import AccountRepo from '../repo/account.repo';
 import BucketRepo from '../repo/bucket.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
@@ -39,6 +40,8 @@ const METRIC_DEFS = [
   { key: MetricName.JAILED_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.STAKEHOLDER_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.STAKEHOLDERS, type: MetricType.STRING, default: '0' },
+  { key: MetricName.MTR_CIRCULATION, type: MetricType.STRING, default: '0' },
+  { key: MetricName.MTRG_CIRCULATION, type: MetricType.STRING, default: '0' },
 ];
 
 class MetricCache {
@@ -77,6 +80,7 @@ const every30s = 30 / (SAMPLING_INTERVAL / 1000); // count of index in 30 second
 const every1m = 60 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
 const every5m = (60 * 5) / (SAMPLING_INTERVAL / 1000); // count of index in 5 minutes
 const every10m = (60 * 10) / (SAMPLING_INTERVAL / 1000); // count of index in 10 minutes
+const every30m = (60 * 30) / (SAMPLING_INTERVAL / 1000); // count of index in 30 minutes
 export class MetricCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
@@ -88,6 +92,7 @@ export class MetricCMD extends CMD {
   private coingecko = new Net('https://api.coingecko.com/api/v3/');
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
+  private accountRepo = new AccountRepo();
 
   private cache = new MetricCache();
 
@@ -141,6 +146,15 @@ export class MetricCMD extends CMD {
       await this.cache.update(MetricName.POS_BEST, String(blk.number));
       await this.cache.update(MetricName.KBLOCK, String(blk.lastKBlockHeight));
       await this.cache.update(MetricName.SEQ, String(seq));
+      let epoch = 0;
+      if (blk.lastKBlockHeight + 1 === blk.number) {
+        epoch = blk.epoch;
+      } else {
+        epoch = blk.qc.epochID;
+      }
+      if (epoch > 0) {
+        await this.cache.update(MetricName.EPOCH, String(epoch));
+      }
     }
   }
 
@@ -271,6 +285,25 @@ export class MetricCMD extends CMD {
     }
   }
 
+  private async updateCirculationInfo(index: number, interval: number) {
+    if (index % interval === 0) {
+      const accts = await this.accountRepo.findAll();
+      let mtr = new BigNumber(0);
+      let mtrg = new BigNumber(0);
+      for (const acct of accts) {
+        if (!(acct.address in LockedMeterAddrs)) {
+          mtr = mtr.plus(acct.mtrBalance);
+        }
+        if (!(acct.address in LockedMeterGovAddrs)) {
+          mtrg = mtrg.plus(acct.mtrgBalance);
+        }
+      }
+
+      this.cache.update(MetricName.MTR_CIRCULATION, mtr.toFixed());
+      this.cache.update(MetricName.MTRG_CIRCULATION, mtrg.toFixed());
+    }
+  }
+
   public async loop() {
     let index = 0;
 
@@ -293,6 +326,8 @@ export class MetricCMD extends CMD {
 
         // update candidate/delegate/jailed info
         await this.updateValidatorInfo(index, every1m);
+
+        await this.updateCirculationInfo(index, every30m);
 
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {

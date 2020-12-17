@@ -37,6 +37,8 @@ export enum MetricName {
   JAILED_COUNT = 'jailed_count',
   STAKEHOLDER_COUNT = 'stakehodler_count',
   STAKEHOLDERS = 'stakeholders',
+  MTR_CIRCULATION = 'mtr_circulation',
+  MTRG_CIRCULATION = 'mtrg_circulation',
 }
 
 export enum ValidatorStatus {
