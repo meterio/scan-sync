@@ -1,6 +1,6 @@
+import { RECENT_WINDOW } from '../const';
 import { PowBlock } from '../model/powBlock.interface';
 import powBlockModel from '../model/powBlock.model';
-import { RECENT_WINDOW } from './const';
 
 export class PowBlockRepo {
   private model = powBlockModel;

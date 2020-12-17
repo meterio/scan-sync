@@ -1,6 +1,6 @@
+import { RECENT_WINDOW } from '../const';
 import { Tx } from '../model/tx.interface';
 import txModel from '../model/tx.model';
-import { RECENT_WINDOW } from './const';
 
 export class TxRepo {
   private model = txModel;

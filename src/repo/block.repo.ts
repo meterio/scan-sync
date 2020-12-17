@@ -1,8 +1,8 @@
 import { Document } from 'mongoose';
 
+import { RECENT_WINDOW } from '../const';
 import { Block } from '../model/block.interface';
 import blockModel from '../model/block.model';
-import { RECENT_WINDOW } from './const';
 
 export class BlockRepo {
   private model = blockModel;

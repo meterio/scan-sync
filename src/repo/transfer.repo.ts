@@ -1,7 +1,7 @@
 import { Token } from '../const';
+import { RECENT_WINDOW } from '../const';
 import { Transfer } from '../model/transfer.interface';
 import transferModel from '../model/transfer.model';
-import { RECENT_WINDOW } from './const';
 
 export class TransferRepo {
   private model = transferModel;
