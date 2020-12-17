@@ -121,26 +121,20 @@ export class AccountCMD extends BlockReviewer {
 
   async processBlock(blk: Block) {
     let transfers = [];
-    let fees: { payer: string; paid: BigNumber }[] = [];
+    let accts = new AccountDeltaMap();
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
       const txTranfers = this.processTx(txModel, txIndex);
       transfers = transfers.concat(txTranfers);
-      if (txTranfers && txTranfers.length > 0) {
-        fees.push({ payer: txModel.gasPayer, paid: txModel.paid });
-      }
+
+      // substract fee from gas payer
+      accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
     }
     for (const tr of transfers) {
       console.log(tr.from, tr.to, tr.amount.toFixed(), '>', tr.txHash, tr.clauseIndex);
     }
     await this.transferRepo.bulkInsert(...transfers);
 
-    let accts = new AccountDeltaMap();
-
-    // substract fee from gas payer
-    for (const fee of fees) {
-      accts.minus(fee.payer, Token.MTR, fee.paid);
-    }
     for (const tr of transfers) {
       const from = tr.from;
       const to = tr.to;

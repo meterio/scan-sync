@@ -4,6 +4,11 @@ export const PrototypeAddress = '0x' + Buffer.from('Prototype').toString('hex').
 export const ExtensionAddress = '0x' + Buffer.from('Extension').toString('hex').padStart(40, '0');
 export const MeasureAddress = '0x' + Buffer.from('Measure').toString('hex').padStart(40, '0');
 
+export const StakingModuleAddress =
+  '0x' + Buffer.from('staking-module-address').toString('hex').padStart(40, '0').slice(-40);
+export const AuctionModuleAddress =
+  '0x' + Buffer.from('auction-account-address').toString('hex').padStart(40, '0').slice(-40);
+
 export const ZeroAddress = '0x'.padEnd(42, '0');
 export const KnowExchange = new Map<string, string>();
 
