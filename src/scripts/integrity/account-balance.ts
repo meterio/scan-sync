@@ -58,14 +58,24 @@ import { checkNetworkWithDB } from '../network';
         continue;
       }
 
-      if (!acc.mtrgBalance.isEqualTo(new BigNumber(chainAcc.balance))) {
-        throw new Error(
-          `Fatal: MTRG balance mismatch of Account(${acc.address}) chain:${chainAcc.balance} db:${acc.mtrgBalance}`
+      const balance = new BigNumber(chainAcc.balance);
+      if (acc.mtrgBalance.toFixed() !== balance.toFixed()) {
+        acc.mtrBalance = balance;
+        await acc.save();
+        console.log(
+          `Fatal: MTRG balance mismatch of Account(${
+            acc.address
+          }) chain:${balance.toFixed()} db:${acc.mtrgBalance.toFixed()}`
         );
       }
-      if (!acc.mtrBalance.isEqualTo(new BigNumber(chainAcc.energy))) {
-        throw new Error(
-          `Fatal: MTR balance mismatch of Account(${acc.address}) chain:${chainAcc.energy} db:${acc.mtrBalance}`
+      const energy = new BigNumber(chainAcc.energy);
+      if (acc.mtrBalance.toFixed() !== energy.toFixed()) {
+        acc.mtrBalance = energy;
+        await acc.save();
+        console.log(
+          `Fatal: MTR balance mismatch of Account(${
+            acc.address
+          }) chain:${energy.toFixed()} db:${acc.mtrBalance.toFixed()}`
         );
       }
       if (acc.master !== chainMaster && acc.master !== undefined && chainMaster !== null) {
