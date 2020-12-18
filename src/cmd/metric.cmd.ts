@@ -4,7 +4,16 @@ import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 import * as hash from 'object-hash';
 
-import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, MetricType, Network, ValidatorStatus } from '../const';
+import {
+  KeyPowPoolCoef,
+  LockedMeterAddrs,
+  LockedMeterGovAddrs,
+  MetricName,
+  MetricType,
+  Network,
+  ParamsAddress,
+  ValidatorStatus,
+} from '../const';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
 import AccountRepo from '../repo/account.repo';
@@ -26,6 +35,8 @@ const METRIC_DEFS = [
   { key: MetricName.KBLOCK, type: MetricType.NUM, default: '0' },
   { key: MetricName.POS_BEST, type: MetricType.NUM, default: '0' },
   { key: MetricName.POW_BEST, type: MetricType.NUM, default: '0' },
+  { key: MetricName.COST_PARITY, type: MetricType.NUM, default: '0' },
+  { key: MetricName.REWARD_PER_DAY, type: MetricType.NUM, default: '0' },
   { key: MetricName.MTRG_PRICE, type: MetricType.NUM, default: '1' },
   { key: MetricName.MTRG_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
   { key: MetricName.MTR_PRICE, type: MetricType.NUM, default: '0.5' },
@@ -71,6 +82,19 @@ class MetricCache {
       }
     }
     return false;
+  }
+
+  public get(key: string) {
+    if (key in this.map) {
+      return this.map[key];
+    } else {
+      for (const m of METRIC_DEFS) {
+        if (m.key === key) {
+          return m.default;
+        }
+      }
+    }
+    return '';
   }
 }
 
@@ -135,6 +159,28 @@ export class MetricCMD extends CMD {
         await this.cache.update(MetricName.DIFFICULTY, mining.difficulty);
         await this.cache.update(MetricName.HASHRATE, mining.networkhashps);
         await this.cache.update(MetricName.POW_BEST, mining.blocks);
+      }
+      const coefStorage = await this.pos.getStorage(ParamsAddress, KeyPowPoolCoef);
+      console.log('Coef Storage:', coefStorage);
+      if (!!coefStorage && coefStorage.value) {
+        const coef = parseInt(coefStorage.value, 16);
+        const efficiency = new BigNumber(coef)
+          .dividedBy(1e6)
+          .times(300 * 120)
+          .dividedBy(2 ** 32);
+        console.log(`efficiency: ${efficiency.toFixed()}`);
+        const hashrate = this.cache.get(MetricName.HASHRATE);
+        const mtrPrice = this.cache.get(MetricName.MTR_PRICE);
+        const rewardPerDay = efficiency.dividedBy(10).times(24);
+        const costParity = efficiency
+          .times(24 * 6 * 6.25)
+          .times(mtrPrice)
+          .times(1e6)
+          .dividedBy(hashrate)
+          .dividedBy(rewardPerDay);
+        console.log(`rewardPerDay: ${rewardPerDay.toFixed()}, cost parity: ${costParity}`);
+        await this.cache.update(MetricName.COST_PARITY, costParity.toFixed());
+        await this.cache.update(MetricName.REWARD_PER_DAY, rewardPerDay.toFixed());
       }
     }
   }

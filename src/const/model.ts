@@ -23,6 +23,8 @@ export enum MetricName {
   KBLOCK = 'kblock',
   POS_BEST = 'pos_best',
   POW_BEST = 'pow_best',
+  COST_PARITY = 'cost_parity',
+  REWARD_PER_DAY = 'reward_per_day',
   MTRG_PRICE = 'mtrg_price',
   MTRG_PRICE_CHANGE = 'mtrg_price_change',
   MTR_PRICE = 'mtr_price',
