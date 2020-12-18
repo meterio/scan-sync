@@ -97,6 +97,9 @@ export class ERC20CMD extends BlockReviewer {
     let fees: { payer: string; paid: BigNumber }[] = [];
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
+      if (!txModel) {
+        throw new Error('could not find tx, maybe the block is still being processed');
+      }
       const erc20Tranfers = this.getERC20Transfers(txModel, txIndex);
       transfers = transfers.concat(erc20Tranfers);
 

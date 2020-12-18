@@ -124,6 +124,9 @@ export class AccountCMD extends BlockReviewer {
     let accts = new AccountDeltaMap();
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
+      if (!txModel) {
+        throw new Error('could not find tx, maybe the block is still being processed');
+      }
       const txTranfers = this.processTx(txModel, txIndex);
       transfers = transfers.concat(txTranfers);
 
