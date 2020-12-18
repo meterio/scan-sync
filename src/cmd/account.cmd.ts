@@ -105,11 +105,11 @@ export class AccountCMD extends BlockReviewer {
             clauseIndex,
             logIndex,
           };
-          if (e.address === mtrToken.address) {
+          if (e.address.toLowerCase() === mtrToken.address) {
             transfer.token = Token.MTR;
             transfers.push(transfer);
           }
-          if (e.address === mtrgToken.address) {
+          if (e.address.toLowerCase() === mtrgToken.address) {
             transfer.token = Token.MTRG;
             transfers.push(transfer);
           }

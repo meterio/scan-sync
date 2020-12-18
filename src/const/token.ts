@@ -10,13 +10,13 @@ export interface TokenBasic {
 
 export const MTRSystemContract = {
   token: Token.MTR,
-  address: '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2',
+  address: '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2'.toLowerCase(),
   name: 'Meter ERC20',
   decimals: 18,
 };
 export const MTRGSystemContract = {
   token: Token.MTRG,
-  address: '0x89827f7bb951fd8a56f8ef13c5bfee38522f2e1f',
+  address: '0x228ebBeE999c6a7ad74A6130E81b12f9Fe237Ba3'.toLowerCase(),
   name: 'Meter Governance ERC20',
   decimals: 18,
 };

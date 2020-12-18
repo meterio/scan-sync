@@ -81,12 +81,15 @@ export abstract class BlockReviewer extends CMD {
         await sleep(SAMPLING_INTERVAL);
         let head = await this.headRepo.findByKey(this.name);
         let headNum = !!head ? head.num : -1;
-        this.logger.info(`start review PoS block from number ${headNum + 1}`);
 
         const posHead = await this.headRepo.findByKey('pos');
-        const localBestNum = !!posHead ? posHead.num : 0;
+        const localBestNum = !!posHead ? posHead.num - 1 : 0;
 
         const tgtNum = localBestNum - headNum > 1000 ? headNum + 1000 : localBestNum;
+        if (tgtNum <= headNum) {
+          continue;
+        }
+        this.logger.info(`start review PoS block from number ${headNum + 1} to ${tgtNum}`);
 
         for (let num = headNum + 1; num <= tgtNum; num++) {
           if (this.shutdown) {
