@@ -41,6 +41,8 @@ export enum MetricName {
   STAKEHOLDERS = 'stakeholders',
   MTR_CIRCULATION = 'mtr_circulation',
   MTRG_CIRCULATION = 'mtrg_circulation',
+  PRESENT_AUCTION = 'present_auction',
+  AUCTION_SUMMARIES = 'auction_summaries',
 }
 
 export enum ValidatorStatus {

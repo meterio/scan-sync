@@ -12,11 +12,14 @@ import {
   MetricType,
   Network,
   ParamsAddress,
+  Token,
   ValidatorStatus,
 } from '../const';
+import { AuctionDist } from '../model/Auction.interface';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
 import AccountRepo from '../repo/account.repo';
+import AuctionRepo from '../repo/auction.repo';
 import BucketRepo from '../repo/bucket.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
@@ -37,10 +40,18 @@ const METRIC_DEFS = [
   { key: MetricName.POW_BEST, type: MetricType.NUM, default: '0' },
   { key: MetricName.COST_PARITY, type: MetricType.NUM, default: '0' },
   { key: MetricName.REWARD_PER_DAY, type: MetricType.NUM, default: '0' },
+
+  // Price
   { key: MetricName.MTRG_PRICE, type: MetricType.NUM, default: '1' },
   { key: MetricName.MTRG_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
   { key: MetricName.MTR_PRICE, type: MetricType.NUM, default: '0.5' },
   { key: MetricName.MTR_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
+
+  // Circulation
+  { key: MetricName.MTR_CIRCULATION, type: MetricType.STRING, default: '0' },
+  { key: MetricName.MTRG_CIRCULATION, type: MetricType.STRING, default: '0' },
+
+  // Staking
   { key: MetricName.CANDIDATES, type: MetricType.STRING, default: '[]' },
   { key: MetricName.DELEGATES, type: MetricType.STRING, default: '[]' },
   { key: MetricName.BUCKETS, type: MetricType.STRING, default: '[]' },
@@ -49,10 +60,14 @@ const METRIC_DEFS = [
   { key: MetricName.DELEGATE_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.BUCKET_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.JAILED_COUNT, type: MetricType.NUM, default: '0' },
+
+  // Stake holder
   { key: MetricName.STAKEHOLDER_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.STAKEHOLDERS, type: MetricType.STRING, default: '0' },
-  { key: MetricName.MTR_CIRCULATION, type: MetricType.STRING, default: '0' },
-  { key: MetricName.MTRG_CIRCULATION, type: MetricType.STRING, default: '0' },
+
+  // Auction
+  { key: MetricName.PRESENT_AUCTION, type: MetricType.STRING, default: '{}' },
+  { key: MetricName.AUCTION_SUMMARIES, type: MetricType.STRING, default: '[]' },
 ];
 
 class MetricCache {
@@ -117,6 +132,7 @@ export class MetricCMD extends CMD {
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
   private accountRepo = new AccountRepo();
+  private auctionRepo = new AuctionRepo();
 
   private cache = new MetricCache();
 
@@ -226,7 +242,53 @@ export class MetricCMD extends CMD {
     }
   }
 
-  private async updateValidatorInfo(index: number, interval: number) {
+  private async updateAuctionInfo(index: number, interval: number) {
+    if (index % interval === 0) {
+      console.log('UPDATE AUCTION');
+      let sUpdated = false,
+        pUpdated = false;
+      const present = await this.pos.getPresentAuction();
+      const summaries = await this.pos.getAuctionSummaries();
+      if (!!present) {
+        pUpdated = await this.cache.update(MetricName.PRESENT_AUCTION, JSON.stringify(present));
+      }
+      if (!!summaries) {
+        sUpdated = await this.cache.update(MetricName.AUCTION_SUMMARIES, JSON.stringify(summaries));
+      }
+
+      if (sUpdated) {
+        for (const s of summaries) {
+          const exist = await this.auctionRepo.findByID(s.auctionID);
+          if (!exist) {
+            let dists: AuctionDist[] = [];
+            for (const d of s.distMTRG) {
+              dists.push({
+                address: d.addr,
+                amount: new BigNumber(d.amount),
+                token: Token.MTRG,
+              });
+            }
+            await this.auctionRepo.create({
+              id: s.auctionID,
+              startHeight: s.startHeight,
+              startEpoch: s.startEpoch,
+              endHeight: s.endHeight,
+              endEpoch: s.endEpoch,
+              createTime: s.createTime,
+              releasedMTRG: new BigNumber(s.releasedMTRG),
+              reservedMTRG: new BigNumber(s.reservedMTRG),
+              reservedPrice: new BigNumber(s.reservedPrice),
+              receivedMTR: new BigNumber(s.receivedMTR),
+              actualPrice: new BigNumber(s.actualPrice),
+              distMTRG: dists,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  private async updateStakingInfo(index: number, interval: number) {
     // update staking/slashing every 5 minutes
     if (index % interval === 0) {
       let cUpdated = false,
@@ -370,10 +432,14 @@ export class MetricCMD extends CMD {
         // update price/change every 10 minutes
         await this.updateMarketPrice(index, every10m);
 
-        // update candidate/delegate/jailed info
-        await this.updateValidatorInfo(index, every1m);
-
+        // update circulation
         await this.updateCirculationInfo(index, every30m);
+
+        // update candidate/delegate/jailed info
+        await this.updateStakingInfo(index, every5m);
+
+        // update auction info
+        await this.updateAuctionInfo(index, every5m);
 
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {

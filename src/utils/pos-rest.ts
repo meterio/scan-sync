@@ -142,6 +142,51 @@ export namespace Pos {
     totalPoints: number;
     infractions: Infraction[];
   };
+
+  export type DistMtrg = {
+    addr: string;
+    amount: string;
+  };
+
+  export type AuctionSummary = {
+    auctionID: string;
+    startHeight: number;
+    startEpoch: number;
+    endHeight: number;
+    endEpoch: number;
+    releasedMTRG: string;
+    reservedMTRG: string;
+    reservedPrice: string;
+    createTime: number;
+    timestamp: string;
+    receivedMTR: string;
+    actualPrice: string;
+    distMTRG: DistMtrg[];
+  };
+
+  export type AuctionTx = {
+    addr: string;
+    amount: string;
+    count: number;
+    nonce: number;
+    lastTime: number;
+    timestamp: string;
+  };
+
+  export type AuctionCB = {
+    auctionID: string;
+    startHeight: number;
+    startEpoch: number;
+    endHeight: number;
+    endEpoch: number;
+    releasedMTRG: string;
+    reservedMTRG: string;
+    reservedPrice: string;
+    createTime: number;
+    timestamp: string;
+    receivedMTR: string;
+    auctionTxs: AuctionTx[];
+  };
 }
 
 export class Pos {
@@ -244,6 +289,14 @@ export class Pos {
   }
   public getJailed() {
     return this.httpGet<Pos.Jailed[]>(`slashing/injail`);
+  }
+
+  // Auction related
+  public getAuctionSummaries() {
+    return this.httpGet<Pos.AuctionSummary[]>(`auction/summaries`);
+  }
+  public getPresentAuction() {
+    return this.httpGet<Pos.AuctionCB>(`auction/present`);
   }
 
   public async getAccount(addr: string, revision?: string) {

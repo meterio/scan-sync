@@ -1,3 +1,6 @@
+import BigNumber from 'bignumber.js';
+
+import { UNIT_WEI } from '../const';
 export const MAX_BLOCK_PROPOSERS = 101;
 export const BLOCK_INTERVAL = 10;
 
@@ -51,6 +54,14 @@ export class InterruptedError extends Error {
     Object.setPrototypeOf(this, InterruptedError.prototype);
   }
 }
+
+export const fromWei = (val: string | number | BigNumber) => {
+  return new BigNumber(val).dividedBy(UNIT_WEI).toFixed();
+};
+
+export const toWei = (val: string | number | BigNumber) => {
+  return new BigNumber(val).times(UNIT_WEI).toFixed();
+};
 
 export class WaitNextTickError extends Error {
   constructor() {
