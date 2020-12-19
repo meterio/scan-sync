@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-require('../../utils/validateEnv');
+require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
 
-import { Network, PrototypeAddress, Token, ZeroAddress, prototype } from '../../const';
-import AccountRepo from '../../repo/account.repo';
-import BlockRepo from '../../repo/block.repo';
-import HeadRepo from '../../repo/head.repo';
-import { connectDB } from '../../utils/db';
-import { Net } from '../../utils/net';
-import { Pos } from '../../utils/pos-rest';
-import { checkNetworkWithDB } from '../network';
+import { Network, PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
+import AccountRepo from '../repo/account.repo';
+import BlockRepo from '../repo/block.repo';
+import HeadRepo from '../repo/head.repo';
+import { connectDB } from '../utils/db';
+import { checkNetworkWithDB } from '../utils/integrity';
+import { Net } from '../utils/net';
+import { Pos } from '../utils/pos-rest';
 
 (async () => {
   try {
@@ -60,18 +60,18 @@ import { checkNetworkWithDB } from '../network';
 
       const balance = new BigNumber(chainAcc.balance);
       if (acc.mtrgBalance.toFixed() !== balance.toFixed()) {
-        acc.mtrBalance = balance;
-        await acc.save();
+        // acc.mtrBalance = balance;
+        // await acc.save();
         console.log(
           `Fatal: MTRG balance mismatch of Account(${
             acc.address
-          }) chain:${balance.toFixed()} db:${acc.mtrgBalance.toFixed()}`
+          }) chain:'${balance.toFixed()}' db:'${acc.mtrgBalance.toFixed()}'`
         );
       }
       const energy = new BigNumber(chainAcc.energy);
       if (acc.mtrBalance.toFixed() !== energy.toFixed()) {
-        acc.mtrBalance = energy;
-        await acc.save();
+        // acc.mtrBalance = energy;
+        // await acc.save();
         console.log(
           `Fatal: MTR balance mismatch of Account(${
             acc.address
