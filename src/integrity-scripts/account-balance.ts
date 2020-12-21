@@ -11,6 +11,7 @@ import { connectDB } from '../utils/db';
 import { checkNetworkWithDB } from '../utils/integrity';
 import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
+import { fromWei } from '../utils/utils';
 
 (async () => {
   try {
@@ -63,9 +64,9 @@ import { Pos } from '../utils/pos-rest';
         // acc.mtrBalance = balance;
         // await acc.save();
         console.log(
-          `Fatal: MTRG balance mismatch of Account(${
-            acc.address
-          }) chain:'${balance.toFixed()}' db:'${acc.mtrgBalance.toFixed()}'`
+          `Fatal: MTRG balance of Account(${acc.address}) mismatch, chain: ${fromWei(balance)} MTRG, db: ${fromWei(
+            acc.mtrgBalance
+          )} MTRG`
         );
       }
       const energy = new BigNumber(chainAcc.energy);
@@ -73,16 +74,16 @@ import { Pos } from '../utils/pos-rest';
         // acc.mtrBalance = energy;
         // await acc.save();
         console.log(
-          `Fatal: MTR balance mismatch of Account(${
-            acc.address
-          }) chain:${energy.toFixed()} db:${acc.mtrBalance.toFixed()}`
+          `Fatal: MTR balance of Account(${acc.address}) mismatch, chain: ${fromWei(energy)} MTR, db: ${fromWei(
+            acc.mtrBalance
+          )} MTR`
         );
       }
       if (acc.master !== chainMaster && acc.master !== undefined && chainMaster !== null) {
-        console.log(`Fatal: master of Account(${acc.address}) mismatch,chain:${chainMaster} db:${acc.master}`);
+        console.log(`Fatal: master of Account(${acc.address}) mismatch, chain: ${chainMaster} db: ${acc.master}`);
       }
       if (chainAcc.hasCode === true && acc.code !== chainCode.code) {
-        console.log(`Fatal: Account(${acc.address}) code mismatch, chain:${chainCode.code}, db: ${acc.code}`);
+        console.log(`Fatal: Account(${acc.address}) code mismatch, chain: ${chainCode.code}, db: ${acc.code}`);
       }
 
       count++;
