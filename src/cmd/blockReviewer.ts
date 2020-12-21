@@ -97,7 +97,6 @@ export abstract class BlockReviewer extends CMD {
           }
           const blk = await this.blockRepo.findByNumber(num);
           await this.processBlock(blk);
-          this.logger.info({ number: blk.number, hash: blk.hash }, `reviewed block`);
 
           // update head
           if (!head) {

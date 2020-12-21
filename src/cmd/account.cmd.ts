@@ -22,7 +22,8 @@ const printTransfer = (t: Transfer) => {
 class AccountDeltaMap {
   private accts: { [key: string]: AccountDelta } = {};
 
-  public minus(addr: string, token: Token, amount: string | BigNumber) {
+  public minus(addrStr: string, token: Token, amount: string | BigNumber) {
+    const addr = addrStr.toLowerCase();
     if (!(addr in this.accts)) {
       this.accts[addr] = { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
     }
@@ -34,7 +35,8 @@ class AccountDeltaMap {
     }
   }
 
-  public plus(addr: string, token: Token, amount: string | BigNumber) {
+  public plus(addrStr: string, token: Token, amount: string | BigNumber) {
+    const addr = addrStr.toLowerCase();
     if (!(addr in this.accts)) {
       this.accts[addr] = { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
     }
@@ -46,11 +48,17 @@ class AccountDeltaMap {
     }
   }
 
+  public has(addrStr: string) {
+    const addr = addrStr.toLowerCase();
+    return addr in this.accts;
+  }
+
   public addresses(): string[] {
     return Object.keys(this.accts);
   }
 
-  public getDelta(addr: string): AccountDelta {
+  public getDelta(addrStr: string): AccountDelta {
+    const addr = addrStr.toLowerCase();
     if (addr in this.accts) {
       return this.accts[addr];
     }
@@ -79,8 +87,8 @@ export class AccountCMD extends BlockReviewer {
       // track native transfers
       for (const [logIndex, t] of o.transfers.entries()) {
         transfers.push({
-          from: tx.origin,
-          to: clause.to,
+          from: tx.origin.toLowerCase(),
+          to: clause.to.toLowerCase(),
           token: clause.token,
           tokenAddress: '',
           amount: new BigNumber(clause.value),
@@ -102,8 +110,8 @@ export class AccountCMD extends BlockReviewer {
         if (e.topics[0] === TransferEvent.signature) {
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
-            from: decoded._from,
-            to: decoded._to,
+            from: decoded._from.toLowerCase(),
+            to: decoded._to.toLowerCase(),
             token: Token.ERC20,
             amount: new BigNumber(decoded._value),
             tokenAddress: '',
@@ -194,7 +202,7 @@ export class AccountCMD extends BlockReviewer {
       await acct.save();
     }
 
-    this.logger.info({ number: blk.number, id: blk.hash }, `processed block ${blk.number}`);
+    this.logger.info({ hash: blk.hash, transfers: transfers.length }, `processed block ${blk.number}`);
   }
 
   protected async processGenesis() {

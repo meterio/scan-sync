@@ -11,15 +11,26 @@ export class TokenBalanceRepo {
   }
 
   public async findByAddress(address: string, tokenAddress: string) {
-    return this.model.findOne({ address, tokenAddress });
+    return this.model.findOne({
+      address: { $regex: new RegExp(`^${address}$`, 'i') },
+      tokenAddress: { $regex: new RegExp(`^${tokenAddress}$`, 'i') },
+    });
   }
 
   public async exist(address: string, tokenAddress: string) {
-    return this.model.exists({ address, tokenAddress });
+    return this.model.exists({
+      address: { $regex: new RegExp(`^${address}$`, 'i') },
+      tokenAddress: { $regex: new RegExp(`^${tokenAddress}$`, 'i') },
+    });
   }
 
   public async create(address: string, tokenAddress: string, lastUpdate: BlockConcise) {
-    return this.model.create({ address, balance: new BigNumber(0), tokenAddress, lastUpdate });
+    return this.model.create({
+      address: address.toLowerCase(),
+      balance: new BigNumber(0),
+      tokenAddress: tokenAddress.toLowerCase(),
+      lastUpdate,
+    });
   }
 }
 

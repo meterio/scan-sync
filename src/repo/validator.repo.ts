@@ -8,7 +8,7 @@ export class ValidatorRepo {
   private model = validatorModel;
 
   public async findByAddress(address: string) {
-    return this.model.findOne({ address });
+    return this.model.findOne({ address: { $regex: new RegExp(`^${address}$`, 'i') } });
   }
 
   public async findByPubKey(pubKey: string) {
@@ -19,8 +19,8 @@ export class ValidatorRepo {
     return this.model.create(models);
   }
 
-  public async deleteAll(){
-    return this.model.deleteMany({})
+  public async deleteAll() {
+    return this.model.deleteMany({});
   }
 }
 
