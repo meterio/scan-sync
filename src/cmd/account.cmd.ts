@@ -116,6 +116,7 @@ export class AccountCMD extends BlockReviewer {
         }
       }
     }
+    console.log('Transfers: ', transfers);
     return transfers;
   }
 
