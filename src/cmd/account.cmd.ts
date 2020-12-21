@@ -5,12 +5,19 @@ import { Network, Token, TransferEvent, getERC20Token, getPreAllocAccount, proto
 import { Block } from '../model/block.interface';
 import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
+import { fromWei } from '../utils/utils';
 import { BlockReviewer } from './blockReviewer';
 
 interface AccountDelta {
   mtr: BigNumber;
   mtrg: BigNumber;
 }
+
+const printTransfer = (t: Transfer) => {
+  console.log(
+    `Transfer: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${(t.clauseIndex, t.logIndex)})`
+  );
+};
 
 class AccountDeltaMap {
   private accts: { [key: string]: AccountDelta } = {};
@@ -116,7 +123,12 @@ export class AccountCMD extends BlockReviewer {
         }
       }
     }
-    console.log('Transfers: ', transfers);
+    if (transfers.length > 0) {
+      console.log(`Extracted ${transfers.length} transfers`);
+    }
+    for (const t of transfers) {
+      printTransfer(t);
+    }
     return transfers;
   }
 
