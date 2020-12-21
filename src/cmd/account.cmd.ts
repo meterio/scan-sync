@@ -6,7 +6,7 @@ import { Block } from '../model/block.interface';
 import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
 import { fromWei } from '../utils/utils';
-import { BlockReviewer } from './blockReviewer';
+import { TxBlockReviewer } from './blockReviewer';
 
 interface AccountDelta {
   mtr: BigNumber;
@@ -66,7 +66,7 @@ class AccountDeltaMap {
   }
 }
 
-export class AccountCMD extends BlockReviewer {
+export class AccountCMD extends TxBlockReviewer {
   private contracts: { [key: string]: string } = {};
   constructor(net: Network) {
     super(net);

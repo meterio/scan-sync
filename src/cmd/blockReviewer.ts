@@ -17,7 +17,7 @@ import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 500;
 
-export abstract class BlockReviewer extends CMD {
+export abstract class TxBlockReviewer extends CMD {
   protected shutdown = false;
   protected ev = new EventEmitter();
   protected name = '-';
@@ -80,30 +80,36 @@ export abstract class BlockReviewer extends CMD {
         }
         await sleep(SAMPLING_INTERVAL);
         let head = await this.headRepo.findByKey(this.name);
+        if (!head) {
+          await this.headRepo.create(this.name, -1, '0x');
+        }
         let headNum = !!head ? head.num : -1;
 
         const posHead = await this.headRepo.findByKey('pos');
         const localBestNum = !!posHead ? posHead.num - 1 : 0;
 
-        const tgtNum = localBestNum - headNum > 1000 ? headNum + 1000 : localBestNum;
-        if (tgtNum <= headNum) {
-          continue;
-        }
-        this.logger.info(`start review PoS block from number ${headNum + 1} to ${tgtNum}`);
+        this.logger.info(`start review PoS block from number ${headNum + 1} to ${localBestNum}`);
 
-        for (let num = headNum + 1; num <= tgtNum; num++) {
+        let num = headNum;
+        for (;;) {
           if (this.shutdown) {
             throw new InterruptedError();
           }
-          const blk = await this.blockRepo.findByNumber(num);
+          const blk = await this.blockRepo.findBlockWithTxFrom(num);
+          if (!blk) {
+            // update head
+            let localBest = await this.blockRepo.findByNumber(localBestNum);
+            head = await this.headRepo.update(this.name, localBestNum, localBest.hash);
+            break;
+          }
+          if (blk.number > localBestNum) {
+            break;
+          }
           await this.processBlock(blk);
 
           // update head
-          if (!head) {
-            head = await this.headRepo.create(this.name, blk.number, blk.hash);
-          } else {
-            head = await this.headRepo.update(this.name, blk.number, blk.hash);
-          }
+          head = await this.headRepo.update(this.name, blk.number, blk.hash);
+          num = blk.number;
         }
       } catch (e) {
         if (!(e instanceof InterruptedError)) {

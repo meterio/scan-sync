@@ -8,13 +8,14 @@ import { Block } from '../model/block.interface';
 import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
 import { TokenBalanceRepo } from '../repo/tokenBalance.repo';
-import { BlockReviewer } from './blockReviewer';
+import { TxBlockReviewer } from './blockReviewer';
 
 class TokenDeltaMap {
   private accts: { [key: string]: BigNumber } = {};
   constructor() {}
 
-  public minus(addr: string, tokenAddr: string, amount: string | BigNumber) {
+  public minus(addrStr: string, tokenAddr: string, amount: string | BigNumber) {
+    const addr = addrStr.toLowerCase();
     const key = `${addr}_${tokenAddr}`;
     if (!(key in this.accts)) {
       this.accts[key] = new BigNumber(0);
@@ -22,7 +23,8 @@ class TokenDeltaMap {
     this.accts[key] = this.accts[key].minus(amount);
   }
 
-  public plus(addr: string, tokenAddr: string, amount: string | BigNumber) {
+  public plus(addrStr: string, tokenAddr: string, amount: string | BigNumber) {
+    const addr = addrStr.toLowerCase();
     const key = `${addr}_${tokenAddr}`;
     if (!(key in this.accts)) {
       this.accts[key] = new BigNumber(0);
@@ -34,15 +36,17 @@ class TokenDeltaMap {
     return Object.keys(this.accts);
   }
 
-  public getDelta(key: string): BigNumber {
-    if (key in this.accts) {
-      return this.accts[key];
+  public getDelta(addrStr: string): BigNumber {
+    const addr = addrStr.toLowerCase();
+
+    if (addr in this.accts) {
+      return this.accts[addr];
     }
     return new BigNumber(0);
   }
 }
 
-export class ERC20CMD extends BlockReviewer {
+export class ERC20CMD extends TxBlockReviewer {
   private tokenBalanceRepo = new TokenBalanceRepo();
   constructor(net: Network) {
     super(net);
@@ -55,16 +59,19 @@ export class ERC20CMD extends BlockReviewer {
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       for (const [logIndex, e] of o.events.entries()) {
         if (e.topics[0] === TransferEvent.signature) {
-          if (e.address === MTRSystemContract.address || e.address === MTRGSystemContract.address) {
+          if (
+            e.address.toLowerCase() === MTRSystemContract.address ||
+            e.address.toLowerCase() === MTRGSystemContract.address
+          ) {
             continue;
           }
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
-            from: decoded._from,
-            to: decoded._to,
+            from: decoded._from.toLowerCase(),
+            to: decoded._to.toLowerCase(),
             amount: new BigNumber(decoded._value),
             token: Token.ERC20,
-            tokenAddress: decoded._from,
+            tokenAddress: e.address.toLowerCase(),
             txHash: tx.hash,
             block: tx.block,
             clauseIndex,
