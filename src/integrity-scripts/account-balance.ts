@@ -79,10 +79,10 @@ import { Pos } from '../utils/pos-rest';
         );
       }
       if (acc.master !== chainMaster && acc.master !== undefined && chainMaster !== null) {
-        throw new Error(`Fatal: master of Account(${acc.address}) mismatch,chain:${chainMaster} db:${acc.master}`);
+        console.log(`Fatal: master of Account(${acc.address}) mismatch,chain:${chainMaster} db:${acc.master}`);
       }
       if (chainAcc.hasCode === true && acc.code !== chainCode.code) {
-        throw new Error(`Fatal: Account(${acc.address}) code mismatch`);
+        console.log(`Fatal: Account(${acc.address}) code mismatch, chain:${chainCode.code}, db: ${acc.code}`);
       }
 
       count++;
