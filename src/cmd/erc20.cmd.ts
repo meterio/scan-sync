@@ -152,20 +152,6 @@ export class ERC20CMD extends TxBlockReviewer {
       }
       await tb.save();
     }
-
-    // substract fee from gas payer
-    for (const fee of fees) {
-      let acct = await this.accountRepo.findByAddress(fee.payer);
-      if (acct) {
-        acct.mtrBalance = acct.mtrBalance.minus(fee.paid);
-        if (acct.lastUpdate && acct.lastUpdate.number < blockConcise.number) {
-          acct.lastUpdate = blockConcise;
-        }
-      } else {
-        throw new Error("could not find payer's account");
-      }
-      await acct.save();
-    }
   }
 
   async processGenesis() {
