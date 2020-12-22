@@ -26,10 +26,12 @@ export class BlockRepo {
 
   public async findBlockWithTxFrom(num: number) {
     // find block with tx in (fromNu, toNum] range
-    return this.model.findOne({
-      number: { $gt: num },
-      txCount: { $gt: 0 },
-    });
+    return this.model
+      .findOne({
+        number: { $gt: num },
+        txCount: { $gt: 0 },
+      })
+      .sort({ number: 1 });
   }
 
   public async findFutureBlocks(num: number): Promise<(Block & Document)[]> {

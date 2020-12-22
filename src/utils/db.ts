@@ -20,6 +20,9 @@ export const connectDB = async () => {
       sslValidate: true,
       sslCA: ca,
       useNewUrlParser: true,
+      // readConcern: { level: 'majority' },
+      // w: 'majority',
+      readPreference: 'primary',
     };
   }
   // mongoose.set("debug", true);

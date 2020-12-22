@@ -143,6 +143,7 @@ export class AccountCMD extends TxBlockReviewer {
   }
 
   async processBlock(blk: Block) {
+    this.logger.info(`start to process block ${blk.number}`);
     let transfers = [];
     let accts = new AccountDeltaMap();
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
