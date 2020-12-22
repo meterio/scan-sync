@@ -15,7 +15,7 @@ interface AccountDelta {
 
 const printTransfer = (t: Transfer) => {
   console.log(
-    `Transfer: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${(t.clauseIndex, t.logIndex)})`
+    `Transfer #${t.clauseIndex}: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${t.logIndex})`
   );
 };
 
@@ -75,8 +75,10 @@ export class AccountCMD extends TxBlockReviewer {
   }
 
   processTx(tx: Tx, txIndex: number): Transfer[] {
+    this.logger.info(`start to process ${tx.hash}`);
     let transfers: Transfer[] = [];
     if (tx.reverted) {
+      this.logger.info(`Tx is reverted`);
       return [];
     }
     const mtrToken = getERC20Token(this.network, Token.MTR);
@@ -154,9 +156,6 @@ export class AccountCMD extends TxBlockReviewer {
       // substract fee from gas payer
       accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
     }
-    for (const tr of transfers) {
-      console.log(tr.from, tr.to, tr.amount.toFixed(), '>', tr.txHash, tr.clauseIndex);
-    }
     await this.transferRepo.bulkInsert(...transfers);
 
     for (const tr of transfers) {
@@ -164,7 +163,6 @@ export class AccountCMD extends TxBlockReviewer {
       const to = tr.to;
       accts.minus(from, tr.token, tr.amount);
       accts.plus(to, tr.token, tr.amount);
-      this.logger.info({ from, to, amount: tr.amount.toFixed(0), token: Token[tr.token] }, 'transfer');
     }
 
     const blockConcise = {
@@ -177,16 +175,29 @@ export class AccountCMD extends TxBlockReviewer {
     for (const addr of accts.addresses()) {
       const delta = accts.getDelta(addr);
       let acct = await this.accountRepo.findByAddress(addr);
+
+      this.logger.info({ addr }, 'ready to update address balance');
       if (!acct) {
+        this.logger.info({ mtr: '0', mtrg: '0' }, 'account doesnt exist before update');
         acct = await this.accountRepo.create(addr, blockConcise, blockConcise);
         acct.mtrBalance = delta.mtr;
         acct.mtrgBalance = delta.mtrg;
       } else {
+        this.logger.info(
+          { mtr: fromWei(acct.mtrBalance), mtrg: fromWei(acct.mtrgBalance) },
+          'account balance before update'
+        );
+
         acct.mtrBalance = acct.mtrBalance.plus(delta.mtr);
         acct.mtrgBalance = acct.mtrgBalance.plus(delta.mtrg);
       }
-      this.logger.info({ addr: acct.address, mtr: acct.mtrBalance, mtrg: acct.mtrgBalance }, 'account updated');
+      this.logger.info({ mtr: fromWei(delta.mtr), mtrg: fromWei(delta.mtrg) }, 'account delta');
+      this.logger.info(
+        { mtr: fromWei(acct.mtrBalance), mtrg: fromWei(acct.mtrgBalance) },
+        'account balance after update'
+      );
       await acct.save();
+      this.logger.info({ addr: acct.address }, 'account updated');
     }
 
     // contract creation
