@@ -1,6 +1,6 @@
 {
   "name": "@meterio/scan-sync",
-  "version": "0.0.41",
+  "version": "0.1.0",
   "description": "Collect blocks/txs/metrics from meter network",
   "license": "MIT",
   "readmeFilename": "README.md",
@@ -41,7 +41,6 @@
     "bitcoinjs-lib": "^5.1.10",
     "bunyan": "^1.8.14",
     "envalid": "^6.0.2",
-    "inquirer": "^7.3.3",
     "lru-cache": "^5.1.1",
     "meterify": "^1.4.5",
     "mongoose": "^5.10.1",

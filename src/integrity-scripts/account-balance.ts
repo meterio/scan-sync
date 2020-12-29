@@ -2,9 +2,8 @@
 require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
-import inquirer from 'inquirer';
 
-import { Network, PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
+import { PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
 import AccountRepo from '../repo/account.repo';
 import BlockRepo from '../repo/block.repo';
 import HeadRepo from '../repo/head.repo';
