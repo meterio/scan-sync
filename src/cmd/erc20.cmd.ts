@@ -84,6 +84,7 @@ export class ERC20CMD extends TxBlockReviewer {
     return transfers;
   }
 
+  // deprecated
   isTransferOnly(tx: Tx): boolean {
     for (const o of tx.outputs) {
       if (o.events && o.events.length > 0) {
@@ -100,8 +101,6 @@ export class ERC20CMD extends TxBlockReviewer {
 
   async processBlock(blk: Block) {
     let transfers = [];
-    // extract ERC20 transfers
-    let fees: { payer: string; paid: BigNumber }[] = [];
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
       if (!txModel) {
@@ -109,12 +108,6 @@ export class ERC20CMD extends TxBlockReviewer {
       }
       const erc20Tranfers = this.getERC20Transfers(txModel, txIndex);
       transfers = transfers.concat(erc20Tranfers);
-
-      // if the tx is not transfer only, meaning it's a call
-      // substract the fees from gasPayer
-      if (!this.isTransferOnly(txModel)) {
-        fees.push({ payer: txModel.gasPayer, paid: txModel.paid });
-      }
     }
     await this.transferRepo.bulkInsert(...transfers);
 

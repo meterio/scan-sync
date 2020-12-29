@@ -3,12 +3,15 @@ require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
 
+import { GetPosConfig, Network } from '../const';
 import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
 import { fromWei } from '../utils/utils';
 
-const net = new Net(process.env.POS_PROVIDER_URL);
-const pos = new Pos(new Net(process.env.POS_PROVIDER_URL));
+const network = Network.MainNet;
+const posConfig = GetPosConfig(network);
+const net = new Net(posConfig.url);
+const pos = new Pos(network);
 const MTRGSysContratAddr = '0x228ebBeE999c6a7ad74A6130E81b12f9Fe237Ba3'.toLowerCase();
 const MTRSysContratAddr = '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2'.toLowerCase();
 const args = process.argv.slice(2);

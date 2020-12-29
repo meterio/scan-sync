@@ -1,13 +1,15 @@
-import * as Logger from 'bunyan';
 import { EventEmitter } from 'events';
-import PowBlockRepo from '../repo/powBlock.repo';
-import { Pow } from '../utils/pow-rpc';
-import { sleep, InterruptedError } from '../utils/utils';
-import { PowBlock } from '../model/powBlock.interface';
-import PowTxRepo from '../repo/powTx.repo';
-import HeadRepo from '../repo/head.repo';
-import { CMD } from './cmd';
+
+import * as Logger from 'bunyan';
+
 import { Network } from '../const';
+import { PowBlock } from '../model/powBlock.interface';
+import HeadRepo from '../repo/head.repo';
+import PowBlockRepo from '../repo/powBlock.repo';
+import PowTxRepo from '../repo/powTx.repo';
+import { Pow } from '../utils/pow-rpc';
+import { InterruptedError, sleep } from '../utils/utils';
+import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 500;
 const PRELOAD_WINDOW = 5;
@@ -20,10 +22,11 @@ export class PowCMD extends CMD {
   private powBlockRepo = new PowBlockRepo();
   private powTxRepo = new PowTxRepo();
   private headRepo = new HeadRepo();
-  private pow = new Pow();
+  private pow: Pow;
 
   constructor(net: Network) {
     super();
+    this.pow = new Pow(net);
   }
 
   public async start() {
@@ -53,7 +56,6 @@ export class PowCMD extends CMD {
         await this.powTxRepo.create(powTx);
       }
     }
-    this.logger.info({ height: blk.height, hash: blk.hash }, `processed block: ${blk.height}`);
   }
 
   private async getBlockFromRPC(num: number) {

@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
-import { BlockType, Network } from '../const';
+import { BlockType, GetPosConfig, Network } from '../const';
 import { CommitteeMember } from '../model/block.interface';
 import { BlockConcise } from '../model/blockConcise.interface';
 import { blockConciseSchema } from '../model/blockConcise.model';
@@ -13,7 +13,6 @@ import BlockRepo from '../repo/block.repo';
 import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
 import TxRepo from '../repo/tx.repo';
-import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
@@ -29,7 +28,8 @@ export class PosCMD extends CMD {
   private ev = new EventEmitter();
   private name = 'pos';
   private logger = Logger.createLogger({ name: this.name });
-  private web3 = meterify(new Web3(), process.env.POS_PROVIDER_URL);
+
+  private web3: any;
 
   private blockRepo = new BlockRepo();
   private txRepo = new TxRepo();
@@ -39,7 +39,10 @@ export class PosCMD extends CMD {
 
   constructor(net: Network) {
     super();
-    this.pos = new Pos(new Net(process.env.POS_PROVIDER_URL), net);
+
+    this.pos = new Pos(net);
+    const posConfig = GetPosConfig(net);
+    this.web3 = meterify(new Web3(), posConfig.url);
   }
 
   public async start() {

@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js';
 
-import { UNIT_WEI } from '../const';
+import { Network, UNIT_WEI } from '../const';
+
 export const MAX_BLOCK_PROPOSERS = 101;
 export const BLOCK_INTERVAL = 10;
 
@@ -70,6 +71,25 @@ export class WaitNextTickError extends Error {
     Object.setPrototypeOf(this, WaitNextTickError.prototype);
   }
 }
+
+export const getNetworkFromCli = () => {
+  const args = process.argv.slice(2);
+  if (process.argv.length < 3) {
+    console.log('not valid, usage: ts-node this.ts [main|test]');
+    process.exit(-1);
+  }
+
+  switch (process.argv[2]) {
+    case 'main':
+      return Network.MainNet;
+    case 'test':
+      return Network.TestNet;
+    case 'dev':
+      return Network.DevNet;
+    default:
+      return undefined;
+  }
+};
 
 WaitNextTickError.prototype.name = 'WaitNextTickError';
 InterruptedError.prototype.name = 'InterruptedError';

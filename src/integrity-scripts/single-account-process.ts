@@ -2,16 +2,21 @@
 require('../utils/validateEnv');
 
 // other imports
-import * as Logger from 'bunyan';
 import mongoose from 'mongoose';
 
 import { AccountCMD } from '../cmd/account.cmd';
 import { Network } from '../const';
 import BlockRepo from '../repo/block.repo';
 import { connectDB } from '../utils/db';
+import { getNetworkFromCli } from '../utils/utils';
 
 let cmd = new AccountCMD(Network.MainNet);
 let blockRepo = new BlockRepo();
+const net = getNetworkFromCli();
+if (!net) {
+  process.exit(-1);
+}
+
 (async () => {
   // const blockQueue = new BlockQueue('block');
   let shutdown = false;
@@ -30,7 +35,7 @@ let blockRepo = new BlockRepo();
   });
 
   try {
-    await connectDB();
+    await connectDB(net);
     const blk = await blockRepo.findByNumber(5370624);
     const result = await cmd.processBlock(blk);
     console.log(result);

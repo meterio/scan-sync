@@ -10,7 +10,6 @@ import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
 import TransferRepo from '../repo/transfer.repo';
 import TxRepo from '../repo/tx.repo';
-import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
@@ -36,7 +35,7 @@ export abstract class TxBlockReviewer extends CMD {
     super();
     this.logger = Logger.createLogger({ name: this.name });
     this.network = net;
-    this.pos = new Pos(new Net(process.env.POS_PROVIDER_URL), net);
+    this.pos = new Pos(net);
   }
 
   protected async processGenesis(): Promise<void> {

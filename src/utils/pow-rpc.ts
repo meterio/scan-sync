@@ -4,15 +4,11 @@ import BigNumber from 'bignumber.js';
 import Client from 'bitcoin-core';
 import LRU from 'lru-cache';
 
+import { GetPowConfig, Network } from '../const';
 import { PowBlock } from '../model/powBlock.interface';
 import { PowTx } from '../model/powTx.interface';
+
 var bitcoin = require('bitcoinjs-lib');
-const client = new Client({
-  username: process.env.POW_RPC_USER,
-  password: process.env.POW_RPC_PWD,
-  host: process.env.POW_RPC_HOST,
-  port: process.env.POW_RPC_PORT,
-});
 
 export namespace Pow {
   export type ExpandedBlock = Omit<Required<Flex.Meter.Block>, 'transactions'> & {
@@ -35,7 +31,9 @@ export class Pow {
   private btc: Client;
 
   // default genesis ID to mainnet
-  constructor() {
+  constructor(network: Network) {
+    const powConfig = GetPowConfig(network);
+    const client = new Client(powConfig);
     this.btc = client;
     this.cache = new LRU<string, any>(1024 * 4);
   }

@@ -7,15 +7,6 @@ function validateEnv() {
     MONGO_USER: str(),
     MONGO_PWD: str(),
     MONGO_SSL_CA: str(),
-
-    // pos
-    POS_PROVIDER_URL: str(),
-
-    // pow
-    POW_RPC_HOST: str(),
-    POW_RPC_PORT: num(),
-    POW_RPC_USER: str(),
-    POW_RPC_PWD: str(),
   });
 }
 

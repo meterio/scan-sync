@@ -100,7 +100,7 @@ switch (process.argv[3]) {
   });
 
   try {
-    await connectDB();
+    await connectDB(net);
     await cmd.start();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

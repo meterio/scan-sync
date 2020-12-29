@@ -2,7 +2,7 @@ import '@meterio/flex';
 
 import LRU from 'lru-cache';
 
-import { Network } from '../const';
+import { GetPosConfig, Network } from '../const';
 import { Net } from './net';
 import { blockIDtoNum, isBytes32 } from './utils';
 
@@ -191,6 +191,7 @@ export namespace Pos {
 
 export class Pos {
   private cache: LRU<string, any>;
+  private net: Net;
   private get headerValidator() {
     return (headers: Record<string, string>) => {
       const xGeneID = headers['x-genesis-id'];
@@ -201,7 +202,9 @@ export class Pos {
   }
 
   // default genesis ID to mainnet
-  constructor(readonly net: Net, readonly genesisID = Network.MainNet) {
+  constructor(readonly genesisID = Network.MainNet) {
+    const posConfig = GetPosConfig(genesisID);
+    this.net = new Net(posConfig.url);
     this.cache = new LRU<string, any>(1024 * 4);
   }
 

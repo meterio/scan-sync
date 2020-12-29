@@ -127,7 +127,7 @@ export class MetricCMD extends CMD {
   private logger = Logger.createLogger({ name: this.name });
   private metricRepo = new MetricRepo();
   private pos: Pos;
-  private pow = new Pow();
+  private pow: Pow;
   private coingecko = new Net('https://api.coingecko.com/api/v3/');
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
@@ -138,7 +138,8 @@ export class MetricCMD extends CMD {
 
   constructor(net: Network) {
     super();
-    this.pos = new Pos(new Net(process.env.POS_PROVIDER_URL), net);
+    this.pow = new Pow(net);
+    this.pos = new Pos(net);
   }
 
   public async beforeStart() {

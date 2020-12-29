@@ -2,6 +2,7 @@
 require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
+import inquirer from 'inquirer';
 
 import { Network, PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
 import AccountRepo from '../repo/account.repo';
@@ -9,18 +10,22 @@ import BlockRepo from '../repo/block.repo';
 import HeadRepo from '../repo/head.repo';
 import { connectDB } from '../utils/db';
 import { checkNetworkWithDB } from '../utils/integrity';
-import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
-import { fromWei } from '../utils/utils';
+import { fromWei, getNetworkFromCli } from '../utils/utils';
+
+const net = getNetworkFromCli();
+if (!net) {
+  process.exit(-1);
+}
 
 (async () => {
   try {
-    await connectDB();
+    await connectDB(net);
     const blockRepo = new BlockRepo();
     const headRepo = new HeadRepo();
     const accountRepo = new AccountRepo();
-    const pos = new Pos(new Net(process.env.POS_PROVIDER_URL));
-    await checkNetworkWithDB(Network.MainNet);
+    const pos = new Pos(net);
+    await checkNetworkWithDB(net);
 
     const posHead = await headRepo.findByKey('pos');
     console.log('POS Head:', posHead);
