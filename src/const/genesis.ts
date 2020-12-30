@@ -15,7 +15,13 @@ export const getPreAllocAccount = (net: Network) => {
       ...mainnet.map((item) => item.address),
     ];
   } else if (net === Network.TestNet) {
-    return [ParamsAddress, PrototypeAddress, ExtensionAddress, ...preCompiledContract, ...testnet];
+    return [
+      ParamsAddress,
+      PrototypeAddress,
+      ExtensionAddress,
+      ...preCompiledContract,
+      ...testnet.map((item) => item.address),
+    ];
   } else {
     throw new Error('unknown network: ' + net);
   }
@@ -63,4 +69,7 @@ const mainnet = [
   { address: '0xd8d58db373fc83258b26409248cc481af8395ffa', name: 'name 6', epoch: '24' },
 ];
 
-const testnet: string[] = [];
+const testnet = [
+  { address: '0x1a07d16b152e9a3f5c353bf05944ade8de1a37e9', name: 'executor', epoch: '0' },
+  { address: '0x1de8ca2f973d026300af89041b0ecb1c0803a7e6', name: 'account0', epoch: '0' },
+];
