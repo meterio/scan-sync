@@ -7,6 +7,7 @@ import * as path from 'path';
 import BigNumber from 'bignumber.js';
 
 import AccountRepo from '../repo/account.repo';
+import { saveCSV } from '../utils/csv';
 import { connectDB } from '../utils/db';
 import { checkNetworkWithDB } from '../utils/integrity';
 import { getNetworkFromCli } from '../utils/utils';
@@ -34,20 +35,7 @@ if (!net) {
       }
     }
 
-    const mtrgDesc = accts.sort((a, b) => {
-      return new BigNumber(a.mtrgBalance).isGreaterThan(b.mtrgBalance) ? 1 : -1;
-    });
-    const mtrgDescContent = JSON.stringify(mtrgDesc, null, 2);
-    console.log('MTRG DESC:', mtrgDescContent);
-    fs.writeFileSync(path.join(__dirname, '..', '..', 'mtrgDesc.json'), mtrgDescContent);
-
-    const mtrDesc = accts.sort((a, b) => {
-      return new BigNumber(a.mtrBalance).isGreaterThan(b.mtrBalance) ? 1 : -1;
-    });
-    const mtrDescContent = JSON.stringify(mtrDesc, null, 2);
-    console.log('MTR DESC:', mtrDescContent);
-    fs.writeFileSync(path.join(__dirname, '..', '..', 'mtrDesc.json'), mtrDescContent);
-
+    saveCSV(accts, ['address', 'mtr', 'mtrg'], path.join(__dirname, '..', '..', 'accounts.csv'));
     console.log('all done');
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

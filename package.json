@@ -40,6 +40,8 @@
     "bitcoin-core": "^3.0.0",
     "bitcoinjs-lib": "^5.1.10",
     "bunyan": "^1.8.14",
+    "csv-parse": "^4.14.2",
+    "csv-stringify": "^5.6.0",
     "envalid": "^6.0.2",
     "lru-cache": "^5.1.1",
     "meterify": "^1.4.5",
