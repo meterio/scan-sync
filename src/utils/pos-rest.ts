@@ -1,5 +1,6 @@
 import '@meterio/flex';
 
+import { number } from 'bitcoinjs-lib/types/script';
 import LRU from 'lru-cache';
 
 import { GetPosConfig, Network } from '../const';
@@ -23,6 +24,7 @@ export namespace Pos {
 
   export type Candidate = {
     name: string;
+    description: string;
     address: string;
     pubKey: string;
     ipAddr: string;
@@ -40,6 +42,7 @@ export namespace Pos {
 
   export type Distributor = {
     address: string;
+    autobid: number;
     shares: number;
   };
 
@@ -60,6 +63,7 @@ export namespace Pos {
     value: string;
     token: number;
     nonce: number;
+    autobid: number;
     createTime: number;
     unbounded: boolean;
     candidate: string;
@@ -78,13 +82,6 @@ export namespace Pos {
     totalPoints: number;
     bailAmount: string;
     jailedTime: number;
-  };
-
-  export type ValidatorReward = {
-    epoch: number;
-    baseReward: string;
-    expectDistribute: string;
-    actualDistribute: string;
   };
 
   // missing leader infraction
@@ -148,6 +145,18 @@ export namespace Pos {
     amount: string;
   };
 
+  export type RewardInfo = {
+    address: string;
+    amount: string;
+  };
+
+  export type ValidatorReward = {
+    epoch: number;
+    baseReward: string;
+    totalReward: string;
+    rewards: RewardInfo[];
+  };
+
   export type AuctionSummary = {
     auctionID: string;
     startHeight: number;
@@ -158,22 +167,22 @@ export namespace Pos {
     reservedMTRG: string;
     reservedPrice: string;
     createTime: number;
-    timestamp: string;
     receivedMTR: string;
     actualPrice: string;
+    auctionTxs: AuctionTx[];
     distMTRG: DistMtrg[];
   };
 
   export type AuctionTx = {
-    addr: string;
+    txid: string;
+    address: string;
     amount: string;
-    count: number;
+    type: string;
+    timestamp: number;
     nonce: number;
-    lastTime: number;
-    timestamp: string;
   };
 
-  export type AuctionCB = {
+  export type Auction = {
     auctionID: string;
     startHeight: number;
     startEpoch: number;
@@ -299,7 +308,7 @@ export class Pos {
     return this.httpGet<Pos.AuctionSummary[]>(`auction/summaries`);
   }
   public getPresentAuction() {
-    return this.httpGet<Pos.AuctionCB>(`auction/present`);
+    return this.httpGet<Pos.Auction>(`auction/present`);
   }
 
   public async getAccount(addr: string, revision?: string) {
