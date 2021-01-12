@@ -43,6 +43,7 @@ export enum MetricName {
   MTRG_CIRCULATION = 'mtrg_circulation',
   PRESENT_AUCTION = 'present_auction',
   AUCTION_SUMMARIES = 'auction_summaries',
+  VALIDATOR_REWARDS = 'validator_rewards',
 }
 
 export enum ValidatorStatus {

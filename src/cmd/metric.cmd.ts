@@ -15,14 +15,18 @@ import {
   Token,
   ValidatorStatus,
 } from '../const';
-import { AuctionDist } from '../model/Auction.interface';
+import { AuctionDist, AuctionTx } from '../model/Auction.interface';
+import { Bid } from '../model/bid.interface';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
+import { RewardInfo } from '../model/ValidatorReward.interface';
 import AccountRepo from '../repo/account.repo';
 import AuctionRepo from '../repo/auction.repo';
+import BidRepo from '../repo/bid.repo';
 import BucketRepo from '../repo/bucket.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
+import ValidatorRewardRepo from '../repo/validatorReward.repo';
 import { Net } from '../utils/net';
 import { Pos } from '../utils/pos-rest';
 import { Pow } from '../utils/pow-rpc';
@@ -60,6 +64,9 @@ const METRIC_DEFS = [
   { key: MetricName.DELEGATE_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.BUCKET_COUNT, type: MetricType.NUM, default: '0' },
   { key: MetricName.JAILED_COUNT, type: MetricType.NUM, default: '0' },
+
+  // Validator rewards
+  { key: MetricName.VALIDATOR_REWARDS, type: MetricType.STRING, default: '[]' },
 
   // Stake holder
   { key: MetricName.STAKEHOLDER_COUNT, type: MetricType.NUM, default: '0' },
@@ -132,7 +139,9 @@ export class MetricCMD extends CMD {
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
   private accountRepo = new AccountRepo();
+  private bidRepo = new BidRepo();
   private auctionRepo = new AuctionRepo();
+  private validatorRewardRepo = new ValidatorRewardRepo();
 
   private cache = new MetricCache();
 
@@ -221,6 +230,31 @@ export class MetricCMD extends CMD {
     }
   }
 
+  private async updateValidatorRewards(index: number, interval: number) {
+    const rwds = await this.pos.getValidatorRewards();
+    if (!!rwds) {
+      const updated = await this.cache.update(MetricName.VALIDATOR_REWARDS, JSON.stringify(rwds));
+      if (!updated) {
+        return;
+      }
+      for (const r of rwds) {
+        const exist = await this.validatorRewardRepo.existEpoch(r.epoch);
+        if (exist) {
+          continue;
+        }
+        let rewards: RewardInfo[] = r.rewards.map((info) => {
+          return { amount: new BigNumber(info.amount), address: info.address };
+        });
+        await this.validatorRewardRepo.create({
+          epoch: r.epoch,
+          baseReward: new BigNumber(r.baseReward),
+          totalReward: new BigNumber(r.totalReward),
+          rewards,
+        });
+      }
+    }
+  }
+
   private async updateMarketPrice(index: number, interval: number) {
     if (index % interval === 0) {
       const price = await this.coingecko.http<any>('GET', 'simple/price', {
@@ -262,12 +296,18 @@ export class MetricCMD extends CMD {
           const exist = await this.auctionRepo.findByID(s.auctionID);
           if (!exist) {
             let dists: AuctionDist[] = [];
+            let txs: AuctionTx[] = [];
+            let bids: Bid[] = [];
             for (const d of s.distMTRG) {
               dists.push({
                 address: d.addr,
                 amount: new BigNumber(d.amount),
                 token: Token.MTRG,
               });
+            }
+            for (const t of s.auctionTxs) {
+              txs.push({ ...t });
+              bids.push({ ...t, auctionID: s.auctionID });
             }
             await this.auctionRepo.create({
               id: s.auctionID,
@@ -281,8 +321,10 @@ export class MetricCMD extends CMD {
               reservedPrice: new BigNumber(s.reservedPrice),
               receivedMTR: new BigNumber(s.receivedMTR),
               actualPrice: new BigNumber(s.actualPrice),
+              txs,
               distMTRG: dists,
             });
+            await this.bidRepo.bulkInsert(...bids);
           }
         }
       }
@@ -441,6 +483,9 @@ export class MetricCMD extends CMD {
 
         // update auction info
         await this.updateAuctionInfo(index, every5m);
+
+        // update validator rewards
+        await this.updateValidatorRewards(index, every5m);
 
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {

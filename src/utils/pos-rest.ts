@@ -295,6 +295,9 @@ export class Pos {
   public getBuckets() {
     return this.httpGet<Pos.Bucket[]>(`staking/buckets`);
   }
+  public getValidatorRewards() {
+    return this.httpGet<Pos.ValidatorReward[]>(`staking/validator-rewards`);
+  }
   // Slashing related
   public getValidatorStats() {
     return this.httpGet<Pos.ValidatorStat[]>(`slashing/statistics`);
