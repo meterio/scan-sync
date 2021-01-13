@@ -26,7 +26,7 @@ if (!net) {
 
     let accts = [];
     for (const acc of accounts) {
-      if (acc.mtrBalance.isGreaterThan(0) && acc.mtrgBalance.isGreaterThan(0)) {
+      if (acc.mtrBalance.isGreaterThan(0) || acc.mtrgBalance.isGreaterThan(0)) {
         accts.push({
           address: acc.address,
           mtr: acc.mtrBalance.dividedBy(1e18).toFixed(),
