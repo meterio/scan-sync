@@ -18,6 +18,7 @@ export const KeyPowPoolCoef = '0x' + Buffer.from('powpool-coef', 'utf-8').toStri
 export const LockedMeterGovAddrs: { [key: string]: true } = {
   ZeroAddress: true,
   BridgePoolAddress: true,
+  '0x46b77531b74ff31882c4636a35547535818e0baa': true, // Permanant Locked
   '0x2fa2d56e312c47709537acb198446205736022aa': true,
   '0x08ebea6584b3d9bf6fbcacf1a1507d00a61d95b7': true,
   '0x045df1ef32d6db371f1857bb60551ef2e43abb1e': true,
