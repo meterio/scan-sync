@@ -36,6 +36,7 @@ export const LockedMeterGovAddrs: { [key: string]: true } = {
 export const LockedMeterAddrs: { [key: string]: true } = {
   ZeroAddress: true,
   BridgePoolAddress: true,
+  '0x0434a7f71945451f446297688e468efa716443bf': true, // Locked meter
 };
 // Thanks to Fabian(creator of vechainstats.com) for the information
 KnowExchange.set('0x0f53ec6bbd2b6712c07d8880e5c8f08753d0d5d5', 'BigONE');
