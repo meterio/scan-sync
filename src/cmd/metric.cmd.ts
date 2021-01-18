@@ -460,20 +460,17 @@ export class MetricCMD extends CMD {
       const mtrRanked = accts.sort((a, b) => {
         return a.mtrBalance.isGreaterThan(b.mtrBalance) ? 1 : -1;
       });
-      const mtrgRanked = accts.sort((a, b) => {
-        return a.mtrgBalance.isGreaterThan(b.mtrgBalance) ? 1 : -1;
-      });
-
       for (const [i, a] of mtrRanked.entries()) {
         if (a.mtrRank !== i + 1) {
-          console.log(`update ${a.address} with MTR rank ${i + 1}`);
           await this.accountRepo.updateMTRRank(a.address, i + 1);
         }
       }
 
+      const mtrgRanked = accts.sort((a, b) => {
+        return a.mtrgBalance.isGreaterThan(b.mtrgBalance) ? 1 : -1;
+      });
       for (const [i, a] of mtrgRanked.entries()) {
         if (a.mtrgRank !== i + 1) {
-          console.log(`update ${a.address} with MTRG rank ${i + 1}`);
           await this.accountRepo.updateMTRGRank(a.address, i + 1);
         }
       }
