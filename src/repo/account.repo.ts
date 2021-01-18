@@ -27,10 +27,34 @@ export class AccountRepo {
       address: address.toLowerCase(),
       mtrBalance: new BigNumber('0'),
       mtrgBalance: new BigNumber('0'),
+      mtrRank: 99999999,
+      mtrgRank: 99999999,
 
       firstSeen,
       lastUpdate,
     });
+  }
+
+  public async updateMTRRank(address: string, mtrRank: number) {
+    return this.model.updateOne(
+      { address: address.toLowerCase() },
+      {
+        $set: {
+          mtrRank,
+        },
+      }
+    );
+  }
+
+  public async updateMTRGRank(address: string, mtrgRank: number) {
+    return this.model.updateOne(
+      { address: address.toLowerCase() },
+      {
+        $set: {
+          mtrgRank,
+        },
+      }
+    );
   }
 }
 

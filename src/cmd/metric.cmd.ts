@@ -127,6 +127,8 @@ const every1m = 60 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
 const every5m = (60 * 5) / (SAMPLING_INTERVAL / 1000); // count of index in 5 minutes
 const every10m = (60 * 10) / (SAMPLING_INTERVAL / 1000); // count of index in 10 minutes
 const every30m = (60 * 30) / (SAMPLING_INTERVAL / 1000); // count of index in 30 minutes
+const every2h = (2 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 4 hours
+const every4h = (4 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 4 hours
 export class MetricCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
@@ -436,8 +438,9 @@ export class MetricCMD extends CMD {
     }
   }
 
-  private async updateCirculationInfo(index: number, interval: number) {
+  private async updateCirculationAndRank(index: number, interval: number) {
     if (index % interval === 0) {
+      // Update circulation
       const accts = await this.accountRepo.findAll();
       let mtr = new BigNumber(0);
       let mtrg = new BigNumber(0);
@@ -450,8 +453,30 @@ export class MetricCMD extends CMD {
         }
       }
 
-      this.cache.update(MetricName.MTR_CIRCULATION, mtr.toFixed());
-      this.cache.update(MetricName.MTRG_CIRCULATION, mtrg.toFixed());
+      await this.cache.update(MetricName.MTR_CIRCULATION, mtr.toFixed());
+      await this.cache.update(MetricName.MTRG_CIRCULATION, mtrg.toFixed());
+
+      // Update rank information
+      const mtrRanked = accts.sort((a, b) => {
+        return a.mtrBalance.isGreaterThan(b.mtrBalance) ? 1 : -1;
+      });
+      const mtrgRanked = accts.sort((a, b) => {
+        return a.mtrgBalance.isGreaterThan(b.mtrgBalance) ? 1 : -1;
+      });
+
+      for (const [i, a] of mtrRanked.entries()) {
+        if (a.mtrRank !== i + 1) {
+          console.log(`update ${a.address} with MTR rank ${i + 1}`);
+          await this.accountRepo.updateMTRRank(a.address, i + 1);
+        }
+      }
+
+      for (const [i, a] of mtrgRanked.entries()) {
+        if (a.mtrgRank !== i + 1) {
+          console.log(`update ${a.address} with MTRG rank ${i + 1}`);
+          await this.accountRepo.updateMTRGRank(a.address, i + 1);
+        }
+      }
     }
   }
 
@@ -476,7 +501,7 @@ export class MetricCMD extends CMD {
         await this.updateMarketPrice(index, every10m);
 
         // update circulation
-        await this.updateCirculationInfo(index, every30m);
+        await this.updateCirculationAndRank(index, every4h);
 
         // update candidate/delegate/jailed info
         await this.updateStakingInfo(index, every5m);
