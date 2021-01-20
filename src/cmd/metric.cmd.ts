@@ -470,15 +470,16 @@ export class MetricCMD extends CMD {
       let mtr = new BigNumber(0);
       let mtrg = new BigNumber(0);
       for (const acct of accts) {
-        if (!(acct.address in LockedMeterAddrs)) {
+        if (!(acct.address in LockedMeterAddrs) && acct.mtrBalance.isGreaterThan(0)) {
           mtr = mtr.plus(acct.mtrBalance);
         }
-        if (!(acct.address in LockedMeterGovAddrs)) {
+        if (!(acct.address in LockedMeterGovAddrs) && acct.mtrgBalance.isGreaterThan(0)) {
           mtrg = mtrg.plus(acct.mtrgBalance);
         }
       }
-
+      console.log('MTR Circulation: ', mtr.toFixed());
       await this.cache.update(MetricName.MTR_CIRCULATION, mtr.toFixed());
+      console.log('MTRG Circulation: ', mtr.toFixed());
       await this.cache.update(MetricName.MTRG_CIRCULATION, mtrg.toFixed());
 
       // Update rank information
@@ -520,7 +521,7 @@ export class MetricCMD extends CMD {
         await this.updatePosInfo(index, every);
 
         // update bitcoin info every 5seconds
-        await this.updateBitcoinInfo(index, every6s);
+        await this.updateBitcoinInfo(index, every10m);
 
         // update price/change every 10 minutes
         await this.updateMarketPrice(index, every10m);
