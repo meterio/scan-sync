@@ -194,28 +194,34 @@ export class MetricCMD extends CMD {
         await this.cache.update(MetricName.HASHRATE, mining.networkhashps);
         await this.cache.update(MetricName.POW_BEST, mining.blocks);
       }
-      const coefStorage = await this.pos.getStorage(ParamsAddress, KeyPowPoolCoef);
-      console.log('Coef Storage:', coefStorage);
-      if (!!coefStorage && coefStorage.value) {
-        const coef = parseInt(coefStorage.value, 16);
-        const efficiency = new BigNumber(coef)
-          .dividedBy(1e6)
-          .times(300 * 120)
-          .dividedBy(2 ** 32);
-        console.log(`efficiency: ${efficiency.toFixed()}`);
-        const btcHashrate = this.cache.get(MetricName.BTC_HASHRATE);
-        const btcPrice = this.cache.get(MetricName.BTC_PRICE);
-        const rewardPerDay = new BigNumber(efficiency).dividedBy(10).times(24);
-        const costParity = new BigNumber(6.25) // bitcoin reward
-          .times(24 * 6)
-          .times(1000)
-          .times(btcPrice)
-          .dividedBy(btcHashrate)
-          .dividedBy(rewardPerDay);
-        console.log(`rewardPerDay: ${rewardPerDay.toFixed()}, cost parity: ${costParity}`);
-        await this.cache.update(MetricName.COST_PARITY, costParity.toFixed());
-        await this.cache.update(MetricName.REWARD_PER_DAY, rewardPerDay.toFixed());
-      }
+      let efficiency = new BigNumber(0.053);
+      try {
+        const curCoef = await this.pos.getCurCoef();
+        // const coefStorage = await this.pos.getStorage(ParamsAddress, KeyPowPoolCoef);
+        // console.log('Coef Storage:', coefStorage);
+        // if (!!coefStorage && coefStorage.value) {
+        if (!!curCoef) {
+          const coef = parseInt(curCoef.toString());
+          efficiency = new BigNumber(coef)
+            .dividedBy(1e6)
+            .times(300 * 120)
+            .dividedBy(2 ** 32);
+        }
+      } catch (e) {}
+
+      console.log(`efficiency: ${efficiency.toFixed()}`);
+      const btcHashrate = this.cache.get(MetricName.BTC_HASHRATE);
+      const btcPrice = this.cache.get(MetricName.BTC_PRICE);
+      const rewardPerDay = new BigNumber(efficiency).dividedBy(10).times(24);
+      const costParity = new BigNumber(6.25) // bitcoin reward
+        .times(24 * 6)
+        .times(1000)
+        .times(btcPrice)
+        .dividedBy(btcHashrate)
+        .dividedBy(rewardPerDay);
+      console.log(`rewardPerDay: ${rewardPerDay.toFixed()}, cost parity: ${costParity}`);
+      await this.cache.update(MetricName.COST_PARITY, costParity.toFixed());
+      await this.cache.update(MetricName.REWARD_PER_DAY, rewardPerDay.toFixed());
     }
   }
 

@@ -337,6 +337,9 @@ export class Pos {
   public getStorage(addr: string, key: string, revision?: string) {
     return this.httpGet<Pos.Storage>(`accounts/${addr}/storage/${key}`, revision ? { revision } : {});
   }
+  public getCurCoef() {
+    return this.httpGet<String>(`node/coef`);
+  }
 
   public filterEventLogs(arg: Flex.Driver.FilterEventLogsArg) {
     return this.httpPost<Pos.Event[]>('logs/event', arg);
