@@ -44,6 +44,8 @@ export enum MetricName {
   PRESENT_AUCTION = 'present_auction',
   AUCTION_SUMMARIES = 'auction_summaries',
   VALIDATOR_REWARDS = 'validator_rewards',
+  BTC_HASHRATE = 'btc_hashrate',
+  BTC_PRICE = 'btc_price',
 }
 
 export enum ValidatorStatus {

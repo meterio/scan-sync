@@ -51,6 +51,10 @@ const METRIC_DEFS = [
   { key: MetricName.MTR_PRICE, type: MetricType.NUM, default: '0.5' },
   { key: MetricName.MTR_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
 
+  // Bitcoin
+  { key: MetricName.BTC_PRICE, type: MetricType.NUM, default: '1' },
+  { key: MetricName.BTC_HASHRATE, type: MetricType.NUM, default: '1' },
+
   // Circulation
   { key: MetricName.MTR_CIRCULATION, type: MetricType.STRING, default: '0' },
   { key: MetricName.MTRG_CIRCULATION, type: MetricType.STRING, default: '0' },
@@ -121,6 +125,7 @@ class MetricCache {
 }
 
 const every = 1;
+const every6s = 6 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
 const every24h = (3600 * 24) / (SAMPLING_INTERVAL / 1000); // count of index in 24 hours
 const every30s = 30 / (SAMPLING_INTERVAL / 1000); // count of index in 30 seconds
 const every1m = 60 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
@@ -138,6 +143,7 @@ export class MetricCMD extends CMD {
   private pos: Pos;
   private pow: Pow;
   private coingecko = new Net('https://api.coingecko.com/api/v3/');
+  private blockchainInfo = new Net('https://blockchain.info/');
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
   private accountRepo = new AccountRepo();
@@ -197,14 +203,14 @@ export class MetricCMD extends CMD {
           .times(300 * 120)
           .dividedBy(2 ** 32);
         console.log(`efficiency: ${efficiency.toFixed()}`);
-        const hashrate = this.cache.get(MetricName.HASHRATE);
-        const mtrPrice = this.cache.get(MetricName.MTR_PRICE);
-        const rewardPerDay = efficiency.dividedBy(10).times(24);
-        const costParity = efficiency
-          .times(24 * 6 * 6.25)
-          .times(mtrPrice)
-          .times(1e6)
-          .dividedBy(hashrate)
+        const btcHashrate = this.cache.get(MetricName.BTC_HASHRATE);
+        const btcPrice = this.cache.get(MetricName.BTC_PRICE);
+        const rewardPerDay = new BigNumber(efficiency).dividedBy(10).times(24);
+        const costParity = new BigNumber(6.25) // bitcoin reward
+          .times(24 * 6)
+          .times(1000)
+          .times(btcPrice)
+          .dividedBy(btcHashrate)
           .dividedBy(rewardPerDay);
         console.log(`rewardPerDay: ${rewardPerDay.toFixed()}, cost parity: ${costParity}`);
         await this.cache.update(MetricName.COST_PARITY, costParity.toFixed());
@@ -253,6 +259,25 @@ export class MetricCMD extends CMD {
           totalReward: new BigNumber(r.totalReward),
           rewards,
         });
+      }
+    }
+  }
+
+  private async updateBitcoinInfo(index: number, interval: number) {
+    if (index % interval === 0) {
+      //blockchain.info/q/hashrate
+      const hashrate = await this.blockchainInfo.http<any>('GET', 'q/hashrate');
+      console.log('BTC Hashrate:', hashrate);
+      if (!!hashrate) {
+        this.cache.update(MetricName.BTC_HASHRATE, String(hashrate));
+      }
+      const price = await this.coingecko.http<any>('GET', 'simple/price', {
+        query: { ids: 'bitcoin', vs_currencies: 'usd', include_24hr_change: 'false' },
+      });
+
+      if (!!price && price.bitcoin) {
+        console.log('BTC Price', price.bitcoin);
+        this.cache.update(MetricName.BTC_PRICE, String(price.bitcoin.usd));
       }
     }
   }
@@ -458,7 +483,7 @@ export class MetricCMD extends CMD {
 
       // Update rank information
       const mtrRanked = accts.sort((a, b) => {
-        return a.mtrBalance.isGreaterThan(b.mtrBalance) ? 1 : -1;
+        return a.mtrBalance.isGreaterThan(b.mtrBalance) ? -1 : 1;
       });
       for (const [i, a] of mtrRanked.entries()) {
         if (a.mtrRank !== i + 1) {
@@ -467,7 +492,7 @@ export class MetricCMD extends CMD {
       }
 
       const mtrgRanked = accts.sort((a, b) => {
-        return a.mtrgBalance.isGreaterThan(b.mtrgBalance) ? 1 : -1;
+        return a.mtrgBalance.isGreaterThan(b.mtrgBalance) ? -1 : 1;
       });
       for (const [i, a] of mtrgRanked.entries()) {
         if (a.mtrgRank !== i + 1) {
@@ -493,6 +518,9 @@ export class MetricCMD extends CMD {
 
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);
+
+        // update bitcoin info every 5seconds
+        await this.updateBitcoinInfo(index, every6s);
 
         // update price/change every 10 minutes
         await this.updateMarketPrice(index, every10m);
