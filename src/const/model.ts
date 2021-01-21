@@ -46,6 +46,7 @@ export enum MetricName {
   VALIDATOR_REWARDS = 'validator_rewards',
   BTC_HASHRATE = 'btc_hashrate',
   BTC_PRICE = 'btc_price',
+  COEF = 'coef',
 }
 
 export enum ValidatorStatus {

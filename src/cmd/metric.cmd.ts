@@ -44,6 +44,7 @@ const METRIC_DEFS = [
   { key: MetricName.POW_BEST, type: MetricType.NUM, default: '0' },
   { key: MetricName.COST_PARITY, type: MetricType.NUM, default: '0' },
   { key: MetricName.REWARD_PER_DAY, type: MetricType.NUM, default: '0' },
+  { key: MetricName.COEF, type: MetricType.NUM, default: '0.053' },
 
   // Price
   { key: MetricName.MTRG_PRICE, type: MetricType.NUM, default: '1' },
@@ -206,6 +207,7 @@ export class MetricCMD extends CMD {
             .dividedBy(1e6)
             .times(300 * 120)
             .dividedBy(2 ** 32);
+          await this.cache.update(MetricName.COEF, efficiency.toFixed());
         }
       } catch (e) {}
 
