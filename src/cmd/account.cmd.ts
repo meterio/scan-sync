@@ -157,7 +157,10 @@ export class AccountCMD extends TxBlockReviewer {
       // substract fee from gas payer
       accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
     }
-    await this.transferRepo.bulkInsert(...transfers);
+    const pureTransfers = transfers.filter((t) => {
+      return t.token !== Token.ERC20;
+    });
+    await this.transferRepo.bulkInsert(...pureTransfers);
 
     for (const tr of transfers) {
       const from = tr.from;
