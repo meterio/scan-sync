@@ -59,12 +59,6 @@ export class ERC20CMD extends TxBlockReviewer {
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       for (const [logIndex, e] of o.events.entries()) {
         if (e.topics[0] === TransferEvent.signature) {
-          if (
-            e.address.toLowerCase() === MTRSystemContract.address ||
-            e.address.toLowerCase() === MTRGSystemContract.address
-          ) {
-            continue;
-          }
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
             from: decoded._from.toLowerCase(),
@@ -114,6 +108,12 @@ export class ERC20CMD extends TxBlockReviewer {
     // calculate token balance deltas
     let accts = new TokenDeltaMap();
     for (const tr of transfers) {
+      if (
+        tr.tokenAddress.toLowerCase() === MTRGSystemContract.address ||
+        tr.tokenAddress.toLowerCase() === MTRSystemContract.address
+      ) {
+        continue;
+      }
       const from = tr.from;
       const to = tr.to;
       accts.minus(from, tr.tokenAddress, tr.amount);
