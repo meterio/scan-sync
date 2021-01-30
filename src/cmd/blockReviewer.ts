@@ -15,6 +15,7 @@ import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 500;
+const NUM_WINDOW = 1000;
 
 export abstract class TxBlockReviewer extends CMD {
   protected shutdown = false;
@@ -86,8 +87,12 @@ export abstract class TxBlockReviewer extends CMD {
 
         const posHead = await this.headRepo.findByKey('pos');
         const localBestNum = !!posHead ? posHead.num - 1 : 0;
+        let endNum = headNum + NUM_WINDOW;
+        if (endNum > localBestNum) {
+          endNum = localBestNum;
+        }
 
-        this.logger.info(`start review PoS block from number ${headNum + 1} to ${localBestNum}`);
+        this.logger.info(`start review PoS block from number ${headNum + 1} to ${endNum} (best:${localBestNum})`);
 
         let num = headNum;
         for (;;) {
@@ -102,6 +107,9 @@ export abstract class TxBlockReviewer extends CMD {
             break;
           }
           if (blk.number > localBestNum) {
+            break;
+          }
+          if (blk.number > endNum) {
             break;
           }
           await this.processBlock(blk);
