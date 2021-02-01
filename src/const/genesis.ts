@@ -29,11 +29,11 @@ export const getPreAllocAccount = (net: Network) => {
 
 export const getAccountName = (net, addr) => {
   if (net === Network.MainNet) {
-    if (addr in mainnetKnown) {
+    if (addr.toLowerCase() in mainnetKnown) {
       return mainnetKnown[addr];
     }
   } else if (net === Network.TestNet) {
-    if (addr in testnetKnown) {
+    if (addr.toLowerCase() in testnetKnown) {
       return testnetKnown[addr];
     }
   }

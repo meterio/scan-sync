@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
-import { Network, Token, TransferEvent, getAccountName, getERC20Token, getPreAllocAccount, prototype } from '../const';
+import { Network, Token, TransferEvent, getERC20Token, getPreAllocAccount, prototype } from '../const';
 import { Block } from '../model/block.interface';
 import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
@@ -183,7 +183,7 @@ export class AccountCMD extends TxBlockReviewer {
       this.logger.info({ addr }, 'ready to update address balance');
       if (!acct) {
         this.logger.info({ mtr: '0', mtrg: '0' }, 'account doesnt exist before update');
-        acct = await this.accountRepo.create(addr, blockConcise, blockConcise);
+        acct = await this.accountRepo.create(this.network, addr, blockConcise, blockConcise);
         acct.mtrBalance = delta.mtr;
         acct.mtrgBalance = delta.mtrg;
       } else {
@@ -200,10 +200,6 @@ export class AccountCMD extends TxBlockReviewer {
         { mtr: fromWei(acct.mtrBalance), mtrg: fromWei(acct.mtrgBalance) },
         'account balance after update'
       );
-      const name = getAccountName(this.network, addr);
-      if (name) {
-        acct.name = name;
-      }
       await acct.save();
       this.logger.info({ addr: acct.address }, 'account updated');
     }
@@ -212,7 +208,7 @@ export class AccountCMD extends TxBlockReviewer {
     for (const address in this.contracts) {
       let acct = await this.accountRepo.findByAddress(address);
       if (!acct) {
-        acct = await this.accountRepo.create(address, blockConcise, blockConcise);
+        acct = await this.accountRepo.create(this.network, address, blockConcise, blockConcise);
       }
       const code = await this.pos.getCode(address, blk.hash);
       if (code && code.code !== '0x') {
@@ -232,20 +228,16 @@ export class AccountCMD extends TxBlockReviewer {
       const chainAcc = await this.pos.getAccount(addr, genesis.hash);
 
       const blockConcise = { number: genesis.number, hash: genesis.hash, timestamp: genesis.timestamp };
-      let acct = await this.accountRepo.create(addr, blockConcise, blockConcise);
+      let acct = await this.accountRepo.create(this.network, addr, blockConcise, blockConcise);
       acct.mtrgBalance = new BigNumber(chainAcc.balance);
       acct.mtrBalance = new BigNumber(chainAcc.energy);
-      const name = getAccountName(this.network, addr);
-      if (name) {
-        acct.name = name;
-      }
 
       if (chainAcc.hasCode) {
         const chainCode = await this.pos.getCode(addr, genesis.hash);
         acct.code = chainCode.code;
       }
       this.logger.info(
-        { address: addr, MTR: acct.mtrBalance.toFixed(), MTRG: acct.mtrgBalance.toFixed() },
+        { accountName: acct.name, address: addr, MTR: acct.mtrBalance.toFixed(), MTRG: acct.mtrgBalance.toFixed() },
         `saving genesis account`
       );
       await acct.save();

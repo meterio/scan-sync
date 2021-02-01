@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js';
 
+import { Network, getAccountName } from '../const';
 import accountModel from '../model/account.model';
 import { BlockConcise } from '../model/blockConcise.interface';
 
@@ -22,8 +23,10 @@ export class AccountRepo {
     });
   }
 
-  public async create(address: string, firstSeen: BlockConcise, lastUpdate: BlockConcise) {
+  public async create(network: Network, address: string, firstSeen: BlockConcise, lastUpdate: BlockConcise) {
+    const name = getAccountName(network, address);
     return this.model.create({
+      name: name,
       address: address.toLowerCase(),
       mtrBalance: new BigNumber('0'),
       mtrgBalance: new BigNumber('0'),
