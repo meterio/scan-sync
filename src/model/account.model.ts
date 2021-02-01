@@ -6,6 +6,7 @@ import { blockConciseSchema } from './blockConcise.model';
 
 const accountSchema = new mongoose.Schema(
   {
+    name: { type: String, required: false },
     address: { type: String, required: true },
     mtrBalance: {
       type: String,

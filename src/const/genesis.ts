@@ -27,7 +27,49 @@ export const getPreAllocAccount = (net: Network) => {
   }
 };
 
+export const getAccountName = (net, addr) => {
+  if (net === Network.MainNet) {
+    if (addr in mainnetKnown) {
+      return mainnetKnown[addr];
+    }
+  } else if (net === Network.TestNet) {
+    if (addr in testnetKnown) {
+      return testnetKnown[addr];
+    }
+  }
+};
+
 // "address", "name", "release epoch"
+const mainnetKnown = {
+  '0x46b77531b74ff31882c4636a35547535818e0baa': 'Foundation Growth Reserve Indefinitely Locked',
+  '0x2fa2d56e312c47709537acb198446205736022aa': 'Locked Batch 1',
+  '0x08ebea6584b3d9bf6fbcacf1a1507d00a61d95b7': 'Locked Batch 2',
+  '0x045df1ef32d6db371f1857bb60551ef2e43abb1e': 'Locked Batch 3',
+  '0xbb8fca96089572f08736062b9c7da651d00011d0': 'Locked Batch 4',
+  '0xab22ab75f8c42b6969c5d226f39aeb7be35bf24b': 'Locked Batch 5',
+  '0x63723217e860bc409e29b46eec70101cd03d8242': 'Locked Batch 6',
+  '0x0374f5867ab2effd2277c895e7d1088b10ec9452': 'Locked Batch 7',
+  '0x5308b6f26f21238963d0ea0b391eafa9be53c78e': 'Locked Batch 8',
+  '0xe9061c2517bba8a7e2d2c20053cd8323b577efe7': 'Foundation Ops',
+  '0xbb28e3212cf0df458cb3ba2cf2fd14888b2d7da7': 'Marketing',
+  '0x62e3e1df0430e6da83060b3cffc1adeb3792daf1': 'Bridge Locked',
+  '0x5c5713656c6819ebe3921936fd28bed2a387cda5': 'Bridge Active',
+  '0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c': 'Gate.io',
+  '0x0d0707963952f2fba59dd06f2b425ace40b492fe': 'Gate.io',
+  '0x78e6f3af2bf71afa209c6e81b161c6a41d2da79d': 'Foundation Ops',
+  '0xc1a76f84d977e8d424a8eb09ce6adf029d38b91d': 'Bilaxy',
+  '0x6f04787447975b40d29611833711117ed9de155f': 'mxc',
+
+  // system contract
+  '0x687a6294d0d6d63e751a059bf1ca68e4ae7b13e2': 'MTR system contract',
+  '0x228ebbee999c6a7ad74a6130e81b12f9fe237ba3': 'MTRG system contract',
+
+  // script engine
+  '0x6163636f756e742d6c6f636b2d61646472657373': 'Account Lock Script',
+  '0x616b696e672d6d6f64756c652d61646472657373': 'Staking Script',
+  '0x74696f6e2d6163636f756e742d61646472657373': 'Auction Script',
+};
+
 const mainnet = [
   // team accounts
   { address: '0x2fa2d56e312c47709537acb198446205736022aa', name: 'Team 1', epoch: '4380' }, // 182.5 days
@@ -68,6 +110,16 @@ const mainnet = [
   { address: '0x5d4dab27103450a0dbc2f71942023ebb27cd2310', name: 'name 5', epoch: '24' },
   { address: '0xd8d58db373fc83258b26409248cc481af8395ffa', name: 'name 6', epoch: '24' },
 ];
+
+const testnetKnown = {
+  '0x1a07d16b152e9a3f5c353bf05944ade8de1a37e9': 'Executor',
+  '0x1de8ca2f973d026300af89041b0ecb1c0803a7e6': 'Master',
+
+  // script engine
+  '0x6163636f756e742d6c6f636b2d61646472657373': 'Account Lock Script',
+  '0x616b696e672d6d6f64756c652d61646472657373': 'Staking Script',
+  '0x74696f6e2d6163636f756e742d61646472657373': 'Auction Script',
+};
 
 const testnet = [
   { address: '0x1a07d16b152e9a3f5c353bf05944ade8de1a37e9', name: 'executor', epoch: '0' },
