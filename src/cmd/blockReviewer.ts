@@ -15,7 +15,7 @@ import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 500;
-const NUM_WINDOW = 1000;
+const LOOP_WINDOW = 1000;
 
 export abstract class TxBlockReviewer extends CMD {
   protected shutdown = false;
@@ -87,7 +87,7 @@ export abstract class TxBlockReviewer extends CMD {
 
         const posHead = await this.headRepo.findByKey('pos');
         const localBestNum = !!posHead ? posHead.num - 1 : 0;
-        let endNum = headNum + NUM_WINDOW;
+        let endNum = headNum + LOOP_WINDOW;
         if (endNum > localBestNum) {
           endNum = localBestNum;
         }
@@ -100,21 +100,17 @@ export abstract class TxBlockReviewer extends CMD {
             throw new InterruptedError();
           }
           const blk = await this.blockRepo.findBlockWithTxFrom(num);
-          if (!blk) {
-            // update head
-            let localBest = await this.blockRepo.findByNumber(localBestNum);
-            head = await this.headRepo.update(this.name, localBestNum, localBest.hash);
-            break;
-          }
-          if (blk.number > localBestNum) {
-            break;
-          }
-          if (blk.number > endNum) {
+          if (!blk || blk.number > localBestNum || blk.number > endNum) {
+            // update head before exit current loop
+            let endBlock = await this.blockRepo.findByNumber(endNum);
+            head = await this.headRepo.update(this.name, endBlock.number, endBlock.hash);
             break;
           }
           await this.processBlock(blk);
 
           // update head
+
+          console.log('after process block, update head to ', blk.number);
           head = await this.headRepo.update(this.name, blk.number, blk.hash);
           num = blk.number;
         }
