@@ -29,6 +29,7 @@ export interface Auction {
   reservedPrice: BigNumber;
   receivedMTR: BigNumber;
   actualPrice: BigNumber;
+  leftoverMTRG: BigNumber;
   txs: AuctionTx[];
   distMTRG: AuctionDist[];
 }

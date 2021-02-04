@@ -158,7 +158,7 @@ export class AccountCMD extends TxBlockReviewer {
       accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
     }
     const pureTransfers = transfers.filter((t) => {
-      return t.token !== Token.ERC20;
+      return t.tokenAddress !== '';
     });
     await this.transferRepo.bulkInsert(...pureTransfers);
 

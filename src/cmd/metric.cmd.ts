@@ -356,6 +356,7 @@ export class MetricCMD extends CMD {
               reservedPrice: new BigNumber(s.reservedPrice),
               receivedMTR: new BigNumber(s.receivedMTR),
               actualPrice: new BigNumber(s.actualPrice),
+              leftoverMTRG: new BigNumber(s.leftoverMTRG),
               txs,
               distMTRG: dists,
             });

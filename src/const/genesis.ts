@@ -68,6 +68,8 @@ const mainnetKnown = {
   '0x6163636f756e742d6c6f636b2d61646472657373': 'Account Lock Script',
   '0x616b696e672d6d6f64756c652d61646472657373': 'Staking Script',
   '0x74696f6e2d6163636f756e742d61646472657373': 'Auction Script',
+  '0x61746f722d62656e656669742d61646472657373': 'Validator Benefit',
+  '0xe852f654dfaee0e2b60842657379a56e1cafa292': 'Auction Leftover',
 };
 
 const mainnet = [

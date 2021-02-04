@@ -169,6 +169,7 @@ export namespace Pos {
     createTime: number;
     receivedMTR: string;
     actualPrice: string;
+    leftoverMTRG: string;
     auctionTxs: AuctionTx[];
     distMTRG: DistMtrg[];
   };
