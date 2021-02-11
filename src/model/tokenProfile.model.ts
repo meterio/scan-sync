@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
-import { TokenBalance } from './tokenBalance.interface';
+import { TokenProfile } from './tokenProfile.interface';
 
 const tokenProfileSchema = new mongoose.Schema(
   {
@@ -34,6 +34,6 @@ tokenProfileSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<TokenBalance & mongoose.Document>('TokenProfile', tokenProfileSchema);
+const model = mongoose.model<TokenProfile & mongoose.Document>('TokenProfile', tokenProfileSchema);
 
 export default model;

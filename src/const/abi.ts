@@ -17,11 +17,41 @@ const TransferABI: abi.Event.Definition = {
   name: 'Transfer',
   type: 'event',
 };
+
 const methodMasterABI: abi.Function.Definition = {
   constant: true,
   inputs: [{ name: 'self', type: 'address' }],
   name: 'master',
   outputs: [{ name: '', type: 'address' }],
+  payable: false,
+  stateMutability: 'view',
+  type: 'function',
+};
+
+// ERC20 methods
+const nameABI: abi.Function.Definition = {
+  constant: true,
+  inputs: [],
+  name: 'name',
+  outputs: [{ name: '', type: 'string' }],
+  payable: false,
+  stateMutability: 'view',
+  type: 'function',
+};
+const symbolABI: abi.Function.Definition = {
+  constant: true,
+  inputs: [],
+  name: 'symbol',
+  outputs: [{ name: '', type: 'string' }],
+  payable: false,
+  stateMutability: 'view',
+  type: 'function',
+};
+const decimalsABI: abi.Function.Definition = {
+  constant: true,
+  inputs: [],
+  name: 'decimals',
+  outputs: [{ name: '', type: 'uint8' }],
   payable: false,
   stateMutability: 'view',
   type: 'function',
@@ -128,6 +158,10 @@ const paramsGetABI: abi.Function.Definition = {
 export const TransferEvent = new abi.Event(TransferABI);
 export const balanceOf = new abi.Function(BalanceOfABI);
 export const totalSupply = new abi.Function(totalSupplyABI);
+export const nameABIFunc = new abi.Function(nameABI);
+export const decimalsABIFunc = new abi.Function(decimalsABI);
+export const symbolABIFunc = new abi.Function(symbolABI);
+
 export const authority = {
   first: new abi.Function(firstABI),
   get: new abi.Function(getABI),
@@ -140,17 +174,15 @@ export const prototype = {
   $Sponsor: new abi.Event($SponsorABI),
   $Master: new abi.Event($MasterABI),
   master: new abi.Function(methodMasterABI),
+
   currentSponsor: new abi.Function(currentSponsorABI),
   isSponsor: new abi.Function(isSponsorABI),
-  unsponsored:
-    '0x' + Buffer.from('unsponsored').toString('hex').padEnd(64, '0'),
+  unsponsored: '0x' + Buffer.from('unsponsored').toString('hex').padEnd(64, '0'),
   selected: '0x' + Buffer.from('selected').toString('hex').padEnd(64, '0'),
 };
 export const params = {
   get: new abi.Function(paramsGetABI),
   keys: {
-    proposerEndorsement:
-      '0x' +
-      Buffer.from('proposer-endorsement').toString('hex').padStart(64, '0'),
+    proposerEndorsement: '0x' + Buffer.from('proposer-endorsement').toString('hex').padStart(64, '0'),
   },
 };

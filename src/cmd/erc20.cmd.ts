@@ -3,11 +3,23 @@ import { hasUncaughtExceptionCaptureCallback } from 'process';
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
-import { MTRGSystemContract, MTRSystemContract, Network, Token, TransferEvent } from '../const';
+import {
+  MTRGSystemContract,
+  MTRSystemContract,
+  Network,
+  Token,
+  TransferEvent,
+  decimalsABIFunc,
+  nameABIFunc,
+  prototype,
+  symbolABIFunc,
+  totalSupply,
+} from '../const';
 import { Block } from '../model/block.interface';
 import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
 import { TokenBalanceRepo } from '../repo/tokenBalance.repo';
+import { TokenProfileRepo } from '../repo/tokenProfile.repo';
 import { TxBlockReviewer } from './blockReviewer';
 
 class TokenDeltaMap {
@@ -48,16 +60,45 @@ class TokenDeltaMap {
 
 export class ERC20CMD extends TxBlockReviewer {
   private tokenBalanceRepo = new TokenBalanceRepo();
+  private tokenProfileRepo = new TokenProfileRepo();
   constructor(net: Network) {
     super(net);
     this.name = 'erc20';
     this.logger = Logger.createLogger({ name: this.name });
   }
 
-  getERC20Transfers(tx: Tx, txIndex: number): Transfer[] {
+  async getERC20Transfers(tx: Tx, txIndex: number, blkHash: string): Promise<Transfer[]> {
     let transfers: Transfer[] = [];
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       for (const [logIndex, e] of o.events.entries()) {
+        // ERC20 contract creation
+        try {
+          if (e.topics[0] === prototype.$Master.signature) {
+            const outputs = await this.pos.explain(
+              {
+                clauses: [
+                  { to: e.address, value: '0x0', data: nameABIFunc.encode(), token: Token.MTR },
+                  { to: e.address, value: '0x0', data: symbolABIFunc.encode(), token: Token.MTR },
+                  { to: e.address, value: '0x0', data: decimalsABIFunc.encode(), token: Token.MTR },
+                  { to: e.address, value: '0x0', data: totalSupply.encode(), token: Token.MTR },
+                ],
+              },
+              blkHash
+            );
+            const nameDecoded = nameABIFunc.decode(outputs[0].data);
+            const symbolDecoded = symbolABIFunc.decode(outputs[1].data);
+            const decimalsDecoded = decimalsABIFunc.decode(outputs[2].data);
+            const totalSupplyDecoded = totalSupply.decode(outputs[3].data);
+            const name = nameDecoded['0'];
+            const symbol = symbolDecoded['0'];
+            const decimals = decimalsDecoded['0'];
+            const totalSupplyVal = totalSupplyDecoded['0'];
+            await this.tokenProfileRepo.create(name, symbol, e.address, '', new BigNumber(totalSupplyVal), decimals);
+          }
+        } catch (e) {
+          console.log('error during erc20 creation');
+        }
+
         if (e.topics[0] === TransferEvent.signature) {
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
@@ -100,7 +141,7 @@ export class ERC20CMD extends TxBlockReviewer {
       if (!txModel) {
         throw new Error('could not find tx, maybe the block is still being processed');
       }
-      const erc20Tranfers = this.getERC20Transfers(txModel, txIndex);
+      const erc20Tranfers = await this.getERC20Transfers(txModel, txIndex, blk.hash);
       transfers = transfers.concat(erc20Tranfers);
     }
     await this.transferRepo.bulkInsert(...transfers);
