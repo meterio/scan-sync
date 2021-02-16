@@ -16,6 +16,13 @@ export interface QC {
   epochID: number;
 }
 
+export interface PowBlock {
+  hash: string;
+  prevBlock: string;
+  beneficiary: string;
+  height: number;
+}
+
 export interface Block {
   // basics
   hash: string;
@@ -46,4 +53,5 @@ export interface Block {
 
   epoch: number;
   kblockData: string[];
+  powBlocks?: PowBlock[];
 }

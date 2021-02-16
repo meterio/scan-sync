@@ -13,6 +13,7 @@ import BlockRepo from '../repo/block.repo';
 import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
 import TxRepo from '../repo/tx.repo';
+import { isHex } from '../utils/hex';
 import { Pos } from '../utils/pos-rest';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
@@ -222,9 +223,19 @@ export class PosCMD extends CMD {
       reward = reward.plus(tx.reward);
     }
     for (const m of blk.committee) {
-      const buf = Buffer.from(m.pubKey, 'hex');
-      const base64PK = buf.toString('base64');
-      committee.push({ ...m, pubKey: base64PK });
+      if (isHex(m.pubKey)) {
+        const buf = Buffer.from(m.pubKey, 'hex');
+        const base64PK = buf.toString('base64');
+        committee.push({ ...m, pubKey: base64PK });
+      } else {
+        committee.push({ ...m });
+      }
+    }
+    let powBlocks: Flex.Meter.PowBlock[] = [];
+    if (blk.powBlocks) {
+      for (const pb of blk.powBlocks) {
+        powBlocks.push({ ...pb });
+      }
     }
 
     // update committee repo
@@ -272,6 +283,7 @@ export class PosCMD extends CMD {
       committee,
       nonce: String(blk.nonce),
       qc: { ...blk.qc },
+      powBlocks,
     });
     if (txs.length > 0) {
       let clauseCount = 0;

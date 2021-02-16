@@ -330,6 +330,7 @@ export class MetricCMD extends CMD {
         for (const s of summaries) {
           const exist = await this.auctionRepo.findByID(s.auctionID);
           if (!exist) {
+            console.log('start to save auction: ', s.auctionID);
             let dists: AuctionDist[] = [];
             let txs: AuctionTx[] = [];
             let bids: Bid[] = [];
@@ -344,7 +345,7 @@ export class MetricCMD extends CMD {
               txs.push({ ...t });
               bids.push({ ...t, auctionID: s.auctionID });
             }
-            await this.auctionRepo.create({
+            const auction = {
               id: s.auctionID,
               startHeight: s.startHeight,
               startEpoch: s.startEpoch,
@@ -359,7 +360,8 @@ export class MetricCMD extends CMD {
               leftoverMTRG: new BigNumber(s.leftoverMTRG),
               txs,
               distMTRG: dists,
-            });
+            };
+            await this.auctionRepo.create(auction);
             await this.bidRepo.bulkInsert(...bids);
           }
         }

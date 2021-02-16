@@ -27,7 +27,7 @@ const auctionDistSchema = new mongoose.Schema(
 
 const auctionTxSchema = new mongoose.Schema(
   {
-    txid: { type: String, required: true, unique: true },
+    txid: { type: String, required: true },
     address: { type: String, required: true },
     amount: { type: String, required: true },
     type: { type: String, required: true },
