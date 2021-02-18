@@ -27,7 +27,7 @@ const auctionDistSchema = new mongoose.Schema(
 
 const auctionTxSchema = new mongoose.Schema(
   {
-    txid: { type: String, required: true },
+    txid: { type: String, required: true, unique: true },
     address: { type: String, required: true },
     amount: { type: String, required: true },
     type: { type: String, required: true },
@@ -43,6 +43,7 @@ const auctionSchema = new mongoose.Schema({
   startEpoch: { type: Number, required: true },
   endHeight: { type: Number, required: true },
   endEpoch: { type: Number, required: true },
+  sequence: { type: Number, required: true },
   createTime: { type: Number, required: true },
   releasedMTRG: {
     type: String,
@@ -89,7 +90,8 @@ auctionSchema.methods.toSummary = function () {
   for (const d of this.distMTRG) {
     dist.push({
       address: d.address,
-      amount: `${fromWei(d.amount)} ${Token[d.token]}`,
+      amount: d.amount,
+      amountStr: `${fromWei(d.amount)} ${Token[d.token]}`,
     });
   }
   return {
@@ -98,14 +100,20 @@ auctionSchema.methods.toSummary = function () {
     startEpoch: this.startEpoch,
     endHeight: this.endHeight,
     endEpoch: this.endEpoch,
+    sequence: this.sequence,
     createTime: this.createTime,
     bidCount: this.txs ? this.txs.length : 0,
     distCount: this.dist ? this.dist.length : 0,
-    released: `${fromWei(this.releasedMTRG)} MTRG`,
-    received: `${fromWei(this.receivedMTR)} MTR`,
-    reserved: `${fromWei(this.reservedMTRG)} MTRG`,
+    released: this.releasedMTRG.toFixed(),
+    releasedStr: `${fromWei(this.releasedMTRG)} MTRG`,
+    received: this.receivedMTR.toFixed(),
+    receivedStr: `${fromWei(this.receivedMTR)} MTR`,
+    reserved: this.reservedMTRG.toFixed(),
+    reservedStr: `${fromWei(this.reservedMTRG)} MTRG`,
     reservedPrice: this.reservedPrice.toFixed(),
     actualPrice: this.actualPrice.toFixed(),
+    leftover: this.leftoverMTRG.toFixed(),
+    leftoeverStr: `${fromWei(this.leftoverMTRG)} MTRG`,
   };
 };
 

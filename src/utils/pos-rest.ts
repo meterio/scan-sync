@@ -163,6 +163,7 @@ export namespace Pos {
     startEpoch: number;
     endHeight: number;
     endEpoch: number;
+    sequence: number;
     releasedMTRG: string;
     reservedMTRG: string;
     reservedPrice: string;
@@ -189,6 +190,7 @@ export namespace Pos {
     startEpoch: number;
     endHeight: number;
     endEpoch: number;
+    sequence: number;
     releasedMTRG: string;
     reservedMTRG: string;
     reservedPrice: string;
@@ -196,6 +198,12 @@ export namespace Pos {
     timestamp: string;
     receivedMTR: string;
     auctionTxs: AuctionTx[];
+  };
+
+  export type EpochInfo = {
+    epochID: number;
+    powBlocks: Flex.Meter.PowBlock[];
+    nonce: number;
   };
 }
 
@@ -305,6 +313,11 @@ export class Pos {
   }
   public getJailed() {
     return this.httpGet<Pos.Jailed[]>(`slashing/injail`);
+  }
+
+  // Epoch related
+  public getEpochInfo(epoch: number) {
+    return this.httpGet<Pos.EpochInfo>(`blocks/epoch/${epoch}`);
   }
 
   // Auction related

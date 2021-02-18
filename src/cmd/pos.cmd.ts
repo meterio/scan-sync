@@ -236,6 +236,13 @@ export class PosCMD extends CMD {
       for (const pb of blk.powBlocks) {
         powBlocks.push({ ...pb });
       }
+    } else {
+      if (blk.isKBlock) {
+        const epochInfo = await this.pos.getEpochInfo(blk.qc.epochID);
+        for (const pb of epochInfo.powBlocks) {
+          powBlocks.push({ ...pb });
+        }
+      }
     }
 
     // update committee repo

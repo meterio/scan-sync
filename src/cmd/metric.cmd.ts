@@ -351,6 +351,7 @@ export class MetricCMD extends CMD {
               startEpoch: s.startEpoch,
               endHeight: s.endHeight,
               endEpoch: s.endEpoch,
+              sequence: s.sequence,
               createTime: s.createTime,
               releasedMTRG: new BigNumber(s.releasedMTRG),
               reservedMTRG: new BigNumber(s.reservedMTRG),
