@@ -1,27 +1,32 @@
 # Scan Sync
 
-Sync the MongoDB with transform interested data collected from Meter Network API.
+Scan the Meter blockchain and transform interested data into a MongoDB.
 
 ## Workflow
 
 ```
 +----------------+       +--------------+        +----------------+
 |                |       |              |        |                |
-| Meter FullNode +-----> +   MongoDB    +------->+ Defined Entity |
+| Meter FullNode +-----> +   Base DB    +------->+ Defined Entity |
 |                |       |              |        |                |
 +----------------+       +--------------+        +----------------+
 ```
 
-- `Foundation DB`: Blocks/TXs/PowBlocks/PowTxs/Outputs
-- `Defined Entity`: Balances/Transfers etc
+- `Base DB`: Blocks/TXs/PowBlocks/PowTxs/Receipts
+- `Defined Entity`: Balances/Transfers/ etc
 
 ## Features
 
 - Blocks/TXs/Receipts
-- MTR/MTRG Balance and Transfer
+- Committee/Epoch
+- MTR/MTRG Native Balance and Transfer
+- MTR/MTRG System Contract Transfer
 - ERC20 Token Balance and Transfer
+- Staking Engine (incomplete)
+- Auction Engine (incomplete)
+- AccountLock Engine (incomplete)
 
-## Usage
+## Usage as Cli
 
 1. Install dependency
 
@@ -37,13 +42,6 @@ MONGO_PATH=127.0.0.1:27017/scandb
 MONGO_PWD=scan
 MONGO_USER=scan
 MONGO_SSL_CA=
-
-POS_PROVIDER_URL=http://mainnet.meter.io:8669
-
-POW_RPC_HOST=c03.meter.io
-POW_RPC_PORT=8332
-POW_RPC_USER=testuser
-POW_RPC_PWD=testpass
 ```
 
 3. Run sync
@@ -52,13 +50,13 @@ POW_RPC_PWD=testpass
 dotenv -e env.prod scan-sync main pos
 ```
 
-## Usage
+## Usage with Typescript
 
 ```
-node index.js [Network][task][...Args]
+ts-node main.ts [Network] [Task]
 
 Network: [main|test]
-Task: [pos|pow|native-token|erc20-token]`);
+Task: [pos|pow|balance|erc20|committee]
 ```
 
 ## Daemon
