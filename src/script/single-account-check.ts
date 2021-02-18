@@ -4,9 +4,7 @@ require('../utils/validateEnv');
 import BigNumber from 'bignumber.js';
 
 import { GetPosConfig, Network } from '../const';
-import { Net } from '../utils/net';
-import { Pos } from '../utils/pos-rest';
-import { fromWei } from '../utils/utils';
+import { Net, Pos, fromWei } from '../utils';
 
 const network = Network.MainNet;
 const posConfig = GetPosConfig(network);
@@ -150,81 +148,85 @@ const handleTransfer = async (transfer: any) => {
   };
 };
 
+const processAccount = async () => {
+  const genesisBalance = await net.http<any>('GET', `accounts/${acctAddress}?revision=0`);
+  const chainAcc = await net.http<any>('GET', `accounts/${acctAddress}`);
+  let mtr = new BigNumber(genesisBalance.energy);
+  let mtrg = new BigNumber(genesisBalance.balance);
+  console.log(`INIT Balance : { MTR: ${fromWei(mtr)}, MTRG: ${fromWei(mtrg)}}`);
+  let balance = new Balance(acctAddress, mtr, mtrg);
+  let chainBalance = new Balance(acctAddress, chainAcc.energy, chainAcc.balance);
+
+  const res = await net.http<any>('POST', 'logs/transfer', {
+    body: {
+      criteriaSet: [{ sender: acctAddress }, { recipient: acctAddress }],
+    },
+  });
+  const transfers = res.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
+  const evtRes = await net.http<any>('POST', 'logs/event', {
+    body: {
+      criteriaSet: [
+        {
+          topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+          topic1: acctAddressBytes32,
+        },
+        {
+          topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+          topic2: acctAddressBytes32,
+        },
+      ],
+    },
+  });
+  const events = evtRes.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
+  let trSend = 0,
+    trRecv = 0,
+    scSend = 0,
+    scRecv = 0;
+
+  let outputs = transfers.concat(events);
+  outputs = outputs.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
+  for (const o of outputs) {
+    let d;
+    if ('topics' in o) {
+      d = await handleEvent(o);
+    } else {
+      d = await handleTransfer(o);
+    }
+    console.log('----------------------------------------------------------------------');
+    console.log(`Block ${d.blockNumber}`);
+    console.log(
+      `${d.isSysContract ? '[SysContract] ' : ''} ${d.isSend ? 'Sent' : 'Recv'} ${fromWei(d.amount)} ${d.token} ${
+        d.isSend ? 'to' : 'from'
+      } ${d.isSend ? d.recipient : d.sender}`
+    );
+    if (d.paid.isGreaterThan(0)) {
+      console.log(`Fee: ${fromWei(d.paid)} MTR`);
+    }
+    balance.plusMTR(d.mtrDelta);
+    balance.plusMTRG(d.mtrgDelta);
+    balance.minusMTR(d.paid);
+    console.log(`Balance after ${balance.String()}`);
+    if (d.isSysContract) {
+      d.isSend ? scSend++ : scRecv++;
+    } else {
+      d.isSend ? trSend++ : trRecv++;
+    }
+  }
+
+  console.log('======================================================================');
+  console.log(`Address: ${acctAddress}`);
+  console.log(`Transfer    Sent: ${trSend}, Recv: ${trRecv}`);
+  console.log(`SysContract Sent: ${scSend}, Recv: ${scRecv}`);
+  const mtrMatch = balance.MTR().isEqualTo(chainBalance.MTR());
+  const mtrgMatch = balance.MTRG().isEqualTo(chainBalance.MTRG());
+  console.log(`Balance FINAL : ${balance.String()}`);
+  console.log(`Balance CHAIN : ${chainBalance.String()}`);
+  console.log(`MTR: ${mtrMatch ? 'match' : 'MISMATCH!!'}, MTRG: ${mtrgMatch ? 'match' : 'MISMATCH!!'}`);
+};
+
 (async () => {
   try {
-    const genesisBalance = await net.http<any>('GET', `accounts/${acctAddress}?revision=0`);
-    const chainAcc = await net.http<any>('GET', `accounts/${acctAddress}`);
-    let mtr = new BigNumber(genesisBalance.energy);
-    let mtrg = new BigNumber(genesisBalance.balance);
-    console.log(`INIT Balance : { MTR: ${fromWei(mtr)}, MTRG: ${fromWei(mtrg)}}`);
-    let balance = new Balance(acctAddress, mtr, mtrg);
-    let chainBalance = new Balance(acctAddress, chainAcc.energy, chainAcc.balance);
-
-    const res = await net.http<any>('POST', 'logs/transfer', {
-      body: {
-        criteriaSet: [{ sender: acctAddress }, { recipient: acctAddress }],
-      },
-    });
-    const transfers = res.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
-    const evtRes = await net.http<any>('POST', 'logs/event', {
-      body: {
-        criteriaSet: [
-          {
-            topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
-            topic1: acctAddressBytes32,
-          },
-          {
-            topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
-            topic2: acctAddressBytes32,
-          },
-        ],
-      },
-    });
-    const events = evtRes.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
-    let trSend = 0,
-      trRecv = 0,
-      scSend = 0,
-      scRecv = 0;
-
-    let outputs = transfers.concat(events);
-    outputs = outputs.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
-    for (const o of outputs) {
-      let d;
-      if ('topics' in o) {
-        d = await handleEvent(o);
-      } else {
-        d = await handleTransfer(o);
-      }
-      console.log('----------------------------------------------------------------------');
-      console.log(`Block ${d.blockNumber}`);
-      console.log(
-        `${d.isSysContract ? '[SysContract] ' : ''} ${d.isSend ? 'Sent' : 'Recv'} ${fromWei(d.amount)} ${d.token} ${
-          d.isSend ? 'to' : 'from'
-        } ${d.isSend ? d.recipient : d.sender}`
-      );
-      if (d.paid.isGreaterThan(0)) {
-        console.log(`Fee: ${fromWei(d.paid)} MTR`);
-      }
-      balance.plusMTR(d.mtrDelta);
-      balance.plusMTRG(d.mtrgDelta);
-      balance.minusMTR(d.paid);
-      console.log(`Balance after ${balance.String()}`);
-      if (d.isSysContract) {
-        d.isSend ? scSend++ : scRecv++;
-      } else {
-        d.isSend ? trSend++ : trRecv++;
-      }
-    }
-
-    console.log('======================================================================');
-    console.log(`Address: ${acctAddress}`);
-    console.log(`Transfer    Sent: ${trSend}, Recv: ${trRecv}`);
-    console.log(`SysContract Sent: ${scSend}, Recv: ${scRecv}`);
-    const mtrMatch = balance.MTR().isEqualTo(chainBalance.MTR());
-    const mtrgMatch = balance.MTRG().isEqualTo(chainBalance.MTRG());
-    console.log(`Balance FINAL : ${balance.String()}`);
-    console.log(`Balance CHAIN : ${chainBalance.String()}`);
-    console.log(`MTR: ${mtrMatch ? 'match' : 'MISMATCH!!'}, MTRG: ${mtrgMatch ? 'match' : 'MISMATCH!!'}`);
+    await processAccount();
   } catch (e) {
     console.log('error happened: ', e);
   }

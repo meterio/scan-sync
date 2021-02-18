@@ -27,10 +27,7 @@ import BucketRepo from '../repo/bucket.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
 import ValidatorRewardRepo from '../repo/validatorReward.repo';
-import { Net } from '../utils/net';
-import { Pos } from '../utils/pos-rest';
-import { Pow } from '../utils/pow-rpc';
-import { InterruptedError, sleep } from '../utils/utils';
+import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 3000;

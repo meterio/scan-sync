@@ -1,3 +1,5 @@
+import {} from '../utils/utils';
+
 import { EventEmitter } from 'events';
 
 import * as Logger from 'bunyan';
@@ -10,8 +12,7 @@ import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
 import TransferRepo from '../repo/transfer.repo';
 import TxRepo from '../repo/tx.repo';
-import { Pos } from '../utils/pos-rest';
-import { InterruptedError, sleep } from '../utils/utils';
+import { InterruptedError, Pos, sleep } from '../utils';
 import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 500;

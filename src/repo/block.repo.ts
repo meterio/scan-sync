@@ -1,6 +1,7 @@
 import { Document } from 'mongoose';
 
 import { RECENT_WINDOW } from '../const';
+import { BlockType } from '../const';
 import { Block } from '../model/block.interface';
 import blockModel from '../model/block.model';
 
@@ -54,6 +55,11 @@ export class BlockRepo {
 
   public async delete(hash: string) {
     return this.model.deleteOne({ hash });
+  }
+
+  public async findKBlocksWithoutPowBlocks(pageNum?: number, limitNum?: number) {
+    const limit = 20;
+    return this.model.find({ blockType: BlockType.KBlock, powBlocks: { $exists: false } }).limit(limit);
   }
 }
 

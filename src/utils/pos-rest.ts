@@ -317,7 +317,7 @@ export class Pos {
 
   // Epoch related
   public getEpochInfo(epoch: number) {
-    return this.httpGet<Pos.EpochInfo>(`blocks/epoch/${epoch}`);
+    return this.httpGet<any>(`blocks/epoch/${epoch}`);
   }
 
   // Auction related
