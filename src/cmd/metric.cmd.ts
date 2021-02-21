@@ -533,16 +533,16 @@ export class MetricCMD extends CMD {
         await this.updateBitcoinInfo(index, every10m);
 
         // update price/change every 10 minutes
-        await this.updateMarketPrice(index, every10m);
+        await this.updateMarketPrice(index, every5m);
 
         // update circulation
         await this.updateCirculationAndRank(index, every4h);
 
         // update candidate/delegate/jailed info
-        await this.updateStakingInfo(index, every5m);
+        await this.updateStakingInfo(index, every1m);
 
         // update auction info
-        await this.updateAuctionInfo(index, every5m);
+        await this.updateAuctionInfo(index, every1m);
 
         // update validator rewards
         await this.updateValidatorRewards(index, every5m);
