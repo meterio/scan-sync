@@ -5,13 +5,11 @@ import * as Logger from 'bunyan';
 import * as hash from 'object-hash';
 
 import {
-  KeyPowPoolCoef,
   LockedMeterAddrs,
   LockedMeterGovAddrs,
   MetricName,
   MetricType,
   Network,
-  ParamsAddress,
   Token,
   ValidatorStatus,
 } from '../const';
@@ -21,13 +19,16 @@ import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
 import { RewardInfo } from '../model/ValidatorReward.interface';
 import AccountRepo from '../repo/account.repo';
+import AlertRepo from '../repo/alert.repo';
 import AuctionRepo from '../repo/auction.repo';
 import BidRepo from '../repo/bid.repo';
+import BlockRepo from '../repo/block.repo';
 import BucketRepo from '../repo/bucket.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
 import ValidatorRewardRepo from '../repo/validatorReward.repo';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
+import { postToSlackChannel } from '../utils/slack';
 import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 3000;
@@ -140,6 +141,7 @@ export class MetricCMD extends CMD {
   private metricRepo = new MetricRepo();
   private pos: Pos;
   private pow: Pow;
+  private network: Network;
   private coingecko = new Net('https://api.coingecko.com/api/v3/');
   private blockchainInfo = new Net('https://blockchain.info/');
   private validatorRepo = new ValidatorRepo();
@@ -148,6 +150,8 @@ export class MetricCMD extends CMD {
   private bidRepo = new BidRepo();
   private auctionRepo = new AuctionRepo();
   private validatorRewardRepo = new ValidatorRewardRepo();
+  private blockRepo = new BlockRepo();
+  private alertRepo = new AlertRepo();
 
   private cache = new MetricCache();
 
@@ -155,6 +159,7 @@ export class MetricCMD extends CMD {
     super();
     this.pow = new Pow(net);
     this.pos = new Pos(net);
+    this.network = net;
   }
 
   public async beforeStart() {
@@ -225,45 +230,98 @@ export class MetricCMD extends CMD {
   }
 
   private async updatePosInfo(index: number, interval: number) {
-    const blk = await this.pos.getBlock('best', 'regular');
-    if (!!blk) {
-      const seq = blk.number - blk.lastKBlockHeight;
-      await this.cache.update(MetricName.POS_BEST, String(blk.number));
-      await this.cache.update(MetricName.KBLOCK, String(blk.lastKBlockHeight));
-      await this.cache.update(MetricName.SEQ, String(seq));
-      let epoch = 0;
-      if (blk.lastKBlockHeight + 1 === blk.number) {
-        epoch = blk.epoch;
-      } else {
-        epoch = blk.qc.epochID;
+    if (index % interval === 0) {
+      const blk = await this.pos.getBlock('best', 'regular');
+      if (!!blk) {
+        const seq = blk.number - blk.lastKBlockHeight;
+        await this.cache.update(MetricName.POS_BEST, String(blk.number));
+        await this.cache.update(MetricName.KBLOCK, String(blk.lastKBlockHeight));
+        await this.cache.update(MetricName.SEQ, String(seq));
+        let epoch = 0;
+        if (blk.lastKBlockHeight + 1 === blk.number) {
+          epoch = blk.epoch;
+        } else {
+          epoch = blk.qc.epochID;
+        }
+        if (epoch > 0) {
+          await this.cache.update(MetricName.EPOCH, String(epoch));
+        }
       }
-      if (epoch > 0) {
-        await this.cache.update(MetricName.EPOCH, String(epoch));
+    }
+  }
+
+  private async checkOrSendAlert(network: string, epoch: number, number: number, channel: string, msg: string) {
+    const exist = await this.alertRepo.existMsg(network, epoch, number, channel, msg);
+    if (!exist) {
+      try {
+        console.log(network);
+        await this.alertRepo.create({ network, epoch, number, channel, msg });
+        await postToSlackChannel({ text: msg });
+      } catch (e) {
+        console.log('could not send alert', e);
+      }
+    }
+  }
+
+  private async alertIfNetworkHalt(index: number, interval: number) {
+    if (index % interval === 0) {
+      console.log('check if network halted');
+      const recentBlks = await this.blockRepo.findRecent();
+      if (recentBlks && recentBlks.length > 0) {
+        const head = recentBlks[0];
+        console.log('head: ', head.number);
+        const now = Math.floor(Date.now() / 1000);
+        console.log('now', now);
+        console.log(head.createdAt);
+        console.log(now - head.createdAt);
+        if (now - head.createdAt > 120) {
+          // alert
+          let network = '';
+          switch (this.network) {
+            case Network.MainNet:
+              network = 'mainnet';
+              break;
+            case Network.TestNet:
+              network = 'testnet';
+              break;
+            case Network.DevNet:
+              network = 'devnet';
+              break;
+            default:
+              network = 'devnet';
+              break;
+          }
+          const channel = 'slack';
+          const msg = `network ${network} halted for over 2 minutes at epoch:${head.epoch} and number:${head.number}`;
+          await this.checkOrSendAlert(network, head.epoch, head.number, channel, msg);
+        }
       }
     }
   }
 
   private async updateValidatorRewards(index: number, interval: number) {
-    const rwds = await this.pos.getValidatorRewards();
-    if (!!rwds) {
-      const updated = await this.cache.update(MetricName.VALIDATOR_REWARDS, JSON.stringify(rwds));
-      if (!updated) {
-        return;
-      }
-      for (const r of rwds) {
-        const exist = await this.validatorRewardRepo.existEpoch(r.epoch);
-        if (exist) {
-          continue;
+    if (index % interval === 0) {
+      const rwds = await this.pos.getValidatorRewards();
+      if (!!rwds) {
+        const updated = await this.cache.update(MetricName.VALIDATOR_REWARDS, JSON.stringify(rwds));
+        if (!updated) {
+          return;
         }
-        let rewards: RewardInfo[] = r.rewards.map((info) => {
-          return { amount: new BigNumber(info.amount), address: info.address };
-        });
-        await this.validatorRewardRepo.create({
-          epoch: r.epoch,
-          baseReward: new BigNumber(r.baseReward),
-          totalReward: new BigNumber(r.totalReward),
-          rewards,
-        });
+        for (const r of rwds) {
+          const exist = await this.validatorRewardRepo.existEpoch(r.epoch);
+          if (exist) {
+            continue;
+          }
+          let rewards: RewardInfo[] = r.rewards.map((info) => {
+            return { amount: new BigNumber(info.amount), address: info.address };
+          });
+          await this.validatorRewardRepo.create({
+            epoch: r.epoch,
+            baseReward: new BigNumber(r.baseReward),
+            totalReward: new BigNumber(r.totalReward),
+            rewards,
+          });
+        }
       }
     }
   }
@@ -528,6 +586,9 @@ export class MetricCMD extends CMD {
 
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);
+
+        // check network, if halt for 2 mins, send alert
+        await this.alertIfNetworkHalt(index, every1m);
 
         // update bitcoin info every 5seconds
         await this.updateBitcoinInfo(index, every10m);

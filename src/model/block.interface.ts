@@ -54,4 +54,5 @@ export interface Block {
   epoch: number;
   kblockData: string[];
   powBlocks?: PowBlock[];
+  createdAt?: number;
 }

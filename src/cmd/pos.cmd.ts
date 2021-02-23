@@ -240,7 +240,7 @@ export class PosCMD extends CMD {
       if (blk.isKBlock) {
         const epochInfo = await this.pos.getEpochInfo(blk.qc.epochID);
         for (const pb of epochInfo.powBlocks) {
-          powBlocks.push({ ...pb });
+          powBlocks.push({ ...pb, beneficiary: pb.Beneficiary || pb.beneficiary });
         }
       }
     }

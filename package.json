@@ -1,6 +1,6 @@
 {
   "name": "@meterio/scan-sync",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Collect blocks/txs/metrics from meter network",
   "license": "MIT",
   "readmeFilename": "README.md",
@@ -22,6 +22,7 @@
     "Defi"
   ],
   "devDependencies": {
+    "@types/axios": "^0.14.0",
     "@types/bunyan": "^1.8.6",
     "@types/lru-cache": "^5.1.0",
     "@types/mongoose": "^5.7.36",
@@ -36,6 +37,7 @@
   "dependencies": {
     "@meterio/devkit": "^1.2.16",
     "@meterio/flex": "^0.5.5",
+    "axios": "^0.21.1",
     "bignumber.js": "^9.0.0",
     "bitcoin-core": "^3.0.0",
     "bitcoinjs-lib": "^5.1.10",
