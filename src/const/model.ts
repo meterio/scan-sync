@@ -47,6 +47,9 @@ export enum MetricName {
   BTC_HASHRATE = 'btc_hashrate',
   BTC_PRICE = 'btc_price',
   COEF = 'coef',
+  STATS = 'stats',
+  INVALID_NODES = 'invalid_nodes',
+  INVALID_NODES_COUNT = 'invalid_nodes_count',
 }
 
 export enum ValidatorStatus {

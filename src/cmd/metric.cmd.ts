@@ -1,18 +1,10 @@
 import { EventEmitter } from 'events';
 
+import axios from 'axios';
 import BigNumber from 'bignumber.js';
-import * as Logger from 'bunyan';
-import * as hash from 'object-hash';
+import Logger from 'bunyan';
 
-import {
-  LockedMeterAddrs,
-  LockedMeterGovAddrs,
-  MetricName,
-  MetricType,
-  Network,
-  Token,
-  ValidatorStatus,
-} from '../const';
+import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, Network, Token, ValidatorStatus } from '../const';
 import { AuctionDist, AuctionTx } from '../model/Auction.interface';
 import { Bid } from '../model/bid.interface';
 import { Bucket } from '../model/bucket.interface';
@@ -28,100 +20,11 @@ import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
 import ValidatorRewardRepo from '../repo/validatorReward.repo';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
+import { MetricCache } from '../utils/metricCache';
 import { postToSlackChannel } from '../utils/slack';
 import { CMD } from './cmd';
 
 const SAMPLING_INTERVAL = 3000;
-const METRIC_DEFS = [
-  { key: MetricName.DIFFICULTY, type: MetricType.BIGNUM, default: '1' },
-  { key: MetricName.HASHRATE, type: MetricType.BIGNUM, default: '0' },
-  { key: MetricName.EPOCH, type: MetricType.NUM, default: '0' },
-  { key: MetricName.SEQ, type: MetricType.NUM, default: '0' },
-  { key: MetricName.KBLOCK, type: MetricType.NUM, default: '0' },
-  { key: MetricName.POS_BEST, type: MetricType.NUM, default: '0' },
-  { key: MetricName.POW_BEST, type: MetricType.NUM, default: '0' },
-  { key: MetricName.COST_PARITY, type: MetricType.NUM, default: '0' },
-  { key: MetricName.REWARD_PER_DAY, type: MetricType.NUM, default: '0' },
-  { key: MetricName.COEF, type: MetricType.NUM, default: '0.053' },
-
-  // Price
-  { key: MetricName.MTRG_PRICE, type: MetricType.NUM, default: '1' },
-  { key: MetricName.MTRG_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
-  { key: MetricName.MTR_PRICE, type: MetricType.NUM, default: '0.5' },
-  { key: MetricName.MTR_PRICE_CHANGE, type: MetricType.STRING, default: '0%' },
-
-  // Bitcoin
-  { key: MetricName.BTC_PRICE, type: MetricType.NUM, default: '1' },
-  { key: MetricName.BTC_HASHRATE, type: MetricType.NUM, default: '1' },
-
-  // Circulation
-  { key: MetricName.MTR_CIRCULATION, type: MetricType.STRING, default: '0' },
-  { key: MetricName.MTRG_CIRCULATION, type: MetricType.STRING, default: '0' },
-
-  // Staking
-  { key: MetricName.CANDIDATES, type: MetricType.STRING, default: '[]' },
-  { key: MetricName.DELEGATES, type: MetricType.STRING, default: '[]' },
-  { key: MetricName.BUCKETS, type: MetricType.STRING, default: '[]' },
-  { key: MetricName.JAILED, type: MetricType.STRING, default: '[]' },
-  { key: MetricName.CANDIDATE_COUNT, type: MetricType.NUM, default: '0' },
-  { key: MetricName.DELEGATE_COUNT, type: MetricType.NUM, default: '0' },
-  { key: MetricName.BUCKET_COUNT, type: MetricType.NUM, default: '0' },
-  { key: MetricName.JAILED_COUNT, type: MetricType.NUM, default: '0' },
-
-  // Validator rewards
-  { key: MetricName.VALIDATOR_REWARDS, type: MetricType.STRING, default: '[]' },
-
-  // Stake holder
-  { key: MetricName.STAKEHOLDER_COUNT, type: MetricType.NUM, default: '0' },
-  { key: MetricName.STAKEHOLDERS, type: MetricType.STRING, default: '0' },
-
-  // Auction
-  { key: MetricName.PRESENT_AUCTION, type: MetricType.STRING, default: '{}' },
-  { key: MetricName.AUCTION_SUMMARIES, type: MetricType.STRING, default: '[]' },
-];
-
-class MetricCache {
-  private map: { [key: string]: string } = {};
-  private metricRepo = new MetricRepo();
-
-  public async init() {
-    const metrics = await this.metricRepo.findByKeys(METRIC_DEFS.map((item) => item.key as string));
-    for (const m of metrics) {
-      this.map[m.key] = m.value;
-    }
-    for (const m of METRIC_DEFS) {
-      if (!(m.key in this.map)) {
-        this.map[m.key] = m.default;
-        await this.metricRepo.create(m.key, m.default, m.type);
-      }
-    }
-  }
-
-  public async update(key: string, value: string): Promise<boolean> {
-    if (key in this.map && value !== undefined) {
-      if (value != this.map[key]) {
-        this.map[key] = value;
-        console.log(`UPDATE ${key} with ${value}`);
-        await this.metricRepo.update(key, value);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public get(key: string) {
-    if (key in this.map) {
-      return this.map[key];
-    } else {
-      for (const m of METRIC_DEFS) {
-        if (m.key === key) {
-          return m.default;
-        }
-      }
-    }
-    return '';
-  }
-}
 
 const every = 1;
 const every6s = 6 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
@@ -163,13 +66,6 @@ export class MetricCMD extends CMD {
   }
 
   public async beforeStart() {
-    for (const m of METRIC_DEFS) {
-      const exist = await this.metricRepo.exist(m.key);
-      if (!exist) {
-        await this.metricRepo.create(m.key, m.default, m.type);
-      }
-    }
-
     await this.cache.init();
   }
 
@@ -425,6 +321,88 @@ export class MetricCMD extends CMD {
     }
   }
 
+  private async updateInvalidNodes(index: number, interval: number) {
+    if (index % interval === 0) {
+      try {
+        let invalidNodes = [];
+        const res = await axios.get(`http://monitor.meter.io:9090/api/v1/query?query=best_height`);
+        let job = '';
+        switch (this.network) {
+          case Network.MainNet:
+            job = 'mainnet_metrics';
+            break;
+          case Network.TestNet:
+            job = 'shoal_metrics';
+            break;
+          default:
+            console.log('incorrect network setting for network status update');
+            return;
+        }
+        console.log(res.data);
+        let bests = res.data.data.result
+          .filter((r) => r.metric.job === job)
+          .map((r) => ({ ip: r.metric.instance, name: r.metric.name, height: r.value[1] }));
+        console.log(bests);
+        const headHeight = Number(this.cache.get(MetricName.POS_BEST));
+        const validators = await this.validatorRepo.findAll();
+        let visited = {};
+        for (const v of validators) {
+          let found = false;
+          if (visited[v.ipAddress]) {
+            continue;
+          }
+          visited[v.ipAddress] = true;
+          for (const b of bests) {
+            if (v.ipAddress === b.ip) {
+              found = true;
+              if (Math.abs(headHeight - b.height) > 3) {
+                // too far away from current height
+                invalidNodes.push({
+                  name: v.name,
+                  ip: v.ipAddress,
+                  reason: 'fall behind',
+                });
+              }
+            }
+          }
+          if (!found) {
+            invalidNodes.push({
+              name: v.name,
+              ip: v.ipAddress,
+              reason: 'not monitored',
+            });
+          }
+        }
+
+        console.log('update invalid nodes');
+        await this.cache.update(MetricName.INVALID_NODES, JSON.stringify(invalidNodes));
+        await this.cache.update(MetricName.INVALID_NODES_COUNT, `${invalidNodes.length}`);
+      } catch (e) {
+        console.log('could not query pos height');
+      }
+    }
+  }
+
+  private async updateSlashingInfo(index: number, interval: number) {
+    if (index % interval === 0) {
+      let updated = false;
+      const stats = await this.pos.getValidatorStats();
+      if (!!stats) {
+        updated = await this.cache.update(MetricName.STATS, JSON.stringify(stats));
+      }
+      if (updated) {
+        try {
+          await this.validatorRepo.emptyPenaltyPoints();
+          for (const stat of stats) {
+            await this.validatorRepo.updatePenaltyPoints(stat.address, stat.totalPoints);
+          }
+        } catch (e) {
+          console.log('could not update penalty points');
+        }
+      }
+    }
+  }
+
   private async updateStakingInfo(index: number, interval: number) {
     // update staking/slashing every 5 minutes
     if (index % interval === 0) {
@@ -460,7 +438,7 @@ export class MetricCMD extends CMD {
       }
 
       // if delegates/candidates/jailed all exists and any one of them got updated
-      if (!!delegates && !!candidates && jailed && (jUpdated || dUpdated || cUpdated)) {
+      if (!!delegates && !!candidates && !!jailed && (jUpdated || dUpdated || cUpdated)) {
         let vs: { [key: string]: Validator } = {};
         for (const c of candidates) {
           if (!(c.pubKey in vs)) {
@@ -588,25 +566,31 @@ export class MetricCMD extends CMD {
         await this.updatePosInfo(index, every);
 
         // check network, if halt for 2 mins, send alert
-        await this.alertIfNetworkHalt(index, every1m);
+        // await this.alertIfNetworkHalt(index, every1m);
 
         // update bitcoin info every 5seconds
-        await this.updateBitcoinInfo(index, every10m);
+        // await this.updateBitcoinInfo(index, every10m);
 
         // update price/change every 10 minutes
-        await this.updateMarketPrice(index, every5m);
+        // await this.updateMarketPrice(index, every5m);
 
         // update circulation
-        await this.updateCirculationAndRank(index, every4h);
+        // await this.updateCirculationAndRank(index, every4h);
 
         // update candidate/delegate/jailed info
-        await this.updateStakingInfo(index, every1m);
+        // await this.updateStakingInfo(index, every1m);
+
+        // update slashing penalty points
+        // await this.updateSlashingInfo(index, every1m);
+
+        // update network status
+        await this.updateInvalidNodes(index, every5m);
 
         // update auction info
-        await this.updateAuctionInfo(index, every1m);
+        // await this.updateAuctionInfo(index, every1m);
 
         // update validator rewards
-        await this.updateValidatorRewards(index, every5m);
+        // await this.updateValidatorRewards(index, every5m);
 
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {

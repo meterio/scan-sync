@@ -1,11 +1,16 @@
 import BigNumber from 'bignumber.js';
 
+import { ValidatorStatus } from '../const';
 import { BlockConcise } from '../model/blockConcise.interface';
 import { Validator } from '../model/validator.interface';
 import validatorModel from '../model/validator.model';
 
 export class ValidatorRepo {
   private model = validatorModel;
+
+  public async findAll() {
+    return this.model.find({});
+  }
 
   public async findByAddress(address: string) {
     return this.model.findOne({ address: { $regex: new RegExp(`^${address}$`, 'i') } });
@@ -21,6 +26,19 @@ export class ValidatorRepo {
 
   public async deleteAll() {
     return this.model.deleteMany({});
+  }
+
+  public async emptyPenaltyPoints() {
+    return this.model.updateMany(
+      {
+        status: { $in: [ValidatorStatus.CANDIDATE, ValidatorStatus.DELEGATE] },
+      },
+      { $set: { totalPoints: 0 } }
+    );
+  }
+
+  public async updatePenaltyPoints(address: string, totalPoints: number) {
+    return this.model.updateOne({ address }, { $set: { totalPoints } });
   }
 }
 
