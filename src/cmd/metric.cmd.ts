@@ -566,31 +566,31 @@ export class MetricCMD extends CMD {
         await this.updatePosInfo(index, every);
 
         // check network, if halt for 2 mins, send alert
-        // await this.alertIfNetworkHalt(index, every1m);
+        await this.alertIfNetworkHalt(index, every1m);
 
         // update bitcoin info every 5seconds
-        // await this.updateBitcoinInfo(index, every10m);
+        await this.updateBitcoinInfo(index, every10m);
 
         // update price/change every 10 minutes
-        // await this.updateMarketPrice(index, every5m);
+        await this.updateMarketPrice(index, every5m);
 
         // update circulation
-        // await this.updateCirculationAndRank(index, every4h);
+        await this.updateCirculationAndRank(index, every4h);
 
         // update candidate/delegate/jailed info
-        // await this.updateStakingInfo(index, every1m);
+        await this.updateStakingInfo(index, every1m);
 
         // update slashing penalty points
-        // await this.updateSlashingInfo(index, every1m);
+        await this.updateSlashingInfo(index, every1m);
 
         // update network status
         await this.updateInvalidNodes(index, every5m);
 
         // update auction info
-        // await this.updateAuctionInfo(index, every1m);
+        await this.updateAuctionInfo(index, every1m);
 
         // update validator rewards
-        // await this.updateValidatorRewards(index, every5m);
+        await this.updateValidatorRewards(index, every5m);
 
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {
