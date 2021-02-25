@@ -338,11 +338,9 @@ export class MetricCMD extends CMD {
             console.log('incorrect network setting for network status update');
             return;
         }
-        console.log(res.data);
         let bests = res.data.data.result
           .filter((r) => r.metric.job === job)
           .map((r) => ({ ip: r.metric.instance, name: r.metric.name, height: r.value[1] }));
-        console.log(bests);
         const headHeight = Number(this.cache.get(MetricName.POS_BEST));
         const validators = await this.validatorRepo.findAll();
         let visited = {};
@@ -393,8 +391,21 @@ export class MetricCMD extends CMD {
       if (updated) {
         try {
           await this.validatorRepo.emptyPenaltyPoints();
+          const vs = await this.validatorRepo.findAll();
+          let statMap = {};
           for (const stat of stats) {
-            await this.validatorRepo.updatePenaltyPoints(stat.address, stat.totalPoints);
+            statMap[stat.address] = stat.totalPoints;
+          }
+
+          for (const v of vs) {
+            let curTotalPoints = 0;
+            if (v.address in statMap) {
+              curTotalPoints = statMap[v.address];
+            }
+            if (v.totalPoints != curTotalPoints) {
+              v.totalPoints = curTotalPoints;
+              await v.save();
+            }
           }
         } catch (e) {
           console.log('could not update penalty points');
@@ -439,6 +450,17 @@ export class MetricCMD extends CMD {
 
       // if delegates/candidates/jailed all exists and any one of them got updated
       if (!!delegates && !!candidates && !!jailed && (jUpdated || dUpdated || cUpdated)) {
+        const statsStr = this.cache.get(MetricName.STATS);
+        let statMap = {};
+        try {
+          const stats = JSON.parse(statsStr);
+          for (const stat of stats) {
+            statMap[stat.address] = stat.totalPoints;
+          }
+        } catch (e) {
+          console.log('could not parse stats');
+        }
+
         let vs: { [key: string]: Validator } = {};
         for (const c of candidates) {
           if (!(c.pubKey in vs)) {
@@ -483,6 +505,15 @@ export class MetricCMD extends CMD {
             // jailed key not in candiate list ?
             // TODO: handle this
           }
+        }
+
+        for (const pubkey in vs) {
+          const address = vs[pubkey].address;
+          let totalPoints = 0;
+          if (address in statMap) {
+            totalPoints = statMap[address];
+          }
+          vs[pubkey].totalPoints = totalPoints;
         }
 
         await this.validatorRepo.deleteAll();

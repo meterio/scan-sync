@@ -36,10 +36,6 @@ export class ValidatorRepo {
       { $set: { totalPoints: 0 } }
     );
   }
-
-  public async updatePenaltyPoints(address: string, totalPoints: number) {
-    return this.model.updateOne({ address }, { $set: { totalPoints } });
-  }
 }
 
 export default ValidatorRepo;
