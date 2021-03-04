@@ -1,16 +1,33 @@
+import * as devkit from '@meterio/devkit';
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
-import { Network, Token, TransferEvent, getERC20Token, getPreAllocAccount, prototype } from '../const';
+import {
+  BoundEvent,
+  Network,
+  Token,
+  TransferEvent,
+  UnboundEvent,
+  getERC20Token,
+  getPreAllocAccount,
+  prototype,
+} from '../const';
 import { Block } from '../model/block.interface';
+import { Bound } from '../model/bound.interface';
 import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
+import { Unbound } from '../model/unbound.interface';
+import BoundRepo from '../repo/bound.repo';
+import UnboundRepo from '../repo/unbound.repo';
 import { fromWei } from '../utils/utils';
 import { TxBlockReviewer } from './blockReviewer';
 
 interface AccountDelta {
   mtr: BigNumber;
   mtrg: BigNumber;
+
+  mtrBounded: BigNumber;
+  mtrgBounded: BigNumber;
 }
 
 const printTransfer = (t: Transfer) => {
@@ -24,9 +41,7 @@ class AccountDeltaMap {
 
   public minus(addrStr: string, token: Token, amount: string | BigNumber) {
     const addr = addrStr.toLowerCase();
-    if (!(addr in this.accts)) {
-      this.accts[addr] = { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
-    }
+    this.setDefault(addrStr);
     if (token === Token.MTR) {
       this.accts[addr].mtr = this.accts[addr].mtr.minus(amount);
     }
@@ -35,16 +50,52 @@ class AccountDeltaMap {
     }
   }
 
-  public plus(addrStr: string, token: Token, amount: string | BigNumber) {
+  private setDefault(addrStr: string) {
     const addr = addrStr.toLowerCase();
     if (!(addr in this.accts)) {
-      this.accts[addr] = { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
+      this.accts[addr] = {
+        mtr: new BigNumber(0),
+        mtrg: new BigNumber(0),
+        mtrBounded: new BigNumber(0),
+        mtrgBounded: new BigNumber(0),
+      };
     }
+  }
+
+  public plus(addrStr: string, token: Token, amount: string | BigNumber) {
+    const addr = addrStr.toLowerCase();
+    this.setDefault(addrStr);
     if (token === Token.MTR) {
       this.accts[addr].mtr = this.accts[addr].mtr.plus(amount);
     }
     if (token === Token.MTRG) {
       this.accts[addr].mtrg = this.accts[addr].mtrg.plus(amount);
+    }
+  }
+
+  public bound(addrStr: string, token: Token, amount: string | BigNumber) {
+    const addr = addrStr.toLowerCase();
+    this.setDefault(addrStr);
+    if (token === Token.MTR) {
+      this.accts[addr].mtr = this.accts[addr].mtr.minus(amount);
+      this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.plus(amount);
+    }
+    if (token === Token.MTRG) {
+      this.accts[addr].mtrg = this.accts[addr].mtrg.minus(amount);
+      this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.plus(amount);
+    }
+  }
+
+  public unbound(addrStr: string, token: Token, amount: string | BigNumber) {
+    const addr = addrStr.toLowerCase();
+    this.setDefault(addrStr);
+    if (token === Token.MTR) {
+      this.accts[addr].mtr = this.accts[addr].mtr.plus(amount);
+      this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.minus(amount);
+    }
+    if (token === Token.MTRG) {
+      this.accts[addr].mtrg = this.accts[addr].mtrg.plus(amount);
+      this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.minus(amount);
     }
   }
 
@@ -58,35 +109,43 @@ class AccountDeltaMap {
   }
 
   public getDelta(addrStr: string): AccountDelta {
+    this.setDefault(addrStr);
     const addr = addrStr.toLowerCase();
     if (addr in this.accts) {
       return this.accts[addr];
     }
-    return { mtr: new BigNumber(0), mtrg: new BigNumber(0) };
   }
 }
 
 export class AccountCMD extends TxBlockReviewer {
   private contracts: { [key: string]: string } = {};
+
+  protected boundRepo = new BoundRepo();
+  protected unboundRepo = new UnboundRepo();
+
   constructor(net: Network) {
     super(net);
     this.name = 'account';
     this.logger = Logger.createLogger({ name: this.name });
   }
 
-  processTx(tx: Tx, txIndex: number): Transfer[] {
+  processTx(tx: Tx, txIndex: number): { transfers: Transfer[]; bounds: Bound[]; unbounds: Unbound[] } {
     this.logger.info(`start to process ${tx.hash}`);
     let transfers: Transfer[] = [];
+    let bounds: Bound[] = [];
+    let unbounds: Unbound[] = [];
     if (tx.reverted) {
       this.logger.info(`Tx is reverted`);
-      return [];
+      return { transfers: [], bounds: [], unbounds: [] };
     }
     const mtrToken = getERC20Token(this.network, Token.MTR);
     const mtrgToken = getERC20Token(this.network, Token.MTRG);
+
+    // process outputs
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       const clause = tx.clauses[clauseIndex];
 
-      // track native transfers
+      // process native transfers
       for (const [logIndex, t] of o.transfers.entries()) {
         transfers.push({
           from: tx.origin.toLowerCase(),
@@ -100,6 +159,8 @@ export class AccountCMD extends TxBlockReviewer {
           logIndex,
         });
       }
+
+      // process events
       for (const [logIndex, e] of o.events.entries()) {
         // contract creation
         if (e.topics[0] === prototype.$Master.signature) {
@@ -108,7 +169,7 @@ export class AccountCMD extends TxBlockReviewer {
           // await proc.master(e.address, decoded.newMaster);
         }
 
-        // track system contract transfers
+        // system contract transfers
         if (e.topics[0] === TransferEvent.signature) {
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
@@ -131,37 +192,79 @@ export class AccountCMD extends TxBlockReviewer {
             transfers.push(transfer);
           }
         }
+
+        // staking bound event
+        if (e.topics[0] === BoundEvent.signature) {
+          const decoded = BoundEvent.decode(e.data, e.topics);
+          const owner = decoded.owner.toLowerCase();
+          bounds.push({
+            owner,
+            amount: new BigNumber(decoded.amount),
+            token: decoded.token == 1 ? Token.MTRG : Token.MTR,
+            txHash: tx.hash,
+            block: tx.block,
+            clauseIndex,
+            logIndex,
+          });
+        }
+
+        // staking unbound event
+        if (e.topics[0] === UnboundEvent.signature) {
+          const decoded = UnboundEvent.decode(e.data, e.topics);
+          unbounds.push({
+            owner: decoded.owner.toLowerCase(),
+            amount: new BigNumber(decoded.amount),
+            token: decoded.token == 1 ? Token.MTRG : Token.MTR,
+            txHash: tx.hash,
+            block: tx.block,
+            clauseIndex,
+            logIndex,
+          });
+        }
       }
-    }
+    } // end of process outputs
+
     if (transfers.length > 0) {
       console.log(`Extracted ${transfers.length} transfers`);
     }
     for (const t of transfers) {
       printTransfer(t);
     }
-    return transfers;
+    return { transfers, bounds, unbounds };
   }
 
   async processBlock(blk: Block) {
     this.logger.info(`start to process block ${blk.number}`);
     let transfers = [];
+    let bounds: Bound[] = [];
+    let unbounds: Unbound[] = [];
     let accts = new AccountDeltaMap();
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
       if (!txModel) {
         throw new Error('could not find tx, maybe the block is still being processed');
       }
-      const txTranfers = this.processTx(txModel, txIndex);
-      transfers = transfers.concat(txTranfers);
+      const res = this.processTx(txModel, txIndex);
+      transfers = transfers.concat(res.transfers);
+      bounds = bounds.concat(res.bounds);
+      unbounds = unbounds.concat(res.unbounds);
 
       // substract fee from gas payer
       accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
     }
-    const pureTransfers = transfers.filter((t) => {
+
+    // only save native transfers that's not generated from system contract events
+    // system contract events will be stored by erc20 cmd
+    const nativeTransfers = transfers.filter((t) => {
       return t.tokenAddress !== '';
     });
-    await this.transferRepo.bulkInsert(...pureTransfers);
+    await this.transferRepo.bulkInsert(...nativeTransfers);
 
+    // save bounds and unbounds
+    await this.boundRepo.bulkInsert(...bounds);
+    await this.unboundRepo.bulkInsert(...unbounds);
+
+    // collect updates in accounts
     for (const tr of transfers) {
       const from = tr.from;
       const to = tr.to;
@@ -169,12 +272,17 @@ export class AccountCMD extends TxBlockReviewer {
       accts.plus(to, tr.token, tr.amount);
     }
 
-    const blockConcise = {
-      number: blk.number,
-      hash: blk.hash,
-      timestamp: blk.timestamp,
-    };
+    // collect bounds updates to accounts
+    for (const b of bounds) {
+      accts.bound(b.owner, b.token, b.amount);
+    }
 
+    // collect unbound updates to accounts
+    for (const ub of unbounds) {
+      accts.unbound(ub.owner, ub.token, ub.amount);
+    }
+
+    const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash };
     // account balance update
     for (const addr of accts.addresses()) {
       const delta = accts.getDelta(addr);
@@ -184,20 +292,33 @@ export class AccountCMD extends TxBlockReviewer {
       if (!acct) {
         this.logger.info({ mtr: '0', mtrg: '0' }, 'account doesnt exist before update');
         acct = await this.accountRepo.create(this.network, addr, blockConcise, blockConcise);
-        acct.mtrBalance = delta.mtr;
-        acct.mtrgBalance = delta.mtrg;
-      } else {
-        this.logger.info(
-          { mtr: fromWei(acct.mtrBalance), mtrg: fromWei(acct.mtrgBalance) },
-          'account balance before update'
-        );
-
-        acct.mtrBalance = acct.mtrBalance.plus(delta.mtr);
-        acct.mtrgBalance = acct.mtrgBalance.plus(delta.mtrg);
       }
-      this.logger.info({ mtr: fromWei(delta.mtr), mtrg: fromWei(delta.mtrg) }, 'account delta');
       this.logger.info(
         { mtr: fromWei(acct.mtrBalance), mtrg: fromWei(acct.mtrgBalance) },
+        'account balance before update'
+      );
+
+      acct.mtrBalance = acct.mtrBalance.plus(delta.mtr);
+      acct.mtrgBalance = acct.mtrgBalance.plus(delta.mtrg);
+      acct.mtrBounded = acct.mtrBounded.plus(delta.mtrBounded);
+      acct.mtrgBounded = acct.mtrgBounded.plus(delta.mtrgBounded);
+
+      this.logger.info(
+        {
+          mtr: fromWei(delta.mtr),
+          mtrg: fromWei(delta.mtrg),
+          mtrBounded: fromWei(delta.mtrBounded),
+          mtrgBounded: fromWei(delta.mtrgBounded),
+        },
+        'account delta'
+      );
+      this.logger.info(
+        {
+          mtr: fromWei(acct.mtrBalance),
+          mtrg: fromWei(acct.mtrgBalance),
+          mtrBounded: fromWei(acct.mtrBounded),
+          mtrgBounded: fromWei(acct.mtrgBounded),
+        },
         'account balance after update'
       );
       await acct.save();

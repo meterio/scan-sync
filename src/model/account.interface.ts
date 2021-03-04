@@ -7,6 +7,9 @@ export interface Account {
   address: string;
   mtrBalance: BigNumber;
   mtrgBalance: BigNumber;
+  mtrBounded?: BigNumber;
+  mtrgBounded?: BigNumber;
+
   mtrRank: number;
   mtrgRank: number;
 

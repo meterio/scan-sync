@@ -154,6 +154,26 @@ const paramsGetABI: abi.Function.Definition = {
   stateMutability: 'view',
   type: 'function',
 };
+const BoundABI: abi.Event.Definition = {
+  anonymous: false,
+  inputs: [
+    { indexed: true, name: 'owner', type: 'address' },
+    { indexed: false, name: 'amount', type: 'uint256' },
+    { indexed: false, name: 'token', type: 'uint256' },
+  ],
+  name: 'Bound',
+  type: 'event',
+};
+const UnboundABI: abi.Event.Definition = {
+  anonymous: false,
+  inputs: [
+    { indexed: true, name: 'owner', type: 'address' },
+    { indexed: false, name: 'amount', type: 'uint256' },
+    { indexed: false, name: 'token', type: 'uint256' },
+  ],
+  name: 'Unbound',
+  type: 'event',
+};
 
 export const TransferEvent = new abi.Event(TransferABI);
 export const balanceOf = new abi.Function(BalanceOfABI);
@@ -161,6 +181,9 @@ export const totalSupply = new abi.Function(totalSupplyABI);
 export const nameABIFunc = new abi.Function(nameABI);
 export const decimalsABIFunc = new abi.Function(decimalsABI);
 export const symbolABIFunc = new abi.Function(symbolABI);
+
+export const BoundEvent = new abi.Event(BoundABI);
+export const UnboundEvent = new abi.Event(UnboundABI);
 
 export const authority = {
   first: new abi.Function(firstABI),

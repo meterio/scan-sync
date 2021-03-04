@@ -20,6 +20,19 @@ const accountSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: true,
     },
+    mtrBounded: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: false,
+    },
+    mtrgBounded: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: false,
+    },
+
     mtrRank: { type: Number, required: false },
     mtrgRank: { type: Number, required: false },
     code: { type: String, required: false },
