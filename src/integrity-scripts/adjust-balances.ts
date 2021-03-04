@@ -3,12 +3,14 @@ require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
 
-import { PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
+import { Network, PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
 import AccountRepo from '../repo/account.repo';
 import BlockRepo from '../repo/block.repo';
 import HeadRepo from '../repo/head.repo';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
+
+const testnetRevision = '250000';
 
 const resetAccountBalance = async () => {
   const net = getNetworkFromCli();
@@ -25,19 +27,24 @@ const resetAccountBalance = async () => {
 
   const posHead = await headRepo.findByKey('pos');
   console.log('POS Head:', posHead);
-  const headBlock = await blockRepo.findByHash(posHead.hash);
-  const head = headBlock.hash;
-  const accounts = await accountRepo.findAll();
 
-  let count = 0;
+  let revision = '';
+  if (net === Network.TestNet) {
+    revision = testnetRevision;
+  } else {
+    const headBlock = await blockRepo.findByHash(posHead.hash);
+    revision = headBlock.hash;
+  }
+
+  const accounts = await accountRepo.findAll();
   console.log('start checking...');
   for (const acc of accounts) {
     let chainAcc: Flex.Meter.Account;
     let chainCode: Flex.Meter.Code;
     let chainMaster: string | null = null;
     try {
-      chainAcc = await pos.getAccount(acc.address, head);
-      chainCode = await pos.getCode(acc.address, head);
+      chainAcc = await pos.getAccount(acc.address, revision);
+      chainCode = await pos.getCode(acc.address, revision);
       // Get master
       let ret = await pos.explain(
         {
@@ -50,7 +57,7 @@ const resetAccountBalance = async () => {
             },
           ],
         },
-        head
+        revision
       );
       let decoded = prototype.master.decode(ret[0].data);
       if (decoded['0'] !== ZeroAddress) {
@@ -77,9 +84,9 @@ const resetAccountBalance = async () => {
       acc.mtrBounded = boundedEnergy;
       acc.mtrgBounded = boundedBalance;
       await acc.save();
-      console.log(
-        `Fixing Account(${acc.address}), \nbalance: ${fromWei(balance)} MTRG, energy: ${fromWei(energy)} MTR`
-      );
+      console.log('-'.repeat(50));
+      console.log(`Fixing Account(${acc.address}):`);
+      console.log(`balance: ${fromWei(balance)} MTRG, energy: ${fromWei(energy)} MTR`);
       console.log(`bounded balance: ${fromWei(boundedBalance)} MTRG, bounded energy: ${fromWei(boundedEnergy)} MTR`);
     }
   }
