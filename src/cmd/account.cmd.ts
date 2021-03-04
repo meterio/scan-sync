@@ -147,12 +147,13 @@ export class AccountCMD extends TxBlockReviewer {
 
       // process native transfers
       for (const [logIndex, t] of o.transfers.entries()) {
+        console.log(t.sender, t.recipient, t.amount, t.token);
         transfers.push({
-          from: tx.origin.toLowerCase(),
-          to: clause.to.toLowerCase(),
-          token: clause.token,
+          from: t.sender.toLowerCase(),
+          to: t.recipient.toLowerCase(),
+          token: new BigNumber(t.token).isEqualTo(1) ? Token.MTRG : Token.MTR,
           tokenAddress: '',
-          amount: new BigNumber(clause.value),
+          amount: new BigNumber(t.amount),
           txHash: tx.hash,
           block: tx.block,
           clauseIndex,

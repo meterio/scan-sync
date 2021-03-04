@@ -3,10 +3,10 @@ require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
 
-import { GetPosConfig, Network } from '../const';
+import { BoundEvent, GetPosConfig, Network, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
 
-const network = Network.MainNet;
+const network = Network.TestNet;
 const posConfig = GetPosConfig(network);
 const net = new Net(posConfig.url);
 const pos = new Pos(network);
@@ -21,12 +21,24 @@ if (args.length < 1) {
 const acctAddress = args[0];
 const acctAddressBytes32 = '0x' + acctAddress.replace('0x', '').padStart(64, '0').toLowerCase();
 
+const revision = 250000;
 class Balance {
   private mtr: BigNumber;
   private mtrg: BigNumber;
-  constructor(addr: string, mtr: number | string | BigNumber, mtrg: number | string | BigNumber) {
+  private mtrBounded: BigNumber;
+  private mtrgBounded: BigNumber;
+
+  constructor(
+    addr: string,
+    mtr: number | string | BigNumber,
+    mtrg: number | string | BigNumber,
+    mtrBounded: number | string | BigNumber,
+    mtrgBounded: number | string | BigNumber
+  ) {
     this.mtr = new BigNumber(mtr);
     this.mtrg = new BigNumber(mtrg);
+    this.mtrBounded = new BigNumber(mtrBounded);
+    this.mtrgBounded = new BigNumber(mtrgBounded);
   }
 
   public plusMTR(amount: number | string | BigNumber) {
@@ -41,15 +53,40 @@ class Balance {
   public minusMTRG(amount: number | string | BigNumber) {
     this.mtrg = this.mtrg.minus(amount);
   }
+  public boundMTR(amount: number | string | BigNumber) {
+    this.mtrBounded.plus(amount);
+    this.mtr.minus(amount);
+  }
+  public unboundMTR(amount: number | string | BigNumber) {
+    this.mtrBounded.minus(amount);
+    this.mtr.plus(amount);
+  }
+  public boundMTRG(amount: number | string | BigNumber) {
+    this.mtrgBounded.plus(amount);
+    this.mtrg.minus(amount);
+  }
+  public unboundMTRG(amount: number | string | BigNumber) {
+    this.mtrgBounded.minus(amount);
+    this.mtrg.plus(amount);
+  }
+
   public MTR() {
     return this.mtr;
   }
   public MTRG() {
     return this.mtrg;
   }
+  public MTRBounded() {
+    return this.mtrBounded;
+  }
+  public MTRGBounded() {
+    return this.mtrgBounded;
+  }
 
   public String() {
-    return `{ MTR: ${fromWei(this.mtr)}, MTRG: ${fromWei(this.mtrg)} }`;
+    return `{ MTR: ${fromWei(this.mtr)}, MTRG: ${fromWei(this.mtrg)}, MTRBounded: ${fromWei(
+      this.mtrBounded
+    )}, MTRGBounded: ${fromWei(this.mtrgBounded)}  }`;
   }
 }
 
@@ -149,17 +186,29 @@ const handleTransfer = async (transfer: any) => {
 };
 
 const processAccount = async () => {
-  const genesisBalance = await net.http<any>('GET', `accounts/${acctAddress}?revision=0`);
+  const genesisBalance = await net.http<any>('GET', `accounts/${acctAddress}?revision=${revision}`);
   const chainAcc = await net.http<any>('GET', `accounts/${acctAddress}`);
   let mtr = new BigNumber(genesisBalance.energy);
   let mtrg = new BigNumber(genesisBalance.balance);
-  console.log(`INIT Balance : { MTR: ${fromWei(mtr)}, MTRG: ${fromWei(mtrg)}}`);
-  let balance = new Balance(acctAddress, mtr, mtrg);
-  let chainBalance = new Balance(acctAddress, chainAcc.energy, chainAcc.balance);
+  let mtrBounded = new BigNumber(genesisBalance.boundenergy);
+  let mtrgBounded = new BigNumber(genesisBalance.boundbalance);
+  let balance = new Balance(acctAddress, mtr, mtrg, mtrBounded, mtrgBounded);
+  console.log(`INIT Balance : ${balance.String()}`);
+  let chainBalance = new Balance(
+    acctAddress,
+    chainAcc.energy,
+    chainAcc.balance,
+    chainAcc.boundenergy,
+    chainAcc.boundbalance
+  );
 
   const res = await net.http<any>('POST', 'logs/transfer', {
     body: {
       criteriaSet: [{ sender: acctAddress }, { recipient: acctAddress }],
+      range: {
+        unit: 'block',
+        from: 250000,
+      },
     },
   });
   const transfers = res.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
@@ -167,14 +216,20 @@ const processAccount = async () => {
     body: {
       criteriaSet: [
         {
-          topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+          topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', // erc20 transfer out
           topic1: acctAddressBytes32,
         },
         {
-          topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+          topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', // erc20 transfer in
           topic2: acctAddressBytes32,
         },
+        { topic0: '0xcd509811b292f7fa41cc2c45a621fcd510e31a4dd5b0bb6b8b1ee3622a59e67d', topic2: acctAddressBytes32 }, // bound
+        { topic0: '0x745b53e5ab1a6d7d25f17a8ed30cbd14d6706acb1b397c7766de275d7c9ba232', topic2: acctAddressBytes32 }, // unbound
       ],
+      range: {
+        unit: 'block',
+        from: 250000,
+      },
     },
   });
   const events = evtRes.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
@@ -185,10 +240,33 @@ const processAccount = async () => {
 
   let outputs = transfers.concat(events);
   outputs = outputs.sort((a, b) => a.meta.blockNumber - b.meta.blockNumber);
+
   for (const o of outputs) {
     let d;
     if ('topics' in o) {
-      d = await handleEvent(o);
+      if (o.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef') {
+        d = await handleEvent(o);
+      } else if (o.topics[0] === '') {
+        // handle bound
+        const decoded = BoundEvent.decode(o.data, o.topics);
+        console.log('Bound ', new BigNumber(decoded.amount).toFixed(), 'token:', decoded.token);
+        if (decoded.token == 1) {
+          balance.boundMTRG(decoded.amount);
+        } else {
+          balance.boundMTR(decoded.amount);
+        }
+        continue;
+      } else if (o.topics[0] === '0x745b53e5ab1a6d7d25f17a8ed30cbd14d6706acb1b397c7766de275d7c9ba232') {
+        // handle unbound
+        const decoded = UnboundEvent.decode(o.data, o.topics);
+        console.log('Unbound ', new BigNumber(decoded.amount).toFixed(), 'token:', decoded.token);
+        if (decoded.token == 1) {
+          balance.unboundMTRG(decoded.amount);
+        } else {
+          balance.unboundMTR(decoded.amount);
+        }
+        continue;
+      }
     } else {
       d = await handleTransfer(o);
     }

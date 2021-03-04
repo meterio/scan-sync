@@ -1,5 +1,6 @@
-import { Token } from '../const';
 import BigNumber from 'bignumber.js';
+
+import { Token } from '../const';
 import { BlockConcise } from './blockConcise.interface';
 
 export interface PosEvent {
@@ -12,6 +13,7 @@ export interface PosTransfer {
   sender: string;
   recipient: string;
   amount: string;
+  token: number;
 }
 
 export interface TxOutput {

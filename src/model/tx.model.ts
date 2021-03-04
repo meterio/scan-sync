@@ -40,6 +40,7 @@ const posTransferSchema = new mongoose.Schema(
     sender: { type: String, required: true },
     recipient: { type: String, required: true },
     amount: { type: String, required: true },
+    token: { type: Number, required: false },
   },
   { _id: false }
 );
