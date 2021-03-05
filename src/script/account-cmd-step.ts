@@ -46,7 +46,8 @@ const processOneBlock = async (net: Network, blockNum: number) => {
 (async () => {
   // const blockQueue = new BlockQueue('block');
   try {
-    processOneBlock(net, blockNum);
+    await processOneBlock(net, blockNum);
+    await mongoose.disconnect();
   } catch (e) {
     console.log(`process error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

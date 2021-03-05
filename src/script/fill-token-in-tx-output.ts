@@ -50,6 +50,7 @@ const fillTokenInTxOutput = async (net: Network) => {
 (async () => {
   try {
     await fillTokenInTxOutput(net);
+    await mongoose.disconnect();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

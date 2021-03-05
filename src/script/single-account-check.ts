@@ -2,6 +2,7 @@
 require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
+import mongoose from 'mongoose';
 
 import { BoundEvent, GetPosConfig, Network, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
@@ -239,6 +240,7 @@ const processAccount = async () => {
 (async () => {
   try {
     await processAccount();
+    await mongoose.disconnect();
   } catch (e) {
     console.log('error happened: ', e);
   }

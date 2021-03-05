@@ -40,6 +40,7 @@ const dumpAccounts = async (net: Network) => {
 (async () => {
   try {
     await dumpAccounts(net);
+    await mongoose.disconnect();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

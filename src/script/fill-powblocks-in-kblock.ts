@@ -48,6 +48,7 @@ const fillPowblocksInKBlock = async (net: Network) => {
 (async () => {
   try {
     await fillPowblocksInKBlock(net);
+    await mongoose.disconnect();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

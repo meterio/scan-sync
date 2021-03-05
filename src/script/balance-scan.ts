@@ -1,6 +1,8 @@
 require('../utils/validateEnv');
 
-import { GetPosConfig, Network, balanceOf } from '../const';
+import mongoose from 'mongoose';
+
+import { GetPosConfig, Network } from '../const';
 import { Net } from '../utils';
 import { Balance } from './types/balance';
 
@@ -43,6 +45,7 @@ const processAccount = async () => {
 (async () => {
   try {
     await processAccount();
+    await mongoose.disconnect();
   } catch (e) {
     console.log('error happened: ', e);
   }

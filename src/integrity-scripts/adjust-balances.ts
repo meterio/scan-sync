@@ -2,6 +2,7 @@
 require('../utils/validateEnv');
 
 import BigNumber from 'bignumber.js';
+import mongoose from 'mongoose';
 
 import { Network, PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
 import AccountRepo from '../repo/account.repo';
@@ -92,7 +93,8 @@ const adjustBalance = async () => {
 
 (async () => {
   try {
-    adjustBalance();
+    await adjustBalance();
+    await mongoose.disconnect();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);
