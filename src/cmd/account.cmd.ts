@@ -240,6 +240,7 @@ export class AccountCMD extends TxBlockReviewer {
     let bounds: Bound[] = [];
     let unbounds: Unbound[] = [];
     let accts = new AccountDeltaMap();
+    let totalFees = new BigNumber(0);
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
       if (!txModel) {
@@ -252,7 +253,13 @@ export class AccountCMD extends TxBlockReviewer {
 
       // substract fee from gas payer
       accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
+
+      // calculate total fee paid in this block
+      totalFees = totalFees.plus(txModel.paid);
     }
+
+    // block fee as reward to beneficiary
+    accts.plus(blk.beneficiary, Token.MTR, totalFees);
 
     // only save native transfers that's not generated from system contract events
     // system contract events will be stored by erc20 cmd

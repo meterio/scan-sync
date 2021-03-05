@@ -5,21 +5,19 @@ import BigNumber from 'bignumber.js';
 
 import { Network, PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
 import AccountRepo from '../repo/account.repo';
-import BlockRepo from '../repo/block.repo';
 import HeadRepo from '../repo/head.repo';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
 const testnetRevision = '250000';
 
-const resetAccountBalance = async () => {
+const adjustBalance = async () => {
   const net = getNetworkFromCli();
   if (!net) {
     process.exit(-1);
   }
 
   await connectDB(net);
-  const blockRepo = new BlockRepo();
   const headRepo = new HeadRepo();
   const accountRepo = new AccountRepo();
   const pos = new Pos(net);
@@ -32,9 +30,9 @@ const resetAccountBalance = async () => {
   if (net === Network.TestNet) {
     revision = testnetRevision;
   } else {
-    const headBlock = await blockRepo.findByHash(posHead.hash);
-    revision = headBlock.hash;
+    revision = '' + posHead.num;
   }
+  console.log(`Adjust account balances based on revision: ${revision}`);
 
   const accounts = await accountRepo.findAll();
   console.log('start checking...');
@@ -94,7 +92,7 @@ const resetAccountBalance = async () => {
 
 (async () => {
   try {
-    resetAccountBalance();
+    adjustBalance();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

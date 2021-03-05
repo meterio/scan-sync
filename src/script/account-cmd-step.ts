@@ -10,16 +10,19 @@ import BlockRepo from '../repo/block.repo';
 import { connectDB } from '../utils/db';
 import { getNetworkFromCli } from '../utils/utils';
 
-let cmd = new AccountCMD(Network.MainNet);
-let blockRepo = new BlockRepo();
 const net = getNetworkFromCli();
 if (!net) {
   process.exit(-1);
 }
 
-(async () => {
+const blockNum = 250000;
+
+const processOneBlock = async (net: Network, blockNum: number) => {
   // const blockQueue = new BlockQueue('block');
   let shutdown = false;
+  const cmd = new AccountCMD(net);
+  const blockRepo = new BlockRepo();
+  console.log(`Process block ${blockNum} with account cmd`);
 
   const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
   signals.forEach((sig) => {
@@ -34,11 +37,16 @@ if (!net) {
     });
   });
 
+  await connectDB(net);
+  const blk = await blockRepo.findByNumber(blockNum);
+  const result = await cmd.processBlock(blk);
+  console.log(result);
+};
+
+(async () => {
+  // const blockQueue = new BlockQueue('block');
   try {
-    await connectDB(net);
-    const blk = await blockRepo.findByNumber(5370624);
-    const result = await cmd.processBlock(blk);
-    console.log(result);
+    processOneBlock(net, blockNum);
   } catch (e) {
     console.log(`process error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

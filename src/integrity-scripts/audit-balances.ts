@@ -10,7 +10,7 @@ import HeadRepo from '../repo/head.repo';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
-const crossCheckAccountBalance = async () => {
+const auditBalance = async () => {
   const net = getNetworkFromCli();
   if (!net) {
     process.exit(-1);
@@ -98,7 +98,7 @@ const crossCheckAccountBalance = async () => {
 
 (async () => {
   try {
-    crossCheckAccountBalance();
+    auditBalance();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

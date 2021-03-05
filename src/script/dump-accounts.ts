@@ -5,15 +5,17 @@ import * as path from 'path';
 
 import mongoose from 'mongoose';
 
+import { Network } from '../const';
 import AccountRepo from '../repo/account.repo';
 import { checkNetworkWithDB, getNetworkFromCli, saveCSV } from '../utils';
 import { connectDB } from '../utils/db';
 
-const dumpAccounts = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+const net = getNetworkFromCli();
+if (!net) {
+  process.exit(-1);
+}
+
+const dumpAccounts = async (net: Network) => {
   await connectDB(net);
   const accountRepo = new AccountRepo();
   const accounts = await accountRepo.findAll();
@@ -37,7 +39,7 @@ const dumpAccounts = async () => {
 
 (async () => {
   try {
-    await dumpAccounts();
+    await dumpAccounts(net);
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

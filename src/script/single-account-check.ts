@@ -5,6 +5,7 @@ import BigNumber from 'bignumber.js';
 
 import { BoundEvent, GetPosConfig, Network, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
+import { Balance } from './types/balance';
 
 const network = Network.TestNet;
 const posConfig = GetPosConfig(network);
@@ -21,74 +22,7 @@ if (args.length < 1) {
 const acctAddress = args[0];
 const acctAddressBytes32 = '0x' + acctAddress.replace('0x', '').padStart(64, '0').toLowerCase();
 
-const revision = 250000;
-class Balance {
-  private mtr: BigNumber;
-  private mtrg: BigNumber;
-  private mtrBounded: BigNumber;
-  private mtrgBounded: BigNumber;
-
-  constructor(
-    addr: string,
-    mtr: number | string | BigNumber,
-    mtrg: number | string | BigNumber,
-    mtrBounded: number | string | BigNumber,
-    mtrgBounded: number | string | BigNumber
-  ) {
-    this.mtr = new BigNumber(mtr);
-    this.mtrg = new BigNumber(mtrg);
-    this.mtrBounded = new BigNumber(mtrBounded);
-    this.mtrgBounded = new BigNumber(mtrgBounded);
-  }
-
-  public plusMTR(amount: number | string | BigNumber) {
-    this.mtr = this.mtr.plus(amount);
-  }
-  public plusMTRG(amount: number | string | BigNumber) {
-    this.mtrg = this.mtrg.plus(amount);
-  }
-  public minusMTR(amount: number | string | BigNumber) {
-    this.mtr = this.mtr.minus(amount);
-  }
-  public minusMTRG(amount: number | string | BigNumber) {
-    this.mtrg = this.mtrg.minus(amount);
-  }
-  public boundMTR(amount: number | string | BigNumber) {
-    this.mtrBounded.plus(amount);
-    this.mtr.minus(amount);
-  }
-  public unboundMTR(amount: number | string | BigNumber) {
-    this.mtrBounded.minus(amount);
-    this.mtr.plus(amount);
-  }
-  public boundMTRG(amount: number | string | BigNumber) {
-    this.mtrgBounded.plus(amount);
-    this.mtrg.minus(amount);
-  }
-  public unboundMTRG(amount: number | string | BigNumber) {
-    this.mtrgBounded.minus(amount);
-    this.mtrg.plus(amount);
-  }
-
-  public MTR() {
-    return this.mtr;
-  }
-  public MTRG() {
-    return this.mtrg;
-  }
-  public MTRBounded() {
-    return this.mtrBounded;
-  }
-  public MTRGBounded() {
-    return this.mtrgBounded;
-  }
-
-  public String() {
-    return `{ MTR: ${fromWei(this.mtr)}, MTRG: ${fromWei(this.mtrg)}, MTRBounded: ${fromWei(
-      this.mtrBounded
-    )}, MTRGBounded: ${fromWei(this.mtrgBounded)}  }`;
-  }
-}
+const revision = 249999;
 
 const handleEvent = async (evt: any) => {
   let isSend = false;
@@ -207,7 +141,7 @@ const processAccount = async () => {
       criteriaSet: [{ sender: acctAddress }, { recipient: acctAddress }],
       range: {
         unit: 'block',
-        from: 250000,
+        from: 249999,
       },
     },
   });
@@ -228,7 +162,7 @@ const processAccount = async () => {
       ],
       range: {
         unit: 'block',
-        from: 250000,
+        from: 249999,
       },
     },
   });
@@ -246,7 +180,7 @@ const processAccount = async () => {
     if ('topics' in o) {
       if (o.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef') {
         d = await handleEvent(o);
-      } else if (o.topics[0] === '') {
+      } else if (o.topics[0] === '0xcd509811b292f7fa41cc2c45a621fcd510e31a4dd5b0bb6b8b1ee3622a59e67d') {
         // handle bound
         const decoded = BoundEvent.decode(o.data, o.topics);
         console.log('Bound ', new BigNumber(decoded.amount).toFixed(), 'token:', decoded.token);

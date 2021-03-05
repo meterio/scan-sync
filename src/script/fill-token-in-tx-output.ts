@@ -3,12 +3,17 @@ require('../utils/validateEnv');
 
 import mongoose from 'mongoose';
 
+import { Network } from '../const';
 import TxRepo from '../repo/tx.repo';
 import { Pos, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
-const fillTokenInTx = async () => {
-  const net = getNetworkFromCli();
+const net = getNetworkFromCli();
+if (!net) {
+  process.exit(-1);
+}
+
+const fillTokenInTxOutput = async (net: Network) => {
   const pos = new Pos(net);
   if (!net) {
     process.exit(-1);
@@ -44,7 +49,7 @@ const fillTokenInTx = async () => {
 
 (async () => {
   try {
-    await fillTokenInTx();
+    await fillTokenInTxOutput(net);
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

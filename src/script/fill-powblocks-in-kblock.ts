@@ -3,13 +3,18 @@ require('../utils/validateEnv');
 
 import mongoose from 'mongoose';
 
+import { Network } from '../const';
 import { PowBlock } from '../model/block.interface';
 import BlockRepo from '../repo/block.repo';
 import { Pos, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
-const fillPowblocksInKBlock = async () => {
-  const net = getNetworkFromCli();
+const net = getNetworkFromCli();
+if (!net) {
+  process.exit(-1);
+}
+
+const fillPowblocksInKBlock = async (net: Network) => {
   const pos = new Pos(net);
   if (!net) {
     process.exit(-1);
@@ -42,7 +47,7 @@ const fillPowblocksInKBlock = async () => {
 
 (async () => {
   try {
-    await fillPowblocksInKBlock();
+    await fillPowblocksInKBlock(net);
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);
