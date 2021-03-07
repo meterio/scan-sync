@@ -189,7 +189,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             // TODO: handle the tx reverted case
             // auction bid
             const atx = se.getAuctionTxFromAuctionBody(body);
-            const present = await this.auctionRepo.findPresent();
+            const presentAuction = await this.auctionRepo.findPresent();
             const bid: Bid = {
               id: atx.ID(),
               address: '0x' + atx.address.toString('hex'),
@@ -198,7 +198,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               timestamp: atx.timestamp,
               nonce: new BigNumber(atx.nonce),
 
-              auctionID: present.id,
+              auctionID: presentAuction.id,
               epoch,
               blockNum,
               txHash: tx.hash,
