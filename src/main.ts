@@ -12,6 +12,7 @@ import { ERC20CMD } from './cmd/erc20.cmd';
 import { MetricCMD } from './cmd/metric.cmd';
 import { PosCMD } from './cmd/pos.cmd';
 import { PowCMD } from './cmd/pow.cmd';
+import { ScriptEngineCMD } from './cmd/scriptEngine.cmd';
 import { Network } from './const/network';
 import { connectDB } from './utils/db';
 
@@ -33,7 +34,7 @@ const printUsage = (msg = '') => {
   error(`${msg ? msg + '\n\n' : ''}Usage: node index.js [Network][Task][...Args]
 --------
 Network:    [main|test]
-Task:       [pos|pow|account|erc20|metric|committee]`);
+Task:       [pos|pow|account|erc20|metric|scriptengine]`);
   process.exit(-1);
 };
 
@@ -77,6 +78,9 @@ switch (process.argv[3]) {
     break;
   case 'metric':
     cmd = new MetricCMD(net);
+    break;
+  case 'scriptengine':
+    cmd = new ScriptEngineCMD(net);
     break;
   default:
     printUsage('invalid cmd name');

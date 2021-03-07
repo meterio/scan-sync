@@ -29,6 +29,13 @@ export interface Clause {
   data: string;
 }
 
+export interface GroupedTransfer {
+  sender: string;
+  recipient: string;
+  amount: BigNumber;
+  token: number;
+}
+
 export interface Tx {
   hash: string;
 
@@ -55,4 +62,10 @@ export interface Tx {
   reward: BigNumber;
   reverted: boolean;
   outputs: TxOutput[];
+
+  totalClauseMTRG: BigNumber;
+  totalClauseMTR: BigNumber;
+  totalTransferMTRG: BigNumber;
+  totalTransferMTR: BigNumber;
+  groupedTransfers: GroupedTransfer[];
 }

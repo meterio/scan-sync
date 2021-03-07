@@ -8,6 +8,7 @@ import {
   Token,
   TransferEvent,
   UnboundEvent,
+  ZeroAddress,
   getERC20Token,
   getPreAllocAccount,
   prototype,
@@ -255,7 +256,9 @@ export class AccountCMD extends TxBlockReviewer {
       accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
 
       // calculate total fee paid in this block
-      totalFees = totalFees.plus(txModel.paid);
+      if (txModel.origin.toLowerCase() !== ZeroAddress) {
+        totalFees = totalFees.plus(txModel.paid);
+      }
     }
 
     // block fee as reward to beneficiary

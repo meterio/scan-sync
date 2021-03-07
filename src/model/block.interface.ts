@@ -48,6 +48,7 @@ export interface Block {
   txCount: number;
   score: number;
   reward: BigNumber;
+  actualReward: BigNumber;
   gasChanged: number;
   blockType: BlockType;
 

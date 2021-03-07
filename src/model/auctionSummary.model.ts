@@ -3,7 +3,7 @@ import * as mongoose from 'mongoose';
 
 import { Token, enumKeys } from '../const';
 import { fromWei } from '../utils/utils';
-import { Auction } from './auction.interface';
+import { AuctionSummary } from './auctionSummary.interface';
 
 const auctionDistSchema = new mongoose.Schema(
   {
@@ -37,23 +37,12 @@ const auctionTxSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const auctionSchema = new mongoose.Schema({
+const auctionSummarySchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   startHeight: { type: Number, required: true },
   startEpoch: { type: Number, required: true },
   endHeight: { type: Number, required: true },
   endEpoch: { type: Number, required: true },
-
-  auctionStartHeight: { type: Number, required: true },
-  auctionStartEpoch: { type: Number, required: true },
-  auctionStartTxHash: { type: String, required: true },
-  auctionStartClauseIndex: { type: Number, required: true },
-
-  auctionEndHeight: { type: Number, required: false },
-  auctionEndEpoch: { type: Number, required: false },
-  auctionEndTxHash: { type: String, required: false },
-  auctionEndClauseIndex: { type: Number, required: false },
-
   sequence: { type: Number, required: true },
   createTime: { type: Number, required: true },
   releasedMTRG: {
@@ -92,60 +81,43 @@ const auctionSchema = new mongoose.Schema({
     set: (bnum: BigNumber) => bnum.toFixed(0),
     required: true,
   },
-
-  pending: { type: Boolean, required: true, default: false },
-  bidCount: { type: Number, required: true },
-  autobidTotal: {
-    type: String,
-    get: (num: string) => new BigNumber(num),
-    set: (bnum: BigNumber) => bnum.toFixed(0),
-    required: true,
-  },
-  userbidTotal: {
-    type: String,
-    get: (num: string) => new BigNumber(num),
-    set: (bnum: BigNumber) => bnum.toFixed(0),
-    required: true,
-  },
+  txs: [auctionTxSchema],
+  distMTRG: [auctionDistSchema],
 });
 
-auctionSchema.methods.toSummary = function () {
-  let summary = {
+auctionSummarySchema.methods.toSummary = function () {
+  let dist = [];
+  for (const d of this.distMTRG) {
+    dist.push({
+      address: d.address,
+      amount: d.amount,
+      amountStr: `${fromWei(d.amount)} ${Token[d.token]}`,
+    });
+  }
+  return {
     id: this.id,
     startHeight: this.startHeight,
     startEpoch: this.startEpoch,
     endHeight: this.endHeight,
     endEpoch: this.endEpoch,
-
-    auctionStartHeight: this.auctionStartHeight,
-    auctionStartEpoch: this.auctionStartEpoch,
-    auctionStartTxHash: this.auctionStartTxHash,
-    auctionStartClauseIndex: this.auctionStartClauseIndex,
-
-    auctionEndHeight: this.auctionEndHeight,
-    auctionEndEpoch: this.auctionEndEpoch,
-    auctionEndTxHash: this.auctionEndTxHash,
-    auctionEndClauseIndex: this.auctionEndClauseIndex,
-
     sequence: this.sequence,
     createTime: this.createTime,
+    bidCount: this.txs ? this.txs.length : 0,
+    distCount: this.dist ? this.dist.length : 0,
     released: this.releasedMTRG.toFixed(),
+    releasedStr: `${fromWei(this.releasedMTRG)} MTRG`,
     received: this.receivedMTR.toFixed(),
+    receivedStr: `${fromWei(this.receivedMTR)} MTR`,
     reserved: this.reservedMTRG.toFixed(),
+    reservedStr: `${fromWei(this.reservedMTRG)} MTRG`,
     reservedPrice: this.reservedPrice.toFixed(),
     actualPrice: this.actualPrice.toFixed(),
     leftover: this.leftoverMTRG.toFixed(),
-
-    pending: this.pending,
-    bidCount: this.bidCount,
-    userbidTotal: this.userbidTotal.toFixed(),
-    autobidTotal: this.autobidTotal.toFixed(),
+    leftoeverStr: `${fromWei(this.leftoverMTRG)} MTRG`,
   };
-
-  return summary;
 };
 
-auctionSchema.set('toJSON', {
+auctionSummarySchema.set('toJSON', {
   transform: (doc, ret, options) => {
     delete ret.__v;
     delete ret._id;
@@ -153,6 +125,10 @@ auctionSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Auction & mongoose.Document>('auction', auctionSchema, 'auctions');
+const model = mongoose.model<AuctionSummary & mongoose.Document>(
+  'auctionSummary',
+  auctionSummarySchema,
+  'auctionSummaries'
+);
 
 export default model;

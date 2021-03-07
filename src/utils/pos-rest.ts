@@ -307,6 +307,9 @@ export class Pos {
   public getValidatorRewards() {
     return this.httpGet<Pos.ValidatorReward[]>(`staking/validator-rewards`);
   }
+  public getLastValidatorReward(revision: string | number) {
+    return this.httpGet<Pos.ValidatorReward>(`staking/last/rewards?revision=${revision}`);
+  }
   // Slashing related
   public getValidatorStats() {
     return this.httpGet<Pos.ValidatorStat[]>(`slashing/statistics`);
@@ -324,8 +327,14 @@ export class Pos {
   public getAuctionSummaries() {
     return this.httpGet<Pos.AuctionSummary[]>(`auction/summaries`);
   }
+  public getLastAuctionSummary(revision: number | string) {
+    return this.httpGet<Pos.AuctionSummary>(`auction/last/summary?revision=${revision}`);
+  }
   public getPresentAuction() {
     return this.httpGet<Pos.Auction>(`auction/present`);
+  }
+  public getPresentAuctionByRevision(revision: number) {
+    return this.httpGet<Pos.Auction>(`auction/present?revision=${revision}`);
   }
 
   public async getAccount(addr: string, revision?: string) {

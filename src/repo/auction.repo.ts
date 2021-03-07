@@ -21,6 +21,10 @@ export class AuctionRepo {
   public async create(auction: Auction) {
     return this.model.create(auction);
   }
+
+  public async findPresent() {
+    return this.model.findOne({ pending: true });
+  }
 }
 
 export default AuctionRepo;

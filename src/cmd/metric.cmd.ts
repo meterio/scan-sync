@@ -5,14 +5,14 @@ import BigNumber from 'bignumber.js';
 import Logger from 'bunyan';
 
 import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, Network, Token, ValidatorStatus } from '../const';
-import { AuctionDist, AuctionTx } from '../model/Auction.interface';
+import { AuctionDist, AuctionTx } from '../model/auctionSummary.interface';
 import { Bid } from '../model/bid.interface';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
-import { RewardInfo } from '../model/ValidatorReward.interface';
+import { RewardInfo } from '../model/validatorReward.interface';
 import AccountRepo from '../repo/account.repo';
 import AlertRepo from '../repo/alert.repo';
-import AuctionRepo from '../repo/auction.repo';
+import AuctionSummaryRepo from '../repo/auctionSummary.repo';
 import BidRepo from '../repo/bid.repo';
 import BlockRepo from '../repo/block.repo';
 import BucketRepo from '../repo/bucket.repo';
@@ -50,8 +50,6 @@ export class MetricCMD extends CMD {
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
   private accountRepo = new AccountRepo();
-  private bidRepo = new BidRepo();
-  private auctionRepo = new AuctionRepo();
   private validatorRewardRepo = new ValidatorRewardRepo();
   private blockRepo = new BlockRepo();
   private alertRepo = new AlertRepo();
@@ -203,21 +201,6 @@ export class MetricCMD extends CMD {
         if (!updated) {
           return;
         }
-        for (const r of rwds) {
-          const exist = await this.validatorRewardRepo.existEpoch(r.epoch);
-          if (exist) {
-            continue;
-          }
-          let rewards: RewardInfo[] = r.rewards.map((info) => {
-            return { amount: new BigNumber(info.amount), address: info.address };
-          });
-          await this.validatorRewardRepo.create({
-            epoch: r.epoch,
-            baseReward: new BigNumber(r.baseReward),
-            totalReward: new BigNumber(r.totalReward),
-            rewards,
-          });
-        }
       }
     }
   }
@@ -275,48 +258,6 @@ export class MetricCMD extends CMD {
       }
       if (!!summaries) {
         sUpdated = await this.cache.update(MetricName.AUCTION_SUMMARIES, JSON.stringify(summaries));
-      }
-
-      if (sUpdated) {
-        for (const s of summaries) {
-          const exist = await this.auctionRepo.findByID(s.auctionID);
-          if (!exist) {
-            console.log('start to save auction: ', s.auctionID);
-            let dists: AuctionDist[] = [];
-            let txs: AuctionTx[] = [];
-            let bids: Bid[] = [];
-            for (const d of s.distMTRG) {
-              dists.push({
-                address: d.addr,
-                amount: new BigNumber(d.amount),
-                token: Token.MTRG,
-              });
-            }
-            for (const t of s.auctionTxs) {
-              txs.push({ ...t });
-              bids.push({ ...t, auctionID: s.auctionID });
-            }
-            const auction = {
-              id: s.auctionID,
-              startHeight: s.startHeight,
-              startEpoch: s.startEpoch,
-              endHeight: s.endHeight,
-              endEpoch: s.endEpoch,
-              sequence: s.sequence,
-              createTime: s.createTime,
-              releasedMTRG: new BigNumber(s.releasedMTRG),
-              reservedMTRG: new BigNumber(s.reservedMTRG),
-              reservedPrice: new BigNumber(s.reservedPrice),
-              receivedMTR: new BigNumber(s.receivedMTR),
-              actualPrice: new BigNumber(s.actualPrice),
-              leftoverMTRG: new BigNumber(s.leftoverMTRG),
-              txs,
-              distMTRG: dists,
-            };
-            await this.auctionRepo.create(auction);
-            await this.bidRepo.bulkInsert(...bids);
-          }
-        }
       }
     }
   }

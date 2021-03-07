@@ -3,12 +3,12 @@ import { EventEmitter } from 'events';
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
-import { BlockType, GetPosConfig, Network } from '../const';
+import { BlockType, GetPosConfig, Network, Token, ZeroAddress } from '../const';
 import { CommitteeMember } from '../model/block.interface';
 import { BlockConcise } from '../model/blockConcise.interface';
 import { blockConciseSchema } from '../model/blockConcise.model';
 import { Committee } from '../model/committee.interface';
-import { Clause, PosEvent, PosTransfer, Tx, TxOutput } from '../model/tx.interface';
+import { Clause, GroupedTransfer, PosEvent, PosTransfer, Tx, TxOutput } from '../model/tx.interface';
 import BlockRepo from '../repo/block.repo';
 import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
@@ -139,6 +139,12 @@ export class PosCMD extends CMD {
     txIndex: number
   ): Promise<Tx> {
     let clauses: Clause[] = [];
+    let totalClauseMTR = new BigNumber(0);
+    let totalClauseMTRG = new BigNumber(0);
+    let totalTransferMTR = new BigNumber(0);
+    let totalTransferMTRG = new BigNumber(0);
+    let groupedTransfers: GroupedTransfer[] = [];
+
     for (const c of tx.clauses) {
       clauses.push({
         to: c.to,
@@ -146,6 +152,12 @@ export class PosCMD extends CMD {
         token: c.token,
         data: c.data,
       });
+      if (c.token == 0) {
+        totalClauseMTR = totalClauseMTR.plus(c.value);
+      }
+      if (c.token == 0) {
+        totalClauseMTRG = totalClauseMTRG.plus(c.value);
+      }
     }
 
     let outputs: TxOutput[] = [];
@@ -160,6 +172,30 @@ export class PosCMD extends CMD {
       }
       for (const tr of o.transfers) {
         transfers.push({ ...tr });
+
+        // update total transfer
+        if (tr.token == 0) {
+          totalTransferMTR = totalTransferMTR.plus(tr.amount);
+        }
+        if (tr.token == 1) {
+          totalTransferMTRG = totalTransferMTRG.plus(tr.amount);
+        }
+
+        // update grouped transfers
+        let found = false;
+        for (const gt of groupedTransfers) {
+          if (gt.sender === tr.sender && gt.recipient === tr.recipient && gt.token === tr.token) {
+            gt.amount = gt.amount.plus(tr.amount);
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          groupedTransfers.push({
+            ...tr,
+            amount: new BigNumber(tr.amount),
+          });
+        }
       }
       outputs.push({
         contractAddress: o.contractAddress,
@@ -194,6 +230,12 @@ export class PosCMD extends CMD {
       reward: new BigNumber(tx.reward),
       reverted: tx.reverted,
       outputs: outputs,
+
+      totalClauseMTR,
+      totalClauseMTRG,
+      totalTransferMTR,
+      totalTransferMTRG,
+      groupedTransfers,
     };
 
     this.logger.info({ hash: txModel }, 'processed tx');
@@ -204,6 +246,7 @@ export class PosCMD extends CMD {
     let score = 0;
     let gasChanged = 0;
     let reward = new BigNumber(0);
+    let actualReward = new BigNumber(0);
     let txCount = blk.transactions.length;
     if (blk.number > 0) {
       const prevBlk = await this.pos.getBlock(blk.parentID, 'regular');
@@ -221,6 +264,9 @@ export class PosCMD extends CMD {
       txs.push(txModel);
       index++;
       reward = reward.plus(tx.reward);
+      if (tx.origin !== ZeroAddress) {
+        actualReward = actualReward.plus(tx.reward);
+      }
     }
     for (const m of blk.committee) {
       if (isHex(m.pubKey)) {
@@ -281,6 +327,7 @@ export class PosCMD extends CMD {
       hash: blk.id,
       txHashs,
       reward,
+      actualReward,
       gasChanged,
       score,
       txCount,

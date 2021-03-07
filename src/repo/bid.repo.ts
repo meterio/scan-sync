@@ -14,6 +14,18 @@ export class BidRepo {
     });
   }
 
+  public async create(bid: Bid) {
+    return this.model.create(bid);
+  }
+
+  public async findById(id: string) {
+    return this.model.findOne({ id });
+  }
+
+  public async findByAuctionID(auctionID: string) {
+    return this.model.find({ auctionID });
+  }
+
   public async bulkInsert(...bids: Bid[]) {
     return this.model.create(bids);
   }

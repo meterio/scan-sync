@@ -63,6 +63,12 @@ const blockSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: true,
     },
+    actualReward: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
     gasChanged: { type: Number, required: true },
     blockType: {
       type: String,
@@ -84,6 +90,7 @@ const blockSchema = new mongoose.Schema(
     },
   }
 );
+blockSchema.index({ beneficiary: 1 });
 
 blockSchema.set('toJSON', {
   transform: (doc, ret, options) => {
@@ -106,7 +113,7 @@ blockSchema.methods.toSummary = function () {
     blockType: this.blockType,
     gasUsed: this.gasUsed,
     txCount: this.txCount,
-    signer: this.signer,
+    beneficiary: this.beneficiary,
   };
 };
 const model = mongoose.model<Block & mongoose.Document>('block', blockSchema);

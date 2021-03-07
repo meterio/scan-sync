@@ -1,7 +1,10 @@
+import * as devkit from '@meterio/devkit';
 import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
 import { Token, ZeroAddress, enumKeys } from '../const';
+import { AccountLockModuleAddress, AuctionModuleAddress, StakingModuleAddress } from '../const/address';
+import { fromWei } from '../utils/utils';
 import { blockConciseSchema } from './blockConcise.model';
 import { Tx } from './tx.interface';
 
@@ -54,6 +57,21 @@ const txOutputSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const groupedTransferSchema = new mongoose.Schema(
+  {
+    sender: { type: String, required: true },
+    recipient: { type: String, required: true },
+    amount: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    token: { type: Number, required: false },
+  },
+  { _id: false }
+);
+
 const txSchema = new mongoose.Schema(
   {
     hash: { type: String, required: true, index: { unique: true } },
@@ -95,6 +113,32 @@ const txSchema = new mongoose.Schema(
     },
     outputs: [txOutputSchema],
 
+    totalClauseMTRG: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    totalClauseMTR: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    totalTransferMTRG: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    totalTransferMTR: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    groupedTransfers: [groupedTransferSchema],
+
     createdAt: { type: Number, index: true },
   },
   {
@@ -125,59 +169,67 @@ txSchema.methods.getType = function () {
   return 'transfer';
 };
 
-txSchema.methods.getAmountStr = function () {
-  if (!this.clauses || this.clauses.length === 0) {
-    return '0 MTR';
-  }
-  if (this.clauses.length === 1) {
-    const c = this.clauses[0];
-    return `${new BigNumber(c.value).dividedBy(1e18)} ${Token[c.token]}`;
-  }
-  let mtr = new BigNumber(0);
-  let mtrg = new BigNumber(0);
-  let mtrUsed = false;
-  let amountStr = '';
+txSchema.methods.getType = function () {
   for (const c of this.clauses) {
-    if (c.token === Token.MTR) {
-      mtr = mtr.plus(c.value);
-      mtrUsed = true;
+    if (c.data !== '0x') {
+      if (c.to) {
+        if (c.to.toLowerCase() === AccountLockModuleAddress) {
+          return 'account lock';
+        }
+        if (c.to.toLowerCase() === StakingModuleAddress) {
+          return 'staking';
+        }
+        if (c.to.toLowerCase() === AuctionModuleAddress) {
+          return 'auction';
+        }
+      } else {
+        const se = devkit.ScriptEngine;
+        if (se.IsScriptEngineData(c.data)) {
+          const scriptData = se.decodeScriptData(c.data);
+          if (scriptData.header.modId === se.ModuleID.Staking) {
+            return 'staking';
+          }
+          if (scriptData.header.modId === se.ModuleID.Auction) {
+            return 'auction';
+          }
+          if (scriptData.header.modId === se.ModuleID.AccountLock) {
+            return 'account lock';
+          }
+        }
+        return 'empty';
+      }
+      return 'call';
     }
-    if (c.token === Token.MTRG) {
-      mtrg = mtrg.plus(c.value);
-    }
   }
-  if (mtr.isGreaterThan(0)) {
-    amountStr = `${mtr.dividedBy(1e18).toFixed()} MTR`;
+  if (this.origin === ZeroAddress) {
+    return 'reward';
   }
-  if (mtrg.isGreaterThan(0)) {
-    if (amountStr) {
-      amountStr += ' & ';
-    }
-    amountStr += `${mtrg.dividedBy(1e18).toFixed()} MTRG`;
-  }
-  console.log(amountStr);
-  if (!amountStr) {
-    amountStr = mtrUsed ? '0 MTR' : '0 MTRG';
-  }
-  return amountStr;
+  return 'transfer';
 };
 
 txSchema.methods.toSummary = function () {
-  const a = this.getAmountStr();
-  console.log('tx: ', this.hash, 'amount: ', a);
+  const sortedTos = this.groupedTransfers.sort((a, b) => {
+    return a.amount.isGreaterThan(b.amount) ? 1 : -1;
+  });
+
+  const token = this.clauseCount > 0 ? this.clauses[0].token : 0;
+
   return {
     hash: this.hash,
     block: this.block,
     origin: this.origin,
     clauseCount: this.clauses ? this.clauses.length : 0,
     type: this.getType(),
-    paid: this.paid,
-    amountStr: a,
-    feeStr: `${new BigNumber(this.paid).dividedBy(1e18)} MTR`,
+    paid: this.paid.toFixed(),
+    totalClauseMTR: this.totalClauseMTR.toFixed(),
+    totalClauseMTRG: this.totalClauseMTRG.toFixed(),
+    totalTransferMTR: this.totalTransferMTR.toFixed(),
+    totalTransferMTRG: this.totalTransferMTRG.toFixed(),
+    token: token == 0 ? 'MTR' : 'MTRG',
     reverted: this.reverted,
+    groupedTransfers: sortedTos,
   };
 };
-
 const model = mongoose.model<Tx & mongoose.Document>('tx', txSchema, 'txs');
 
 export default model;
