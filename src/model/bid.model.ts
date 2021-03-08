@@ -16,9 +16,9 @@ const bidSchema = new mongoose.Schema({
     required: true,
   },
 
-  auctionID: { type: String, required: true },
-  epoch: { type: Number, required: true },
-  blockNum: { type: Number, required: true },
+  auctionID: { type: String, required: true, index: true },
+  epoch: { type: Number, required: true, index: true },
+  blockNum: { type: Number, required: true, index: true },
   txHash: { type: String, required: true },
   clauseIndex: { type: Number, required: true },
 

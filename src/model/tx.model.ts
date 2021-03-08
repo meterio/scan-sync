@@ -138,6 +138,8 @@ const txSchema = new mongoose.Schema(
       required: true,
     },
     groupedTransfers: [groupedTransferSchema],
+    majorTo: { type: String, required: true },
+    toCount: { type: Number, required: true },
 
     createdAt: { type: Number, index: true },
   },
@@ -208,10 +210,6 @@ txSchema.methods.getType = function () {
 };
 
 txSchema.methods.toSummary = function () {
-  const sortedTos = this.groupedTransfers.sort((a, b) => {
-    return a.amount.isGreaterThan(b.amount) ? 1 : -1;
-  });
-
   const token = this.clauseCount > 0 ? this.clauses[0].token : 0;
 
   return {
@@ -227,7 +225,9 @@ txSchema.methods.toSummary = function () {
     totalTransferMTRG: this.totalTransferMTRG.toFixed(),
     token: token == 0 ? 'MTR' : 'MTRG',
     reverted: this.reverted,
-    groupedTransfers: sortedTos,
+    groupedTransfers: this.groupedTransfers,
+    majorTo: this.majorTo,
+    toCount: this.toCount,
   };
 };
 const model = mongoose.model<Tx & mongoose.Document>('tx', txSchema, 'txs');

@@ -144,6 +144,9 @@ export class PosCMD extends CMD {
     let totalTransferMTR = new BigNumber(0);
     let totalTransferMTRG = new BigNumber(0);
     let groupedTransfers: GroupedTransfer[] = [];
+    let toCount = 0;
+    let tos: { [key: string]: boolean } = {};
+    let majorTo = '';
 
     for (const c of tx.clauses) {
       clauses.push({
@@ -155,8 +158,12 @@ export class PosCMD extends CMD {
       if (c.token == 0) {
         totalClauseMTR = totalClauseMTR.plus(c.value);
       }
-      if (c.token == 0) {
+      if (c.token == 1) {
         totalClauseMTRG = totalClauseMTRG.plus(c.value);
+      }
+      if (!(c.to in tos)) {
+        toCount++;
+        tos[c.to] = true;
       }
     }
 
@@ -204,6 +211,16 @@ export class PosCMD extends CMD {
       });
       outIndex++;
     }
+    const sortedGroupedTransfers = groupedTransfers.sort((a, b) => {
+      return a.amount.isGreaterThan(b.amount) ? -1 : 1;
+    });
+    if (sortedGroupedTransfers && sortedGroupedTransfers.length > 0) {
+      majorTo = sortedGroupedTransfers[0].recipient;
+    } else if (tx.clauses && tx.clauses.length > 0) {
+      majorTo = tx.clauses[0].to;
+    } else {
+      majorTo = '';
+    }
     const txModel: Tx = {
       hash: tx.id,
       block: {
@@ -235,7 +252,9 @@ export class PosCMD extends CMD {
       totalClauseMTRG,
       totalTransferMTR,
       totalTransferMTRG,
-      groupedTransfers,
+      groupedTransfers: sortedGroupedTransfers,
+      majorTo,
+      toCount,
     };
 
     this.logger.info({ hash: txModel }, 'processed tx');

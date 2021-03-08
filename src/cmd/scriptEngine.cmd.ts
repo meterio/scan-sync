@@ -288,7 +288,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
 
           // update epoch reward summary
           const summaryExist = await this.epochRewardSummaryRepo.existEpoch(epoch);
-          if (!exist) {
+          if (!summaryExist) {
             let epochSummary: EpochRewardSummary = {
               epoch,
               blockNum,
