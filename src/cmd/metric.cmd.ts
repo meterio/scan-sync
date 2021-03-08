@@ -5,20 +5,14 @@ import BigNumber from 'bignumber.js';
 import Logger from 'bunyan';
 
 import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, Network, Token, ValidatorStatus } from '../const';
-import { AuctionDist, AuctionTx } from '../model/auctionSummary.interface';
-import { Bid } from '../model/bid.interface';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
-import { RewardInfo } from '../model/validatorReward.interface';
 import AccountRepo from '../repo/account.repo';
 import AlertRepo from '../repo/alert.repo';
-import AuctionSummaryRepo from '../repo/auctionSummary.repo';
-import BidRepo from '../repo/bid.repo';
 import BlockRepo from '../repo/block.repo';
 import BucketRepo from '../repo/bucket.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
-import ValidatorRewardRepo from '../repo/validatorReward.repo';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { MetricCache } from '../utils/metricCache';
 import { postToSlackChannel } from '../utils/slack';
@@ -50,7 +44,6 @@ export class MetricCMD extends CMD {
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
   private accountRepo = new AccountRepo();
-  private validatorRewardRepo = new ValidatorRewardRepo();
   private blockRepo = new BlockRepo();
   private alertRepo = new AlertRepo();
 

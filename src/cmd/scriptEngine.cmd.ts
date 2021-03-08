@@ -2,50 +2,33 @@ import * as devkit from '@meterio/devkit';
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
-import {
-  BoundEvent,
-  Network,
-  Token,
-  TransferEvent,
-  UnboundEvent,
-  ZeroAddress,
-  getERC20Token,
-  getPreAllocAccount,
-  prototype,
-} from '../const';
+import { Network, Token } from '../const';
 import { AuctionDist, AuctionTx } from '../model/auctionSummary.interface';
 import { Bid } from '../model/bid.interface';
 import { Block } from '../model/block.interface';
-import { Bound } from '../model/bound.interface';
 import { EpochReward } from '../model/epochReward.interface';
 import { EpochRewardSummary } from '../model/epochRewardSummary.interface';
-import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
-import { Unbound } from '../model/unbound.interface';
-import { RewardInfo, ValidatorReward } from '../model/validatorReward.interface';
+import { RewardInfo } from '../model/validatorReward.interface';
 import AuctionRepo from '../repo/auction.repo';
 import AuctionSummaryRepo from '../repo/auctionSummary.repo';
 import BidRepo from '../repo/bid.repo';
-import BoundRepo from '../repo/bound.repo';
 import EpochRewardRepo from '../repo/epochReward.repo';
 import EpochRewardSummaryRepo from '../repo/epochRewardSummary.repo';
-import UnboundRepo from '../repo/unbound.repo';
 import ValidatorRewardRepo from '../repo/validatorReward.repo';
-import { fromWei } from '../utils/utils';
 import { TxBlockReviewer } from './blockReviewer';
 
 export class ScriptEngineCMD extends TxBlockReviewer {
-  private contracts: { [key: string]: string } = {};
-
   protected auctionRepo = new AuctionRepo();
   protected auctionSummaryRepo = new AuctionSummaryRepo();
   protected bidRepo = new BidRepo();
   protected epochRewardRepo = new EpochRewardRepo();
   protected epochRewardSummaryRepo = new EpochRewardSummaryRepo();
   protected validatorRewardRepo = new ValidatorRewardRepo();
+
   constructor(net: Network) {
     super(net);
-    this.name = 'account';
+    this.name = 'scriptengine';
     this.logger = Logger.createLogger({ name: this.name });
   }
 

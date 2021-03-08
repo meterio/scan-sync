@@ -138,7 +138,7 @@ const txSchema = new mongoose.Schema(
       required: true,
     },
     groupedTransfers: [groupedTransferSchema],
-    majorTo: { type: String, required: true },
+    majorTo: { type: String, required: false },
     toCount: { type: Number, required: true },
 
     createdAt: { type: Number, index: true },

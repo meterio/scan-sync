@@ -6,7 +6,6 @@ import * as Logger from 'bunyan';
 import { BlockType, GetPosConfig, Network, Token, ZeroAddress } from '../const';
 import { CommitteeMember } from '../model/block.interface';
 import { BlockConcise } from '../model/blockConcise.interface';
-import { blockConciseSchema } from '../model/blockConcise.model';
 import { Committee } from '../model/committee.interface';
 import { Clause, GroupedTransfer, PosEvent, PosTransfer, Tx, TxOutput } from '../model/tx.interface';
 import BlockRepo from '../repo/block.repo';
@@ -21,7 +20,7 @@ import { CMD } from './cmd';
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
 
-const SAMPLING_INTERVAL = 500;
+const SAMPLING_INTERVAL = 1000;
 const PRELOAD_WINDOW = 10;
 
 export class PosCMD extends CMD {
@@ -216,9 +215,14 @@ export class PosCMD extends CMD {
     });
     if (sortedGroupedTransfers && sortedGroupedTransfers.length > 0) {
       majorTo = sortedGroupedTransfers[0].recipient;
-    } else if (tx.clauses && tx.clauses.length > 0) {
-      majorTo = tx.clauses[0].to;
-    } else {
+    }
+    for (const c of tx.clauses) {
+      if (!c.to) {
+        majorTo = c.to;
+        break;
+      }
+    }
+    if (!majorTo) {
       majorTo = '';
     }
     const txModel: Tx = {

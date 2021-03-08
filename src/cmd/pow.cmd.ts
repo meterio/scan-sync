@@ -11,7 +11,7 @@ import { Pow } from '../utils/pow-rpc';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 
-const SAMPLING_INTERVAL = 500;
+const SAMPLING_INTERVAL = 1000;
 const PRELOAD_WINDOW = 5;
 
 export class PowCMD extends CMD {

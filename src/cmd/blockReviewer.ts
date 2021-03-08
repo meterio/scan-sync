@@ -15,7 +15,7 @@ import TxRepo from '../repo/tx.repo';
 import { InterruptedError, Pos, sleep } from '../utils';
 import { CMD } from './cmd';
 
-const SAMPLING_INTERVAL = 500;
+const SAMPLING_INTERVAL = 1000;
 const LOOP_WINDOW = 1000;
 
 export abstract class TxBlockReviewer extends CMD {
@@ -93,7 +93,10 @@ export abstract class TxBlockReviewer extends CMD {
           endNum = localBestNum;
         }
 
-        this.logger.info(`start review PoS block from number ${headNum + 1} to ${endNum} (best:${localBestNum})`);
+        if (headNum < endNum) {
+          continue;
+        }
+        this.logger.info(`start review PoS block from number ${headNum} to ${endNum} (best:${localBestNum})`);
 
         let num = headNum;
         for (;;) {
