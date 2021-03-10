@@ -21,10 +21,10 @@ import { CMD } from './cmd';
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
 
-const FASTFORWARD_SAMPLING_INTERVAL = 500;
+const FASTFORWARD_SAMPLING_INTERVAL = 300;
 const SAMPLING_INTERVAL = 2000;
 const PRELOAD_WINDOW = 10;
-const LOOP_WINDOW = 100;
+const LOOP_WINDOW = 500;
 
 export class PosCMD extends CMD {
   private shutdown = false;

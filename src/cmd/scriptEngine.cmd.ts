@@ -232,7 +232,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               blsPK,
               name: body.candidateName.toString(),
               description: body.candidateDescription.toString(),
-              address: body.candidateAddr.toString().toLowerCase(),
+              address: '0x' + body.candidateAddr.toString('hex').toLowerCase(),
               ipAddress: body.candidateIP.toString(),
               port: body.candidatePort,
             };
@@ -245,7 +245,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               updated = true;
             }
             if (body.candidateAddr.toString() != '') {
-              known.address = body.candidateAddr.toString();
+              known.address = '0x' + body.candidateAddr.toString('hex').toLowerCase();
               updated = true;
             }
             if (body.candidateIP.toString() != '') {
