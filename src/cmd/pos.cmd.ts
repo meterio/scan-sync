@@ -5,6 +5,7 @@ import * as Logger from 'bunyan';
 
 import { BlockType, GetPosConfig, Network, Token, ZeroAddress } from '../const';
 import { CommitteeMember } from '../model/block.interface';
+import { Block } from '../model/block.interface';
 import { BlockConcise } from '../model/blockConcise.interface';
 import { Committee } from '../model/committee.interface';
 import { Clause, GroupedTransfer, PosEvent, PosTransfer, Tx, TxOutput } from '../model/tx.interface';
@@ -23,7 +24,7 @@ const meterify = require('meterify').meterify;
 const FASTFORWARD_SAMPLING_INTERVAL = 500;
 const SAMPLING_INTERVAL = 2000;
 const PRELOAD_WINDOW = 10;
-const LOOP_WINDOW = 2000;
+const LOOP_WINDOW = 100;
 
 export class PosCMD extends CMD {
   private shutdown = false;
@@ -117,19 +118,64 @@ export class PosCMD extends CMD {
           { best: bestNum, head: headNum },
           `start import PoS block from number ${headNum + 1} to ${tgtNum}`
         );
+        let blocks: Block[] = [];
+        let txs: Tx[] = [];
         for (let num = headNum + 1; num <= tgtNum; num++) {
           if (this.shutdown) {
             throw new InterruptedError();
           }
           const blk = await this.getBlockFromREST(num);
-          await this.processBlock(blk);
-          this.logger.info({ number: blk.number, hash: blk.id }, 'imported PoS block');
-
-          // update head
-          if (!head) {
-            head = await this.headRepo.create(this.name, blk.number, blk.id);
+          const res = await this.processBlock(blk);
+          if (fastforward) {
+            // fast forward mode
+            blocks.push(res.block);
+            txs = txs.concat(res.txs);
           } else {
-            head = await this.headRepo.update(this.name, blk.number, blk.id);
+            // step mode
+            await this.blockRepo.create(res.block);
+            this.logger.info(`saved block ${res.block.number}`);
+            if (res.txs.length > 0) {
+              await this.txRepo.bulkInsert(...res.txs);
+              this.logger.info(`saved ${res.txs.length} txs`);
+            }
+            // update head
+            if (!head) {
+              head = await this.headRepo.create(this.name, res.block.number, res.block.hash);
+            } else {
+              this.logger.info({ num: res.block.number }, 'update head');
+              head = await this.headRepo.update(this.name, res.block.number, res.block.hash);
+            }
+          }
+
+          // print
+          let txCount = 0;
+          if (res.txs.length > 0) {
+            txCount = res.txs.length;
+          }
+          this.logger.info({ number: blk.number, txCount: txCount }, 'processed PoS block');
+        }
+
+        if (fastforward) {
+          // fastforward mode, save blocks and txs with bulk insert
+          if (blocks.length > 0) {
+            const first = blocks[0];
+            const last = blocks[blocks.length - 1];
+            this.logger.info(
+              { first: first.number, last: last.number },
+              `saved ${last.number - first.number + 1} blocks`
+            );
+            await this.blockRepo.bulkInsert(...blocks);
+            // update head
+            if (!head) {
+              head = await this.headRepo.create(this.name, last.number, last.hash);
+            } else {
+              this.logger.info({ num: last.number }, 'update head');
+              head = await this.headRepo.update(this.name, last.number, last.hash);
+            }
+          }
+          if (txs.length > 0) {
+            this.logger.info(`saved ${txs.length} txs`);
+            await this.txRepo.bulkInsert(...txs);
           }
         }
       } catch (e) {
@@ -228,19 +274,16 @@ export class PosCMD extends CMD {
     });
     if (sortedGroupedTransfers && sortedGroupedTransfers.length > 0) {
       majorTo = sortedGroupedTransfers[0].recipient;
-      console.log('majorTo 1: ', majorTo);
     }
     if (!majorTo && tx.clauses && tx.clauses.length > 0) {
       for (const c of tx.clauses) {
         if (c.to) {
           majorTo = c.to;
-          console.log('majorTo 2: ', majorTo);
           break;
         }
       }
     }
     if (!majorTo) {
-      console.log('majorTo 3: ', majorTo);
       majorTo = '';
     }
     const txModel: Tx = {
@@ -279,11 +322,11 @@ export class PosCMD extends CMD {
       toCount,
     };
 
-    this.logger.info({ hash: txModel }, 'processed tx');
+    this.logger.info({ hash: txModel.hash }, 'processed tx');
     return txModel;
   }
 
-  async processBlock(blk: Pos.ExpandedBlock) {
+  async processBlock(blk: Pos.ExpandedBlock): Promise<{ block: Block; txs: Tx[] }> {
     let score = 0;
     let gasChanged = 0;
     let reward = new BigNumber(0);
@@ -363,7 +406,7 @@ export class PosCMD extends CMD {
     } else {
       epoch = blk.qc.epochID;
     }
-    await this.blockRepo.create({
+    const block = {
       ...blk,
       hash: blk.id,
       txHashs,
@@ -379,14 +422,7 @@ export class PosCMD extends CMD {
       nonce: String(blk.nonce),
       qc: { ...blk.qc },
       powBlocks,
-    });
-    if (txs.length > 0) {
-      let clauseCount = 0;
-      for (const t of txs) {
-        clauseCount += t.clauseCount;
-      }
-      await this.txRepo.bulkInsert(...txs);
-      this.logger.info(`saved ${txs.length} txs, ${clauseCount} clauses`);
-    }
+    };
+    return { block, txs };
   }
 }
