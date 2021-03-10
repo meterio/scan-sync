@@ -59,6 +59,6 @@ powBlockSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<PowBlock & mongoose.Document>('powBlock', powBlockSchema, 'powblocks');
+const model = mongoose.model<PowBlock & mongoose.Document>('PowBlock', powBlockSchema, 'powBlocks');
 
 export default model;

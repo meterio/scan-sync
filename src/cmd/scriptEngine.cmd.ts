@@ -8,6 +8,7 @@ import { Bid } from '../model/bid.interface';
 import { Block } from '../model/block.interface';
 import { EpochReward } from '../model/epochReward.interface';
 import { EpochRewardSummary } from '../model/epochRewardSummary.interface';
+import { Known } from '../model/known.interface';
 import { Tx } from '../model/tx.interface';
 import { RewardInfo } from '../model/validatorReward.interface';
 import AuctionRepo from '../repo/auction.repo';
@@ -15,6 +16,7 @@ import AuctionSummaryRepo from '../repo/auctionSummary.repo';
 import BidRepo from '../repo/bid.repo';
 import EpochRewardRepo from '../repo/epochReward.repo';
 import EpochRewardSummaryRepo from '../repo/epochRewardSummary.repo';
+import KnownRepo from '../repo/known.repo';
 import ValidatorRewardRepo from '../repo/validatorReward.repo';
 import { TxBlockReviewer } from './blockReviewer';
 
@@ -25,6 +27,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
   protected epochRewardRepo = new EpochRewardRepo();
   protected epochRewardSummaryRepo = new EpochRewardSummaryRepo();
   protected validatorRewardRepo = new ValidatorRewardRepo();
+  protected knownRepo = new KnownRepo();
 
   constructor(net: Network) {
     super(net);
@@ -33,7 +36,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
   }
 
   async processTx(tx: Tx, txIndex: number, blk: Block) {
-    this.logger.info(`start to process ${tx.hash}`);
+    this.logger.info(`start to process tx ${tx.hash}`);
 
     const epoch = blk.epoch;
     const blockNum = blk.number;
@@ -214,6 +217,52 @@ export class ScriptEngineCMD extends TxBlockReviewer {
 
       if (scriptData.header.modId === se.ModuleID.Staking) {
         const body = se.decodeStakingBody(scriptData.payload);
+
+        // handle staking candidate / candidate update
+        if (body.opCode === se.StakingOpCode.Candidate || body.opCode === se.StakingOpCode.CandidateUpdate) {
+          const pk = body.candidatePubKey.toString();
+          const items = pk.split(':::');
+          const ecdsaPK = items[0];
+          const blsPK = items[1];
+
+          const exist = await this.knownRepo.exist(ecdsaPK);
+          if (!exist) {
+            const known: Known = {
+              ecdsaPK,
+              blsPK,
+              name: body.candidateName.toString(),
+              description: body.candidateDescription.toString(),
+              address: body.candidateAddr.toString().toLowerCase(),
+              ipAddress: body.candidateIP.toString(),
+              port: body.candidatePort,
+            };
+            await this.knownRepo.create(known);
+          } else {
+            let known = await this.knownRepo.findByECDSAPK(ecdsaPK);
+            let updated = false;
+            if (body.candidateName.toString() != '') {
+              known.name = body.candidateName.toString();
+              updated = true;
+            }
+            if (body.candidateAddr.toString() != '') {
+              known.address = body.candidateAddr.toString();
+              updated = true;
+            }
+            if (body.candidateIP.toString() != '') {
+              known.ipAddress = body.candidateIP.toString();
+              updated = true;
+            }
+            if (body.candidatePort.toString() != '') {
+              known.port = body.candidatePort;
+              updated = true;
+            }
+            if (updated) {
+              await known.save();
+            }
+          }
+        }
+
+        // handle staking governing
         if (body.opCode === se.StakingOpCode.Governing) {
           let autobidTotal = new BigNumber(0);
           let transferTotal = new BigNumber(0);
@@ -287,6 +336,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
         }
       }
     }
+    this.logger.info(`processed tx ${tx.hash}`);
   }
 
   async processBlock(blk: Block) {

@@ -37,6 +37,6 @@ const bidSchema = new mongoose.Schema({
   },
 });
 
-const model = mongoose.model<Bid & mongoose.Document>('bid', bidSchema, 'bids');
+const model = mongoose.model<Bid & mongoose.Document>('Bid', bidSchema, 'bids');
 
 export default model;

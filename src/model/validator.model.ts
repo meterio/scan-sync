@@ -64,6 +64,6 @@ validatorSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Validator & mongoose.Document>('validator', validatorSchema, 'validators');
+const model = mongoose.model<Validator & mongoose.Document>('Validator', validatorSchema, 'validators');
 
 export default model;

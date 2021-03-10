@@ -126,7 +126,7 @@ auctionSummarySchema.set('toJSON', {
 });
 
 const model = mongoose.model<AuctionSummary & mongoose.Document>(
-  'auctionSummary',
+  'AuctionSummary',
   auctionSummarySchema,
   'auctionSummaries'
 );

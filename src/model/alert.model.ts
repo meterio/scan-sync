@@ -28,6 +28,6 @@ alertSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Alert & mongoose.Document>('alert', alertSchema);
+const model = mongoose.model<Alert & mongoose.Document>('Alert', alertSchema);
 
 export default model;

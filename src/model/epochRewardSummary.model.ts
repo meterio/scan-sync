@@ -31,7 +31,7 @@ const epochRewardSummarySchema = new mongoose.Schema({
 });
 
 const model = mongoose.model<EpochRewardSummary & mongoose.Document>(
-  'epochRewardSummary',
+  'EpochRewardSummary',
   epochRewardSummarySchema,
   'epochRewardSummaries'
 );

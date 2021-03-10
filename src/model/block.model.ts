@@ -116,6 +116,6 @@ blockSchema.methods.toSummary = function () {
     beneficiary: this.beneficiary,
   };
 };
-const model = mongoose.model<Block & mongoose.Document>('block', blockSchema);
+const model = mongoose.model<Block & mongoose.Document>('Block', blockSchema, 'blocks');
 
 export default model;

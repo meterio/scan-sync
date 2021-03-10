@@ -11,8 +11,10 @@ import { Pow } from '../utils/pow-rpc';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 
-const SAMPLING_INTERVAL = 1000;
+const FASTFORWARD_SAMPLING_INTERVAL = 500;
+const SAMPLING_INTERVAL = 5000;
 const PRELOAD_WINDOW = 5;
+const LOOP_WINDOW = 100;
 
 export class PowCMD extends CMD {
   private shutdown = false;
@@ -71,12 +73,17 @@ export class PowCMD extends CMD {
   }
 
   public async loop() {
+    let fastforward = true;
     for (;;) {
       try {
         if (this.shutdown) {
           throw new InterruptedError();
         }
-        await sleep(SAMPLING_INTERVAL);
+        if (fastforward) {
+          await sleep(FASTFORWARD_SAMPLING_INTERVAL);
+        } else {
+          await sleep(SAMPLING_INTERVAL);
+        }
 
         let head = await this.headRepo.findByKey(this.name);
         let headNum = !!head ? head.num : -1;
@@ -93,7 +100,13 @@ export class PowCMD extends CMD {
         }
         const info = await this.pow.getBlockchainInfo();
         const bestNum = info.blocks;
-        const tgtNum = bestNum - headNum > 1000 ? headNum + 1000 : bestNum;
+        let tgtNum = headNum + LOOP_WINDOW;
+        if (tgtNum > bestNum) {
+          fastforward = false;
+          tgtNum = bestNum;
+        } else {
+          fastforward = true;
+        }
         this.logger.info(
           { best: bestNum, head: headNum },
           `start import PoW block from height ${headNum + 1} to ${tgtNum}`

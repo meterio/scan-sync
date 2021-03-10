@@ -34,9 +34,9 @@ const validatorRewardSchema = new mongoose.Schema({
 });
 
 const model = mongoose.model<ValidatorReward & mongoose.Document>(
-  'validatorreward',
+  'validatorReward',
   validatorRewardSchema,
-  'validatorrewards'
+  'validatorRewards'
 );
 
 export default model;

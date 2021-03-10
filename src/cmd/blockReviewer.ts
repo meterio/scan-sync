@@ -15,7 +15,8 @@ import TxRepo from '../repo/tx.repo';
 import { InterruptedError, Pos, sleep } from '../utils';
 import { CMD } from './cmd';
 
-const SAMPLING_INTERVAL = 1000;
+const FASTFORWARD_SAMPLING_INTERVAL = 500;
+const SAMPLING_INTERVAL = 2000;
 const LOOP_WINDOW = 1000;
 
 export abstract class TxBlockReviewer extends CMD {
@@ -60,7 +61,7 @@ export abstract class TxBlockReviewer extends CMD {
   public async start() {
     await this.beforeStart();
     this.logger.info(`${this.name}: start`);
-    this.loop();
+    await this.loop();
     return;
   }
 
@@ -74,12 +75,17 @@ export abstract class TxBlockReviewer extends CMD {
   }
 
   public async loop() {
+    let fastforward = true;
     for (;;) {
       try {
         if (this.shutdown) {
           throw new InterruptedError();
         }
-        await sleep(SAMPLING_INTERVAL);
+        if (fastforward) {
+          await sleep(FASTFORWARD_SAMPLING_INTERVAL);
+        } else {
+          await sleep(SAMPLING_INTERVAL);
+        }
         let head = await this.headRepo.findByKey(this.name);
         if (!head) {
           await this.headRepo.create(this.name, -1, '0x');
@@ -91,9 +97,13 @@ export abstract class TxBlockReviewer extends CMD {
         let endNum = headNum + LOOP_WINDOW;
         if (endNum > localBestNum) {
           endNum = localBestNum;
+          fastforward = false;
+        } else {
+          fastforward = true;
         }
+        console.log(headNum, endNum);
 
-        if (headNum < endNum) {
+        if (headNum > endNum) {
           continue;
         }
         this.logger.info(`start review PoS block from number ${headNum} to ${endNum} (best:${localBestNum})`);

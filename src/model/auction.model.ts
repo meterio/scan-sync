@@ -1,41 +1,7 @@
 import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
-import { Token, enumKeys } from '../const';
-import { fromWei } from '../utils/utils';
 import { Auction } from './auction.interface';
-
-const auctionDistSchema = new mongoose.Schema(
-  {
-    address: { type: String, required: true },
-    amount: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    token: {
-      type: String,
-      enum: enumKeys(Token),
-      get: (enumValue: string) => Token[enumValue as keyof typeof Token],
-      set: (enumValue: Token) => Token[enumValue],
-      required: true,
-    },
-  },
-  { _id: false }
-);
-
-const auctionTxSchema = new mongoose.Schema(
-  {
-    txid: { type: String, required: true },
-    address: { type: String, required: true },
-    amount: { type: String, required: true },
-    type: { type: String, required: true },
-    timestamp: { type: Number, required: true },
-    nonce: { type: Number, required: true },
-  },
-  { _id: false }
-);
 
 const auctionSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
@@ -153,6 +119,6 @@ auctionSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Auction & mongoose.Document>('auction', auctionSchema, 'auctions');
+const model = mongoose.model<Auction & mongoose.Document>('Auction', auctionSchema, 'auctions');
 
 export default model;

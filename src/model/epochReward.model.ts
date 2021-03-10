@@ -23,6 +23,6 @@ const epochRewardSchema = new mongoose.Schema({
   },
 });
 
-const model = mongoose.model<EpochReward & mongoose.Document>('epochReward', epochRewardSchema, 'epochRewards');
+const model = mongoose.model<EpochReward & mongoose.Document>('EpochReward', epochRewardSchema, 'epochRewards');
 
 export default model;

@@ -20,8 +20,10 @@ import { CMD } from './cmd';
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
 
-const SAMPLING_INTERVAL = 1000;
+const FASTFORWARD_SAMPLING_INTERVAL = 500;
+const SAMPLING_INTERVAL = 2000;
 const PRELOAD_WINDOW = 10;
+const LOOP_WINDOW = 2000;
 
 export class PosCMD extends CMD {
   private shutdown = false;
@@ -73,12 +75,17 @@ export class PosCMD extends CMD {
   }
 
   public async loop() {
+    let fastforward = true;
     for (;;) {
       try {
         if (this.shutdown) {
           throw new InterruptedError();
         }
-        await sleep(SAMPLING_INTERVAL);
+        if (fastforward) {
+          await sleep(FASTFORWARD_SAMPLING_INTERVAL);
+        } else {
+          await sleep(SAMPLING_INTERVAL);
+        }
 
         let head = await this.headRepo.findByKey(this.name);
         let headNum = !!head ? head.num : -1;
@@ -95,7 +102,13 @@ export class PosCMD extends CMD {
         }
 
         const bestNum = await this.web3.eth.getBlockNumber();
-        const tgtNum = bestNum - headNum > 1000 ? headNum + 1000 : bestNum;
+        let tgtNum = headNum + LOOP_WINDOW;
+        if (tgtNum > bestNum) {
+          fastforward = false;
+          tgtNum = bestNum;
+        } else {
+          fastforward = true;
+        }
 
         if (tgtNum <= headNum) {
           continue;
@@ -215,14 +228,19 @@ export class PosCMD extends CMD {
     });
     if (sortedGroupedTransfers && sortedGroupedTransfers.length > 0) {
       majorTo = sortedGroupedTransfers[0].recipient;
+      console.log('majorTo 1: ', majorTo);
     }
-    for (const c of tx.clauses) {
-      if (!c.to) {
-        majorTo = c.to;
-        break;
+    if (!majorTo && tx.clauses && tx.clauses.length > 0) {
+      for (const c of tx.clauses) {
+        if (c.to) {
+          majorTo = c.to;
+          console.log('majorTo 2: ', majorTo);
+          break;
+        }
       }
     }
     if (!majorTo) {
+      console.log('majorTo 3: ', majorTo);
       majorTo = '';
     }
     const txModel: Tx = {
