@@ -1,5 +1,5 @@
 import { EpochRewardSummary } from '../model/epochRewardSummary.interface';
-import EpochRewardSummaryModel from '../model/EpochRewardSummary.model';
+import EpochRewardSummaryModel from '../model/epochRewardSummary.model';
 
 export class EpochRewardSummaryRepo {
   private model = EpochRewardSummaryModel;

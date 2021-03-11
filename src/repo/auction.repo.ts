@@ -1,7 +1,5 @@
-import BigNumber from 'bignumber.js';
-
-import { Auction } from '../model/Auction.interface';
-import AuctionModel from '../model/Auction.model';
+import { Auction } from '../model/auction.interface';
+import AuctionModel from '../model/auction.model';
 
 export class AuctionRepo {
   private model = AuctionModel;

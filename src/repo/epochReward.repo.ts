@@ -1,5 +1,5 @@
 import { EpochReward } from '../model/epochReward.interface';
-import EpochRewardModel from '../model/EpochReward.model';
+import EpochRewardModel from '../model/epochReward.model';
 
 export class EpochRewardRepo {
   private model = EpochRewardModel;

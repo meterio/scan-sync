@@ -1,5 +1,5 @@
-import { ValidatorReward } from '../model/ValidatorReward.interface';
-import ValidatorRewardModel from '../model/ValidatorReward.model';
+import { ValidatorReward } from '../model/validatorReward.interface';
+import ValidatorRewardModel from '../model/validatorReward.model';
 
 export class ValidatorRewardRepo {
   private model = ValidatorRewardModel;
