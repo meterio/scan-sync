@@ -358,6 +358,7 @@ export class AccountCMD extends TxBlockReviewer {
         },
         'account balance after update'
       );
+      acct.lastUpdate = blockConcise;
       await acct.save();
     }
   }
