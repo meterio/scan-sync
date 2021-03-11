@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./utils/usage');
 require('./utils/validateEnv');
 
 // other imports
@@ -14,37 +15,9 @@ import { PowCMD } from './cmd/pow.cmd';
 import { ScriptEngineCMD } from './cmd/scriptEngine.cmd';
 import { Network } from './const/network';
 import { connectDB } from './utils/db';
+import { printUsage } from './utils/usage';
 
 const log = Logger.createLogger({ name: 'main' });
-
-export const error = (message: string) => {
-  if (!message.endsWith('\n')) {
-    message = message + '\n';
-  }
-  process.stderr.write(message);
-};
-
-const printVersion = () => {
-  console.log('NAME: ', pkg.name);
-  console.log('VERSION: ', pkg.version);
-};
-
-const printUsage = (msg = '') => {
-  error(`${msg ? msg + '\n\n' : ''}Usage: node index.js [Network][Task][...Args]
---------
-Network:    [main|test]
-Task:       [pos|pow|account|metric|scriptengine]`);
-  process.exit(-1);
-};
-
-if (process.argv.length < 4) {
-  if ((process.argv.length >= 3 && process.argv[2] === '-v') || process.argv[2] === 'version') {
-    printVersion();
-    process.exit(0);
-  }
-  printUsage();
-  process.exit(-1);
-}
 
 let net: Network;
 switch (process.argv[2]) {
@@ -100,6 +73,7 @@ switch (process.argv[3]) {
   });
 
   try {
+    log.info({ version: pkg.version, cmd: process.argv[3], network: process.argv[2], genesis: net }, 'start cmd');
     await connectDB(net);
     await cmd.start();
   } catch (e) {
