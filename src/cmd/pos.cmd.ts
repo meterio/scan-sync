@@ -24,7 +24,7 @@ const meterify = require('meterify').meterify;
 const FASTFORWARD_SAMPLING_INTERVAL = 300;
 const SAMPLING_INTERVAL = 2000;
 const PRELOAD_WINDOW = 10;
-const LOOP_WINDOW = 500;
+const LOOP_WINDOW = 50;
 
 export class PosCMD extends CMD {
   private shutdown = false;

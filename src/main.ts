@@ -8,7 +8,6 @@ import mongoose from 'mongoose';
 import * as pkg from '../package.json';
 import { AccountCMD } from './cmd/account.cmd';
 import { CMD } from './cmd/cmd';
-import { ERC20CMD } from './cmd/erc20.cmd';
 import { MetricCMD } from './cmd/metric.cmd';
 import { PosCMD } from './cmd/pos.cmd';
 import { PowCMD } from './cmd/pow.cmd';
@@ -34,7 +33,7 @@ const printUsage = (msg = '') => {
   error(`${msg ? msg + '\n\n' : ''}Usage: node index.js [Network][Task][...Args]
 --------
 Network:    [main|test]
-Task:       [pos|pow|account|erc20|metric|scriptengine]`);
+Task:       [pos|pow|account|metric|scriptengine]`);
   process.exit(-1);
 };
 
@@ -72,9 +71,6 @@ switch (process.argv[3]) {
     break;
   case 'account':
     cmd = new AccountCMD(net);
-    break;
-  case 'erc20':
-    cmd = new ERC20CMD(net);
     break;
   case 'metric':
     cmd = new MetricCMD(net);
