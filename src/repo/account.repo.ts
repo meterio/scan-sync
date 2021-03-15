@@ -30,6 +30,8 @@ export class AccountRepo {
       address: address.toLowerCase(),
       mtrBalance: new BigNumber('0'),
       mtrgBalance: new BigNumber('0'),
+      mtrBounded: new BigNumber('0'),
+      mtrgBounded: new BigNumber('0'),
       mtrRank: 99999999,
       mtrgRank: 99999999,
 

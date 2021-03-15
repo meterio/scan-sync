@@ -286,6 +286,7 @@ export class PosCMD extends CMD {
     if (!majorTo) {
       majorTo = '';
     }
+
     const txModel: Tx = {
       hash: tx.id,
       block: {

@@ -14,7 +14,7 @@ if (!net) {
   process.exit(-1);
 }
 
-const blockNum = 416378;
+const blockNum = 27896;
 
 const processOneBlock = async (net: Network, blockNum: number) => {
   // const blockQueue = new BlockQueue('block');
