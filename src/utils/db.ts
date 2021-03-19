@@ -8,7 +8,7 @@ export const connectDB = async (network: Network) => {
   let dbName = 'scandb';
   switch (network) {
     case Network.MainNet:
-      dbName = 'scandb-mainnet';
+      dbName = 'scandb-main';
       break;
     case Network.TestNet:
       dbName = 'scandb-testnet';

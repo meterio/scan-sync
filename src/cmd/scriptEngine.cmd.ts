@@ -55,9 +55,11 @@ export class ScriptEngineCMD extends TxBlockReviewer {
       if (scriptData.header.modId === se.ModuleID.Auction) {
         // auction
         const body = se.decodeAuctionBody(scriptData.payload);
+        this.logger.info({ opCode: body.opCode }, 'handle auction data');
         switch (body.opCode) {
           case se.AuctionOpCode.End:
             // end auction
+            this.logger.info('handle auction end');
             const endedAuction = await this.pos.getLastAuctionSummary(blockNum);
             if (endedAuction.actualPrice === '<nil>') {
               console.log('Error: empty auction, something wrong happened');
@@ -140,6 +142,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             await tgtAuction.save();
             break;
           case se.AuctionOpCode.Start:
+            this.logger.info('handle auction start');
             // TODO: handle the "auction not started" case
             // start auction
             const curAuction = await this.pos.getPresentAuctionByRevision(blockNum);
@@ -174,6 +177,8 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           case se.AuctionOpCode.Bid:
             // TODO: handle the tx reverted case
             // auction bid
+
+            this.logger.info('handle auction bid');
             const atx = se.getAuctionTxFromAuctionBody(body);
             const presentAuction = await this.auctionRepo.findPresent();
             const bid: Bid = {
@@ -217,9 +222,11 @@ export class ScriptEngineCMD extends TxBlockReviewer {
 
       if (scriptData.header.modId === se.ModuleID.Staking) {
         const body = se.decodeStakingBody(scriptData.payload);
+        this.logger.info({ opCode: body.opCode }, `handle staking data`);
 
         // handle staking candidate / candidate update
         if (body.opCode === se.StakingOpCode.Candidate || body.opCode === se.StakingOpCode.CandidateUpdate) {
+          this.logger.info(`handle staking candidate or candidateUpdate`);
           const pk = body.candidatePubKey.toString();
           const items = pk.split(':::');
           const ecdsaPK = items[0];
@@ -264,6 +271,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
 
         // handle staking governing
         if (body.opCode === se.StakingOpCode.Governing) {
+          this.logger.info(`handle staking governing`);
           let autobidTotal = new BigNumber(0);
           let transferTotal = new BigNumber(0);
           let autobidCount = 0;

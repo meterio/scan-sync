@@ -16,7 +16,7 @@ const TESTNET_POW_RPC_PORT = 8332;
 const TESTNET_POW_RPC_USER = 'testuser';
 const TESTNET_POW_RPC_PWD = 'testpass';
 
-const MAINNET_PROVIDER_URL = 'http://mainnet.meter.io';
+const MAINNET_PROVIDER_URL = 'http://mainnet.meter.io:8669';
 const MAINNET_POW_RPC_HOST = 'c03.meter.io';
 const MAINNET_POW_RPC_PORT = 8332;
 const MAINNET_POW_RPC_USER = 'testuser';
