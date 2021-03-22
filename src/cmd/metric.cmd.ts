@@ -482,9 +482,15 @@ export class MetricCMD extends CMD {
       for (const acct of accts) {
         if (!(acct.address in LockedMeterAddrs) && acct.mtrBalance.isGreaterThan(0)) {
           mtr = mtr.plus(acct.mtrBalance);
+          if (acct.mtrBounded) {
+            mtr = mtr.plus(acct.mtrBounded);
+          }
         }
         if (!(acct.address in LockedMeterGovAddrs) && acct.mtrgBalance.isGreaterThan(0)) {
           mtrg = mtrg.plus(acct.mtrgBalance);
+          if (acct.mtrgBounded) {
+            mtrg = mtrg.plus(acct.mtrgBounded);
+          }
         }
       }
       console.log('MTR Circulation: ', mtr.toFixed());
