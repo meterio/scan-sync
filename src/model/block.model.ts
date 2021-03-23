@@ -76,6 +76,7 @@ const blockSchema = new mongoose.Schema(
       get: (enumValue: string) => BlockType[enumValue as keyof typeof BlockType],
       set: (enumValue: BlockType) => BlockType[enumValue],
       required: true,
+      index: true,
     },
     epoch: { type: Number, required: true },
     kblockData: [{ type: String }],
