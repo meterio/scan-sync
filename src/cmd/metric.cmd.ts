@@ -480,17 +480,22 @@ export class MetricCMD extends CMD {
       let mtr = new BigNumber(0);
       let mtrg = new BigNumber(0);
       for (const acct of accts) {
+        // add mtr balance
         if (!(acct.address in LockedMeterAddrs) && acct.mtrBalance.isGreaterThan(0)) {
           mtr = mtr.plus(acct.mtrBalance);
-          if (acct.mtrBounded) {
-            mtr = mtr.plus(acct.mtrBounded);
-          }
         }
+        // add mtr bounded balance
+        if (!(acct.address in LockedMeterAddrs) && acct.mtrBounded && acct.mtrBounded.isGreaterThan(0)) {
+          mtr = mtr.plus(acct.mtrBounded);
+        }
+
+        // add mtrg balance
         if (!(acct.address in LockedMeterGovAddrs) && acct.mtrgBalance.isGreaterThan(0)) {
           mtrg = mtrg.plus(acct.mtrgBalance);
-          if (acct.mtrgBounded) {
-            mtrg = mtrg.plus(acct.mtrgBounded);
-          }
+        }
+        // add mtrg bounded balance
+        if (!(acct.address in LockedMeterGovAddrs) && acct.mtrgBounded && acct.mtrgBounded.isGreaterThan(0)) {
+          mtrg = mtrg.plus(acct.mtrgBounded);
         }
       }
       console.log('MTR Circulation: ', mtr.toFixed());
