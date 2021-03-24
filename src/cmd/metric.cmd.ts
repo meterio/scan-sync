@@ -505,8 +505,17 @@ export class MetricCMD extends CMD {
 
       // Update rank information
       const mtrRanked = accts.sort((a, b) => {
-        return a.mtrBalance.isGreaterThan(b.mtrBalance) ? -1 : 1;
+        let aTotalMTR = a.mtrBalance;
+        let bTotalMTR = b.mtrBalance;
+        if (a.mtrBounded) {
+          aTotalMTR = aTotalMTR.plus(a.mtrBounded);
+        }
+        if (b.mtrBounded) {
+          bTotalMTR = bTotalMTR.plus(b.mtrBounded);
+        }
+        return aTotalMTR.isGreaterThan(bTotalMTR) ? -1 : 1;
       });
+
       for (const [i, a] of mtrRanked.entries()) {
         if (a.mtrRank !== i + 1) {
           await this.accountRepo.updateMTRRank(a.address, i + 1);
@@ -514,7 +523,15 @@ export class MetricCMD extends CMD {
       }
 
       const mtrgRanked = accts.sort((a, b) => {
-        return a.mtrgBalance.isGreaterThan(b.mtrgBalance) ? -1 : 1;
+        let aTotalMTRG = a.mtrgBalance;
+        let bTotalMTRG = b.mtrgBalance;
+        if (a.mtrgBounded) {
+          aTotalMTRG = aTotalMTRG.plus(a.mtrgBounded);
+        }
+        if (b.mtrgBounded) {
+          bTotalMTRG = bTotalMTRG.plus(b.mtrgBounded);
+        }
+        return aTotalMTRG.isGreaterThan(bTotalMTRG) ? -1 : 1;
       });
       for (const [i, a] of mtrgRanked.entries()) {
         if (a.mtrgRank !== i + 1) {
