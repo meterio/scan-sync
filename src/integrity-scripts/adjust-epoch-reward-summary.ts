@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
+import { ScriptEngine } from '@meterio/devkit';
 import BigNumber from 'bignumber.js';
 import mongoose from 'mongoose';
 
+import { StakingModuleAddress } from '../const';
+import BlockRepo from '../repo/block.repo';
 import EpochRewardRepo from '../repo/epochReward.repo';
 import EpochRewardSummaryRepo from '../repo/epochRewardSummary.repo';
+import TxRepo from '../repo/tx.repo';
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
@@ -20,6 +24,8 @@ const adjustEpochRewardSummary = async () => {
 
   const epochRewardRepo = new EpochRewardRepo();
   const epochRewardSummaryRepo = new EpochRewardSummaryRepo();
+  const blockRepo = new BlockRepo();
+  const txRepo = new TxRepo();
 
   const summaries = await epochRewardSummaryRepo.findAll();
   for (const summary of summaries) {
@@ -29,15 +35,33 @@ const adjustEpochRewardSummary = async () => {
     const rewards = await epochRewardRepo.findByEpoch(summary.epoch);
     let autobidTotal = new BigNumber(0);
     let autobidCount = 0;
-    let userbidTotal = new BigNumber(0);
-    let userbidCount = 0;
+    let transferTotal = new BigNumber(0);
+    let transferCount = 0;
     for (const r of rewards) {
       if (r.type == 'autobid') {
         autobidTotal = autobidTotal.plus(r.amount);
         autobidCount++;
-      } else if (r.type == 'userbid') {
-        userbidTotal = userbidTotal.plus(r.amount);
-        userbidCount++;
+      }
+    }
+
+    const blk = await blockRepo.findByNumber(summary.blockNum);
+    for (const txHash of blk.txHashs) {
+      const tx = await txRepo.findByHash(txHash);
+      if (tx.clauseCount == 1) {
+        const first = tx.clauses[0];
+        if (first.to.toLowerCase() == StakingModuleAddress.toLowerCase()) {
+          const scriptData = ScriptEngine.decodeScriptData(first.data);
+          if (scriptData.header.modId === ScriptEngine.ModuleID.Staking) {
+            const body = ScriptEngine.decodeStakingBody(scriptData.payload);
+            if (body.opCode === ScriptEngine.StakingOpCode.Governing) {
+              const extras = ScriptEngine.decodeStakingGoverningExtra(body.extra);
+              for (const ex of extras) {
+                transferTotal = transferTotal.plus(ex.amount);
+                transferCount++;
+              }
+            }
+          }
+        }
       }
     }
 
@@ -47,9 +71,9 @@ const adjustEpochRewardSummary = async () => {
       summary.autobidTotal = autobidTotal;
       updated = true;
     }
-    if (!userbidTotal.isEqualTo(summary.transferCount)) {
-      summary.transferTotal = userbidTotal;
-      console.log(`update transferTotal from: ${summary.transferTotal.toFixed()} to ${userbidTotal.toFixed()}`);
+    if (!transferTotal.isEqualTo(summary.transferCount)) {
+      summary.transferTotal = transferTotal;
+      console.log(`update transferTotal from: ${summary.transferTotal.toFixed()} to ${transferTotal.toFixed()}`);
       updated = true;
     }
     if (autobidCount != summary.autobidCount) {
@@ -57,12 +81,13 @@ const adjustEpochRewardSummary = async () => {
       console.log(`update autobidCount from: ${summary.autobidCount} to ${autobidCount}`);
       updated = true;
     }
-    if (userbidCount != summary.transferCount) {
-      summary.transferCount = userbidCount;
-      console.log(`update transferCount from: ${summary.transferCount} to ${userbidCount}`);
+    if (transferCount != summary.transferCount) {
+      summary.transferCount = transferCount;
+      console.log(`update transferCount from: ${summary.transferCount} to ${transferCount}`);
       updated = true;
     }
     if (updated) {
+      summary.totalReward = summary.autobidTotal.plus(summary.transferTotal);
       console.log(`saved summary on epoch ${summary.epoch}`);
       // await summary.save();
     }
