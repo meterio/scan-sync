@@ -8,7 +8,7 @@ const knownSchema = new mongoose.Schema({
 
   // updatable attributes
   name: { type: String, required: true },
-  description: { type: String, required: true },
+  description: { type: String, required: false },
   address: { type: String, required: true, index: true },
   ipAddress: { type: String, required: true },
   port: { type: Number, required: true },

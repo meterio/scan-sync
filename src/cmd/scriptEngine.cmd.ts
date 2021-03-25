@@ -231,21 +231,22 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           const items = pk.split(':::');
           const ecdsaPK = items[0];
           const blsPK = items[1];
+          const address = '0x' + body.candidateAddr.toString('hex').toLowerCase();
 
-          const exist = await this.knownRepo.exist(ecdsaPK);
+          const exist = await this.knownRepo.exist(address);
           if (!exist) {
             const known: Known = {
               ecdsaPK,
               blsPK,
               name: body.candidateName.toString(),
               description: body.candidateDescription.toString(),
-              address: '0x' + body.candidateAddr.toString('hex').toLowerCase(),
+              address,
               ipAddress: body.candidateIP.toString(),
               port: body.candidatePort,
             };
             await this.knownRepo.create(known);
           } else {
-            let known = await this.knownRepo.findByECDSAPK(ecdsaPK);
+            let known = await this.knownRepo.findByAddress(address);
             let updated = false;
             if (body.candidateName.toString() != '') {
               known.name = body.candidateName.toString();

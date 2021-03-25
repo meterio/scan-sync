@@ -4,7 +4,7 @@ export interface Known {
 
   // updatable attributes
   name: string;
-  description: string;
+  description?: string;
   address: string;
   ipAddress: string;
   port: number;

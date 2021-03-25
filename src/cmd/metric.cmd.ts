@@ -395,10 +395,10 @@ export class MetricCMD extends CMD {
           console.log('could not parse stats');
         }
 
-        let vs: { [key: string]: Validator } = {};
+        let vs: { [key: string]: Validator } = {}; // address -> validator object
         for (const c of candidates) {
-          if (!(c.pubKey in vs)) {
-            vs[c.pubKey] = {
+          if (!(c.address in vs)) {
+            vs[c.address] = {
               ...c,
               ipAddress: c.ipAddr,
               status: ValidatorStatus.CANDIDATE,
@@ -410,9 +410,9 @@ export class MetricCMD extends CMD {
           }
         }
         for (const d of delegates) {
-          if (d.pubKey in vs) {
-            let can = vs[d.pubKey];
-            vs[d.pubKey] = {
+          if (d.address in vs) {
+            let can = vs[d.address];
+            vs[d.address] = {
               ...can,
               delegateCommission: d.commission,
               distributors: d.distributors,
@@ -426,9 +426,9 @@ export class MetricCMD extends CMD {
         }
 
         for (const j of jailed) {
-          if (j.pubKey in vs) {
-            let can = vs[j.pubKey];
-            vs[j.pubKey] = {
+          if (j.address in vs) {
+            let can = vs[j.address];
+            vs[j.address] = {
               ...can,
               jailedTime: j.jailedTime,
               totalPoints: j.totalPoints,
@@ -441,13 +441,12 @@ export class MetricCMD extends CMD {
           }
         }
 
-        for (const pubkey in vs) {
-          const address = vs[pubkey].address;
+        for (const address in vs) {
           let totalPoints = 0;
           if (address in statMap) {
             totalPoints = statMap[address];
           }
-          vs[pubkey].totalPoints = totalPoints;
+          vs[address].totalPoints = totalPoints;
         }
 
         await this.validatorRepo.deleteAll();

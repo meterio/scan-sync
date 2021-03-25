@@ -12,6 +12,7 @@ export interface Validator {
 
   // updatable attributes
   name: string;
+  description?: string;
   address: string;
   ipAddress: string;
   port: number;
