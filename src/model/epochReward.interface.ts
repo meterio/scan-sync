@@ -6,6 +6,8 @@ export interface EpochReward {
   txHash: string;
   clauseIndex: number;
 
+  bidID?: string;
+
   address: string;
   amount: BigNumber;
   type: string;

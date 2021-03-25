@@ -8,6 +8,7 @@ const epochRewardSchema = new mongoose.Schema({
   blockNum: { type: Number, required: true },
   txHash: { type: String, required: true },
   clauseIndex: { type: Number, required: true },
+  bidID: { type: String, required: false },
 
   address: { type: String, required: true },
   amount: {
