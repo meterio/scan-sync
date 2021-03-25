@@ -277,9 +277,17 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           let transferTotal = new BigNumber(0);
           let autobidCount = 0;
           let transferCount = 0;
-          const asummary = await this.pos.getLastAuctionSummary(blockNum);
-          for (const atx of asummary.auctionTxs) {
+          const prePresent = await this.pos.getPresentAuctionByRevision(blockNum - 1);
+          const present = await this.pos.getPresentAuctionByRevision(blockNum);
+          let visited = {};
+          for (const atx of prePresent.auctionTxs) {
+            visited[atx.txid] = true;
+          }
+          for (const atx of present.auctionTxs) {
             if (atx.type != 'autobid') {
+              continue;
+            }
+            if (atx.txid in visited) {
               continue;
             }
             const reward: EpochReward = {
