@@ -25,6 +25,7 @@ const every6s = 6 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
 const every24h = (3600 * 24) / (SAMPLING_INTERVAL / 1000); // count of index in 24 hours
 const every30s = 30 / (SAMPLING_INTERVAL / 1000); // count of index in 30 seconds
 const every1m = 60 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
+const every2m = (60 * 2) / (SAMPLING_INTERVAL / 1000); // count of index in 3 minute
 const every5m = (60 * 5) / (SAMPLING_INTERVAL / 1000); // count of index in 5 minutes
 const every10m = (60 * 10) / (SAMPLING_INTERVAL / 1000); // count of index in 10 minutes
 const every30m = (60 * 30) / (SAMPLING_INTERVAL / 1000); // count of index in 30 minutes
@@ -561,7 +562,7 @@ export class MetricCMD extends CMD {
         await this.alertIfNetworkHalt(index, every1m);
 
         // update bitcoin info every 5seconds
-        await this.updateBitcoinInfo(index, every10m);
+        await this.updateBitcoinInfo(index, every5m);
 
         // update price/change every 10 minutes
         await this.updateMarketPrice(index, every5m);
@@ -576,10 +577,10 @@ export class MetricCMD extends CMD {
         await this.updateSlashingInfo(index, every1m);
 
         // update network status
-        await this.updateInvalidNodes(index, every5m);
+        await this.updateInvalidNodes(index, every2m);
 
         // update auction info
-        await this.updateAuctionInfo(index, every1m);
+        await this.updateAuctionInfo(index, every5m);
 
         // update validator rewards
         await this.updateValidatorRewards(index, every5m);
