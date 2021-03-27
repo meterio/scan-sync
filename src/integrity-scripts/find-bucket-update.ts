@@ -21,6 +21,7 @@ const findBucketUpdate = async () => {
   const txRepo = new TxRepo();
   const txs = await txRepo.findTxsAfter(blockNum);
   let total = new BigNumber(0);
+  let buckets = [];
   for (const tx of txs) {
     for (const c of tx.clauses) {
       try {
@@ -35,6 +36,13 @@ const findBucketUpdate = async () => {
         if (body.opCode !== ScriptEngine.StakingOpCode.BucketUpdate) {
           continue;
         }
+        buckets.push({
+          amount: new BigNumber(body.amount).toFixed(),
+          block: tx.block.number,
+          txHash: tx.hash,
+          from: tx.origin,
+          bucketID: '0x' + body.bucketID.toString('hex'),
+        });
         total = total.plus(body.amount);
         console.log(
           'found tx:',
@@ -53,6 +61,9 @@ const findBucketUpdate = async () => {
     }
   }
   console.log('TOTAL mistaken amount: ', fromWei(total));
+  for (const b of buckets) {
+    console.log(`{"${b.bucketID}", "${b.from}", "${b.amount}"}, // ${b.block}`);
+  }
 };
 
 (async () => {

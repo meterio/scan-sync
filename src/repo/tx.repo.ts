@@ -56,6 +56,10 @@ export class TxRepo {
   public async findTxsAfter(blockNum: number) {
     return this.model.find({ 'block.number': { $gt: blockNum } });
   }
+
+  public async findByOrigin(address: string) {
+    return this.model.find({ origin: address });
+  }
 }
 
 export default TxRepo;
