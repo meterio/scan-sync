@@ -52,6 +52,10 @@ export class TxRepo {
   public async delete(hash: string) {
     return this.model.deleteOne({ hash });
   }
+
+  public async findTxsAfter(blockNum: number) {
+    return this.model.find({ 'block.number': { $gt: blockNum } });
+  }
 }
 
 export default TxRepo;

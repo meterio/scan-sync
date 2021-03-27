@@ -3,13 +3,13 @@ import * as mongoose from 'mongoose';
 import { Known } from './known.interface';
 
 const knownSchema = new mongoose.Schema({
-  ecdsaPK: { type: String, required: true, unique: true },
+  ecdsaPK: { type: String, required: true },
   blsPK: { type: String, required: true },
 
   // updatable attributes
   name: { type: String, required: true },
   description: { type: String, required: false },
-  address: { type: String, required: true, index: true },
+  address: { type: String, required: true, index: true, unique: true },
   ipAddress: { type: String, required: true },
   port: { type: Number, required: true },
 });
