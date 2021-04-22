@@ -6,7 +6,7 @@ import { TokenProfile } from './tokenProfile.interface';
 const tokenProfileSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    symbol: { type: String, required: true, unique: true },
+    symbol: { type: String, required: true },
     address: { type: String, required: true, unique: true },
     officialSite: { type: String, required: false, default: '' },
     totalSupply: {
