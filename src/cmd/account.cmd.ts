@@ -76,7 +76,6 @@ export class AccountCMD extends TxBlockReviewer {
 
       // process native transfers
       for (const [logIndex, t] of o.transfers.entries()) {
-        console.log(t.sender, t.recipient, t.amount, t.token);
         transfers.push({
           from: t.sender.toLowerCase(),
           to: t.recipient.toLowerCase(),
@@ -259,10 +258,10 @@ export class AccountCMD extends TxBlockReviewer {
       const to = tr.to;
       tokens.minus(from, tr.tokenAddress, tr.amount);
       tokens.plus(to, tr.tokenAddress, tr.amount);
-      this.logger.info(
-        { from, to, amount: tr.amount.toFixed(0), token: Token[tr.token], tokenAddress: tr.tokenAddress },
-        'ERC20 transfer'
-      );
+      // this.logger.info(
+      //   { from, to, amount: tr.amount.toFixed(0), token: Token[tr.token], tokenAddress: tr.tokenAddress },
+      //   'ERC20 transfer'
+      // );
     }
 
     // collect updates in accounts
@@ -332,30 +331,31 @@ export class AccountCMD extends TxBlockReviewer {
         this.logger.info({ mtr: '0', mtrg: '0' }, 'account doesnt exist before update');
         acct = await this.accountRepo.create(this.network, addr.toLowerCase(), blockConcise, blockConcise);
       }
-      this.logger.info(
-        {
-          mtr: fromWei(acct.mtrBalance),
-          mtrg: fromWei(acct.mtrgBalance),
-          mtrBounded: fromWei(acct.mtrBounded),
-          mtrgBounded: fromWei(acct.mtrgBounded),
-        },
-        'account balance before update'
-      );
+
+      let balanceDeltas = {};
+      if (!delta.mtr.isEqualTo(0)) {
+        balanceDeltas['mtr'] = fromWei(acct.mtrBalance);
+        balanceDeltas['mtrDelta'] = fromWei(delta.mtr);
+      }
+      if (!delta.mtrg.isEqualTo(0)) {
+        balanceDeltas['mtrg'] = fromWei(acct.mtrgBalance);
+        balanceDeltas['mtrgDelta'] = fromWei(delta.mtrg);
+      }
+      if (!delta.mtrBounded.isEqualTo(0)) {
+        balanceDeltas['mtrBounded'] = fromWei(acct.mtrBounded);
+        balanceDeltas['mtrBoundedDelta'] = fromWei(delta.mtrBounded);
+      }
+      if (!delta.mtrgBounded.isEqualTo(0)) {
+        balanceDeltas['mtrgBounded'] = fromWei(acct.mtrgBounded);
+        balanceDeltas['mtrgBoundedDelta'] = fromWei(delta.mtrgBounded);
+      }
+      this.logger.info(balanceDeltas, 'account balance before update');
 
       acct.mtrBalance = acct.mtrBalance.plus(delta.mtr);
       acct.mtrgBalance = acct.mtrgBalance.plus(delta.mtrg);
       acct.mtrBounded = acct.mtrBounded.plus(delta.mtrBounded);
       acct.mtrgBounded = acct.mtrgBounded.plus(delta.mtrgBounded);
 
-      this.logger.info(
-        {
-          mtr: fromWei(delta.mtr),
-          mtrg: fromWei(delta.mtrg),
-          mtrBounded: fromWei(delta.mtrBounded),
-          mtrgBounded: fromWei(delta.mtrgBounded),
-        },
-        'account delta'
-      );
       this.logger.info(
         {
           mtr: fromWei(acct.mtrBalance),
@@ -399,14 +399,20 @@ export class AccountCMD extends TxBlockReviewer {
         tb = await this.tokenBalanceRepo.create(addr, tokenAddr, symbol, blockConcise);
       }
       this.logger.info(
-        { address: addr, tokenAddress: tokenAddr, balance: fromWei(tb.balance), delta: fromWei(delta) },
+        {
+          address: addr,
+          tokenAddress: tokenAddr,
+          balance: fromWei(tb.balance),
+          delta: fromWei(delta),
+          symbol: tb.symbol,
+        },
         'token balance before update'
       );
 
       tb.balance = tb.balance.plus(delta);
       tb.lastUpdate = blockConcise;
       this.logger.info(
-        { address: addr, tokenAddress: tokenAddr, balance: fromWei(tb.balance) },
+        { address: addr, tokenAddress: tokenAddr, balance: fromWei(tb.balance), symbol: tb.symbol },
         'token balance after update'
       );
       await tb.save();
