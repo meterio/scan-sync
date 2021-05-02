@@ -6,7 +6,7 @@ import { Bucket } from './bucket.interface';
 
 const bucketSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
-  owner: { type: String, required: true },
+  owner: { type: String, required: true, index: true },
   value: {
     type: String,
     get: (num: string) => new BigNumber(num),

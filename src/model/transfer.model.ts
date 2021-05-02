@@ -39,9 +39,11 @@ const transferSchema = new mongoose.Schema(
   }
 );
 
-transferSchema.index({ txHash: 1, clauseIndex: 1, logIndex: 1 }, { unique: true });
+transferSchema.index({ txHash: 1, clauseIndex: 1, logIndex: 1, token: 1 }, { unique: true });
 transferSchema.index({ from: 1 });
 transferSchema.index({ to: 1 });
+transferSchema.index({ tokenAddress: 1 });
+transferSchema.index({ txHash: 1 });
 transferSchema.index({ token: 1, tokenAddress: 1 });
 
 transferSchema.set('toJSON', {

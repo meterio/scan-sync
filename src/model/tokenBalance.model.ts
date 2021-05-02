@@ -27,6 +27,7 @@ const tokenBalanceSchema = new mongoose.Schema(
 
 tokenBalanceSchema.index({ address: 1, tokenAddress: 1 }, { unique: true });
 tokenBalanceSchema.index({ address: 1 });
+tokenBalanceSchema.index({ tokenAddress: 1 });
 
 tokenBalanceSchema.set('toJSON', {
   transform: (obj, ret, options) => {

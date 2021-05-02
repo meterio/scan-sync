@@ -151,6 +151,9 @@ const txSchema = new mongoose.Schema(
   }
 );
 
+txSchema.index({ 'block.number': 1 });
+txSchema.index({ 'block.hash': 1 });
+
 txSchema.set('toJSON', {
   transform: (doc, ret, options) => {
     delete ret.__v;
