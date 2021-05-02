@@ -24,10 +24,11 @@ export class TokenBalanceRepo {
     });
   }
 
-  public async create(address: string, tokenAddress: string, lastUpdate: BlockConcise) {
+  public async create(address: string, tokenAddress: string, symbol: string, lastUpdate: BlockConcise) {
     return this.model.create({
       address: address.toLowerCase(),
       balance: new BigNumber(0),
+      symbol,
       tokenAddress: tokenAddress.toLowerCase(),
       lastUpdate,
     });

@@ -95,18 +95,16 @@ export class TokenDeltaMap {
   private accts: { [key: string]: BigNumber } = {};
   constructor() {}
 
-  public minus(addrStr: string, tokenAddr: string, amount: string | BigNumber) {
-    const addr = addrStr.toLowerCase();
-    const key = `${addr}_${tokenAddr}`;
+  public minus(addr: string, tokenAddr: string, amount: string | BigNumber) {
+    const key = `${addr}_${tokenAddr}`.toLowerCase();
     if (!(key in this.accts)) {
       this.accts[key] = new BigNumber(0);
     }
     this.accts[key] = this.accts[key].minus(amount);
   }
 
-  public plus(addrStr: string, tokenAddr: string, amount: string | BigNumber) {
-    const addr = addrStr.toLowerCase();
-    const key = `${addr}_${tokenAddr}`;
+  public plus(addr: string, tokenAddr: string, amount: string | BigNumber) {
+    const key = `${addr}_${tokenAddr}`.toLowerCase();
     if (!(key in this.accts)) {
       this.accts[key] = new BigNumber(0);
     }
@@ -117,11 +115,11 @@ export class TokenDeltaMap {
     return Object.keys(this.accts);
   }
 
-  public getDelta(addrStr: string): BigNumber {
-    const addr = addrStr.toLowerCase();
+  public getDelta(keyStr: string): BigNumber {
+    const key = keyStr.toLowerCase();
 
-    if (addr in this.accts) {
-      return this.accts[addr];
+    if (key in this.accts) {
+      return this.accts[key];
     }
     return new BigNumber(0);
   }

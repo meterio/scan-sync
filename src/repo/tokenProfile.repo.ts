@@ -10,7 +10,7 @@ export class TokenProfileRepo {
   }
 
   public async findByAddress(address: string) {
-    return this.model.findOne({ address });
+    return this.model.findOne({ address: address.toLowerCase() });
   }
 
   public async findBySymbol(symbol: string) {

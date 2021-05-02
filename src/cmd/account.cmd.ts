@@ -118,7 +118,14 @@ export class AccountCMD extends TxBlockReviewer {
             const symbol = symbolDecoded['0'];
             const decimals = decimalsDecoded['0'];
             const totalSupplyVal = totalSupplyDecoded['0'];
-            await this.tokenProfileRepo.create(name, symbol, e.address, '', new BigNumber(totalSupplyVal), decimals);
+            await this.tokenProfileRepo.create(
+              name,
+              symbol,
+              e.address.toLowerCase(),
+              '',
+              new BigNumber(totalSupplyVal),
+              decimals
+            );
           } catch (e) {
             console.log('contract created does not apply with ERC20 interface');
             console.log(e);
@@ -384,17 +391,15 @@ export class AccountCMD extends TxBlockReviewer {
       const items = key.split('_');
       const addr = items[0];
       const tokenAddr = items[1];
-      const delta = tokens.getDelta(addr);
+      const delta = tokens.getDelta(key);
       let tb = await this.tokenBalanceRepo.findByAddress(addr, tokenAddr);
       if (!tb) {
-        tb = await this.tokenBalanceRepo.create(addr, tokenAddr, blockConcise);
+        const profile = await this.tokenProfileRepo.findByAddress(tokenAddr);
+        let symbol = profile ? profile.symbol : 'ERC20';
+        tb = await this.tokenBalanceRepo.create(addr, tokenAddr, symbol, blockConcise);
       }
       this.logger.info(
-        { address: addr, tokenAddress: tokenAddr, balance: fromWei(tb.balance) },
-        'token balance before update'
-      );
-      this.logger.info(
-        { address: addr, tokenAddress: tokenAddr, delta: fromWei(delta) },
+        { address: addr, tokenAddress: tokenAddr, balance: fromWei(tb.balance), delta: fromWei(delta) },
         'token balance before update'
       );
 

@@ -8,6 +8,7 @@ const tokenProfileSchema = new mongoose.Schema(
     name: { type: String, required: true },
     symbol: { type: String, required: true },
     address: { type: String, required: true, unique: true },
+    decimals: { type: Number, required: true, default: 18 },
     officialSite: { type: String, required: false, default: '' },
     totalSupply: {
       type: String,
