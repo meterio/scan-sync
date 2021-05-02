@@ -305,7 +305,7 @@ export class AccountCMD extends TxBlockReviewer {
       const chainAcc = await this.pos.getAccount(addr, genesis.hash);
 
       const blockConcise = { number: genesis.number, hash: genesis.hash, timestamp: genesis.timestamp };
-      let acct = await this.accountRepo.create(this.network, addr, blockConcise, blockConcise);
+      let acct = await this.accountRepo.create(this.network, addr.toLowerCase(), blockConcise, blockConcise);
       acct.mtrgBalance = new BigNumber(chainAcc.balance);
       acct.mtrBalance = new BigNumber(chainAcc.energy);
 
@@ -330,7 +330,7 @@ export class AccountCMD extends TxBlockReviewer {
       this.logger.info({ addr }, 'ready to update address balance');
       if (!acct) {
         this.logger.info({ mtr: '0', mtrg: '0' }, 'account doesnt exist before update');
-        acct = await this.accountRepo.create(this.network, addr, blockConcise, blockConcise);
+        acct = await this.accountRepo.create(this.network, addr.toLowerCase(), blockConcise, blockConcise);
       }
       this.logger.info(
         {
@@ -375,7 +375,7 @@ export class AccountCMD extends TxBlockReviewer {
     for (const address in contracts) {
       let acct = await this.accountRepo.findByAddress(address);
       if (!acct) {
-        acct = await this.accountRepo.create(this.network, address, blockConcise, blockConcise);
+        acct = await this.accountRepo.create(this.network, address.toLowerCase(), blockConcise, blockConcise);
       }
       const code = await this.pos.getCode(address, blockConcise.hash);
       if (code && code.code !== '0x') {

@@ -10,7 +10,7 @@ export class BidRepo {
 
   public async findByAddress(address: string) {
     return this.model.findOne({
-      address: { $regex: new RegExp(`^${address}$`, 'i') },
+      address: address.toLowerCase(),
     });
   }
 

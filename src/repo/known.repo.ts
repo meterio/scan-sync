@@ -12,7 +12,7 @@ export class KnownRepo {
   }
 
   public async findByAddress(address: string) {
-    return this.model.findOne({ address });
+    return this.model.findOne({ address: address.toLowerCase() });
   }
 
   public async create(known: Known) {

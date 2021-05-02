@@ -401,6 +401,7 @@ export class MetricCMD extends CMD {
           if (!(c.address in vs)) {
             vs[c.address] = {
               ...c,
+              address: c.address.toLowerCase(),
               ipAddress: c.ipAddr,
               status: ValidatorStatus.CANDIDATE,
               totalVotes: new BigNumber(c.totalVotes),
@@ -415,6 +416,7 @@ export class MetricCMD extends CMD {
             let can = vs[d.address];
             vs[d.address] = {
               ...can,
+              address: can.address.toLowerCase(),
               delegateCommission: d.commission,
               distributors: d.distributors,
               votingPower: new BigNumber(d.votingPower),
@@ -431,6 +433,7 @@ export class MetricCMD extends CMD {
             let can = vs[j.address];
             vs[j.address] = {
               ...can,
+              address: can.address.toLowerCase(),
               jailedTime: j.jailedTime,
               totalPoints: j.totalPoints,
               bailAmount: j.bailAmount,

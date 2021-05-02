@@ -286,6 +286,7 @@ export class PosCMD extends CMD {
     if (!majorTo) {
       majorTo = '';
     }
+    majorTo = majorTo.toLowerCase();
 
     const txModel: Tx = {
       hash: tx.id,
@@ -303,8 +304,8 @@ export class PosCMD extends CMD {
       gas: tx.gas,
       nonce: tx.nonce,
       dependsOn: tx.dependsOn,
-      origin: tx.origin,
-      clauses: clauses,
+      origin: tx.origin.toLowerCase(),
+      clauses: clauses.map((c) => ({ ...c, to: c.to.toLowerCase() })),
       clauseCount: tx.clauses.length,
       size: tx.size,
       gasUsed: tx.gasUsed,

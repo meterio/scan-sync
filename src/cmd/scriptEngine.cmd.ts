@@ -183,7 +183,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             const presentAuction = await this.auctionRepo.findPresent();
             const bid: Bid = {
               id: atx.ID(),
-              address: '0x' + atx.address.toString('hex'),
+              address: '0x' + atx.address.toString('hex').toLowerCase(),
               amount: atx.amount,
               type: atx.type == 0 ? 'userbid' : 'autobid',
               timestamp: atx.timestamp,

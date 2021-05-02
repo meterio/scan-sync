@@ -13,7 +13,7 @@ export class ValidatorRepo {
   }
 
   public async findByAddress(address: string) {
-    return this.model.findOne({ address: { $regex: new RegExp(`^${address}$`, 'i') } });
+    return this.model.findOne({ address: address.toLowerCase() });
   }
 
   public async findByPubKey(pubKey: string) {
