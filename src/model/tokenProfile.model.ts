@@ -5,8 +5,8 @@ import { TokenProfile } from './tokenProfile.interface';
 
 const tokenProfileSchema = new mongoose.Schema(
   {
-    name: { type: String, required: false, default: '' },
-    symbol: { type: String, required: false, default: '' },
+    name: { type: String, required: false, default: 'Unnamed Token' },
+    symbol: { type: String, required: false, default: 'ERC20' },
     address: { type: String, required: true, unique: true },
     decimals: { type: Number, required: true, default: 18 },
     officialSite: { type: String, required: false, default: '' },
@@ -16,6 +16,25 @@ const tokenProfileSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: false,
     },
+    circulation: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    holdersCount: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    transfersCount: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    master: { type: String, required: true },
 
     createdAt: { type: Number, index: true },
     updatedAt: { type: Number },

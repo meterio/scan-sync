@@ -16,6 +16,7 @@ const tokenBalanceSchema = new mongoose.Schema(
     },
     lastUpdate: blockConciseSchema,
     symbol: { type: String, required: false },
+    rank: { type: Number, required: true, default: 99999999 },
 
     createdAt: { type: Number, index: true },
     updatedAt: { type: Number },

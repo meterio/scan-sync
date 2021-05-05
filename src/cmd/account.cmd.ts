@@ -4,6 +4,7 @@ import * as Logger from 'bunyan';
 import {
   BoundEvent,
   Network,
+  PrototypeAddress,
   Token,
   TokenBasic,
   TransferEvent,
@@ -104,7 +105,8 @@ export class AccountCMD extends TxBlockReviewer {
                   { to: e.address, value: '0x0', data: nameABIFunc.encode(), token: Token.MTR },
                   { to: e.address, value: '0x0', data: symbolABIFunc.encode(), token: Token.MTR },
                   { to: e.address, value: '0x0', data: decimalsABIFunc.encode(), token: Token.MTR },
-                  { to: e.address, value: '0x0', data: totalSupply.encode(), token: Token.MTR },
+                  { to: PrototypeAddress, value: '0x0', data: prototype.master.encode(e.address), token: Token.MTR },
+                  // { to: e.address, value: '0x0', data: totalSupply.encode(), token: Token.MTR },
                 ],
               },
               blk.hash
@@ -112,17 +114,21 @@ export class AccountCMD extends TxBlockReviewer {
             const nameDecoded = nameABIFunc.decode(outputs[0].data);
             const symbolDecoded = symbolABIFunc.decode(outputs[1].data);
             const decimalsDecoded = decimalsABIFunc.decode(outputs[2].data);
-            const totalSupplyDecoded = totalSupply.decode(outputs[3].data);
+            // const totalSupplyDecoded = totalSupply.decode(outputs[3].data);
+            const masterDecoded = prototype.master.decode(outputs[3].data);
             const name = nameDecoded['0'];
             const symbol = symbolDecoded['0'];
             const decimals = decimalsDecoded['0'];
-            const totalSupplyVal = totalSupplyDecoded['0'];
+            const master = masterDecoded['0'];
+            // const totalSupplyVal = totalSupplyDecoded['0'];
             await this.tokenProfileRepo.create(
               name,
               symbol,
               e.address.toLowerCase(),
               '',
-              new BigNumber(totalSupplyVal),
+              new BigNumber(0),
+              // new BigNumber(totalSupplyVal),
+              master,
               decimals
             );
           } catch (e) {
@@ -391,12 +397,26 @@ export class AccountCMD extends TxBlockReviewer {
       const items = key.split('_');
       const addr = items[0];
       const tokenAddr = items[1];
+      let profile = await this.tokenProfileRepo.findByAddress(tokenAddr);
       const delta = tokens.getDelta(key);
+      if (addr === '0x0000000000000000000000000000000000000000') {
+        if (delta.isLessThan(0)) {
+          // mint
+          profile.circulation = profile.circulation.plus(delta.times(-1));
+          await profile.save();
+        } else if (delta.isGreaterThan(0)) {
+          // burn
+          profile.circulation = profile.circulation.minus(delta.times(-1));
+          await profile.save();
+        }
+        continue;
+      }
       let tb = await this.tokenBalanceRepo.findByAddress(addr, tokenAddr);
       if (!tb) {
-        const profile = await this.tokenProfileRepo.findByAddress(tokenAddr);
         let symbol = profile ? profile.symbol : 'ERC20';
         tb = await this.tokenBalanceRepo.create(addr, tokenAddr, symbol, blockConcise);
+        profile.holdersCount = profile.holdersCount.plus(1);
+        await profile.save();
       }
       this.logger.info(
         {

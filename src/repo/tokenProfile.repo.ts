@@ -23,6 +23,7 @@ export class TokenProfileRepo {
     address: string,
     officialSite: string,
     totalSupply: BigNumber,
+    master: string,
     decimals: 18
   ) {
     return this.model.create({
@@ -32,6 +33,10 @@ export class TokenProfileRepo {
       officialSite,
       decimals,
       totalSupply,
+      circulation: new BigNumber(0),
+      holdersCount: new BigNumber(0),
+      transfersCount: new BigNumber(0),
+      master,
     });
   }
 }

@@ -31,6 +31,7 @@ export class TokenBalanceRepo {
       symbol,
       tokenAddress: tokenAddress.toLowerCase(),
       lastUpdate,
+      rank: 99999999,
     });
   }
 }
