@@ -41,7 +41,7 @@ export class MetricCMD extends CMD {
   private pow: Pow;
   private network: Network;
   private coingecko = new Net('https://api.coingecko.com/api/v3/');
-  private blockchainInfo = new Net('https://blockchain.info/');
+  private blockchainInfo = new Net('https://api.blockchain.info');
   private validatorRepo = new ValidatorRepo();
   private bucketRepo = new BucketRepo();
   private accountRepo = new AccountRepo();
@@ -202,10 +202,10 @@ export class MetricCMD extends CMD {
   private async updateBitcoinInfo(index: number, interval: number) {
     if (index % interval === 0) {
       //blockchain.info/q/hashrate
-      const hashrate = await this.blockchainInfo.http<any>('GET', 'q/hashrate');
-      console.log('BTC Hashrate:', hashrate);
-      if (!!hashrate) {
-        this.cache.update(MetricName.BTC_HASHRATE, String(hashrate));
+      const stats = await this.blockchainInfo.http<any>('GET', 'stats');
+      console.log('BTC Hashrate:', stats.hash_rate);
+      if (!!stats) {
+        this.cache.update(MetricName.BTC_HASHRATE, String(stats.hash_rate));
       }
       const price = await this.coingecko.http<any>('GET', 'simple/price', {
         query: { ids: 'bitcoin', vs_currencies: 'usd', include_24hr_change: 'false' },
