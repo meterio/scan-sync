@@ -305,7 +305,7 @@ export class PosCMD extends CMD {
       nonce: tx.nonce,
       dependsOn: tx.dependsOn,
       origin: tx.origin.toLowerCase(),
-      clauses: clauses.map((c) => ({ ...c, to: c.to.toLowerCase() })),
+      clauses: clauses.map((c) => ({ ...c, to: c.to ? c.to.toLowerCase() : ZeroAddress })),
       clauseCount: tx.clauses.length,
       size: tx.size,
       gasUsed: tx.gasUsed,
@@ -329,6 +329,7 @@ export class PosCMD extends CMD {
   }
 
   async processBlock(blk: Pos.ExpandedBlock): Promise<{ block: Block; txs: Tx[] }> {
+    this.logger.info({ number: blk.number }, 'start to process block');
     let score = 0;
     let gasChanged = 0;
     let reward = new BigNumber(0);
