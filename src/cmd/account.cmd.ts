@@ -34,7 +34,7 @@ import { AccountDeltaMap, TokenDeltaMap } from './types';
 
 const printTransfer = (t: Transfer) => {
   console.log(
-    `Transfer #${t.clauseIndex}: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${t.logIndex})`
+    `Transfer #${t.clauseIndex},${t.logIndex}: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${t.logIndex})`
   );
 };
 

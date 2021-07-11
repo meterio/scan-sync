@@ -6,3 +6,4 @@ temp/
 ormconfig.json
 dist/
 .env
+.DS_Store

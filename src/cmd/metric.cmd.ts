@@ -556,27 +556,35 @@ export class MetricCMD extends CMD {
         this.logger.info('collect metrics');
 
         // update pos best, difficulty && hps
+        this.logger.info('1111111111111111');
         await this.updatePowInfo(index, every10m);
 
+        this.logger.info('2222222222222222222222');
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);
 
         // check network, if halt for 2 mins, send alert
+        this.logger.info('3333333333333333');
         await this.alertIfNetworkHalt(index, every1m);
 
         // update bitcoin info every 5seconds
+        this.logger.info('444444444444444444');
         await this.updateBitcoinInfo(index, every5m);
 
         // update price/change every 10 minutes
+        this.logger.info('55555555555555555555555555');
         await this.updateMarketPrice(index, every5m);
 
         // update circulation
+        this.logger.info('66666666666666');
         await this.updateCirculationAndRank(index, every4h);
 
         // update candidate/delegate/jailed info
+        this.logger.info('7777777777777777');
         await this.updateStakingInfo(index, every1m);
 
         // update slashing penalty points
+        this.logger.info('888888888888888888');
         await this.updateSlashingInfo(index, every1m);
 
         // update network status

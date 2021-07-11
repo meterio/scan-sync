@@ -56,8 +56,8 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
     } else {
       mtrgDelta = mtrgDelta.minus(amount);
     }
-    // paid = new BigNumber(receipt.paid);
-    paid = new BigNumber(0);
+    paid = new BigNumber(receipt.paid);
+    // paid = new BigNumber(0);
   } else if (evt.topics[2].toLowerCase() === acctAddressBytes32) {
     // recv
     if (token === 'MTR') {
@@ -95,8 +95,8 @@ const handleTransfer = async (transfer: any, receipt: Flex.Meter.Receipt) => {
     } else {
       mtrgDelta = mtrgDelta.minus(amount);
     }
-    // paid = new BigNumber(receipt.paid);
-    paid = new BigNumber(0);
+    paid = new BigNumber(receipt.paid);
+    // paid = new BigNumber(0);
   }
   if (transfer.recipient.toLowerCase() === acctAddress.toLowerCase()) {
     isSend = false;
