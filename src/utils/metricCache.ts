@@ -54,6 +54,10 @@ export const METRIC_DEFS = [
   // Invalid Nodes
   { key: MetricName.INVALID_NODES, type: MetricType.STRING, default: '[]' },
   { key: MetricName.INVALID_NODES_COUNT, type: MetricType.NUM, default: '0' },
+
+  // Staked
+  { key: MetricName.MTRG_STAKED, type: MetricType.STRING, default: '0' },
+  { key: MetricName.MTRG_STAKED_LOCKED, type: MetricType.STRING, default: '0' },
 ];
 
 export class MetricCache {
