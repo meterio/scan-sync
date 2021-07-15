@@ -50,6 +50,8 @@ export enum MetricName {
   STATS = 'stats',
   INVALID_NODES = 'invalid_nodes',
   INVALID_NODES_COUNT = 'invalid_nodes_count',
+  MTRG_STAKED = 'mtrg_staked',
+  MTRG_STAKED_LOCKED = 'mtrg_staked_locked',
 }
 
 export enum ValidatorStatus {
