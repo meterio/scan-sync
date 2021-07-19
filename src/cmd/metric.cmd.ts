@@ -369,17 +369,6 @@ export class MetricCMD extends CMD {
         await this.cache.update(MetricName.BUCKET_COUNT, `${buckets.length}`);
       }
 
-      let totalStaked = new BigNumber(0);
-      let totalStakedLocked = new BigNumber(0);
-      for (const b of buckets) {
-        if (b.owner in LockedMeterGovAddrs) {
-          totalStakedLocked = totalStakedLocked.plus(b.totalVotes);
-        }
-        totalStaked = totalStaked.plus(b.totalVotes);
-      }
-      await this.cache.update(MetricName.MTRG_STAKED, totalStaked.toFixed(0));
-      await this.cache.update(MetricName.MTRG_STAKED_LOCKED, totalStakedLocked.toFixed(0));
-
       const jailed = await this.pos.getJailed();
       if (!!jailed) {
         jUpdated = await this.cache.update(MetricName.JAILED, JSON.stringify(jailed));
@@ -491,6 +480,20 @@ export class MetricCMD extends CMD {
   private async updateCirculationAndRank(index: number, interval: number) {
     if (index % interval === 0) {
       // Update circulation
+
+      const bucketStr = this.cache.get(MetricName.BUCKETS);
+      const buckets = JSON.parse(bucketStr);
+      let totalStaked = new BigNumber(0);
+      let totalStakedLocked = new BigNumber(0);
+      for (const b of buckets) {
+        if (b.owner in LockedMeterGovAddrs) {
+          totalStakedLocked = totalStakedLocked.plus(b.totalVotes);
+        }
+        totalStaked = totalStaked.plus(b.totalVotes);
+      }
+      await this.cache.update(MetricName.MTRG_STAKED, totalStaked.toFixed(0));
+      await this.cache.update(MetricName.MTRG_STAKED_LOCKED, totalStakedLocked.toFixed(0));
+
       const accts = await this.accountRepo.findAll();
       let mtr = new BigNumber(0);
       let mtrg = new BigNumber(0);

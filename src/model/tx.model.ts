@@ -4,7 +4,6 @@ import * as mongoose from 'mongoose';
 
 import { Token, ZeroAddress, enumKeys } from '../const';
 import { AccountLockModuleAddress, AuctionModuleAddress, StakingModuleAddress } from '../const/address';
-import { fromWei } from '../utils/utils';
 import { blockConciseSchema } from './blockConcise.model';
 import { Tx } from './tx.interface';
 
@@ -79,14 +78,14 @@ const txSchema = new mongoose.Schema(
     block: blockConciseSchema,
     txIndex: { type: Number, required: true },
 
-    chainTag: { type: Number, required: true },
+    chainTag: { type: Number, required: true, index: true },
     blockRef: { type: String, required: true },
     expiration: { type: Number, required: true },
     gasPriceCoef: { type: Number, required: true },
     gas: { type: Number, required: true },
     nonce: { type: String, required: true },
     dependsOn: { type: String, required: false },
-    origin: { type: String, required: true },
+    origin: { type: String, required: true, index: true },
 
     clauses: [clauseSchema],
     clauseCount: { type: Number, required: true },
@@ -151,6 +150,7 @@ const txSchema = new mongoose.Schema(
   }
 );
 
+txSchema.index({ 'clauses.to': 1 });
 txSchema.index({ 'block.number': 1 });
 txSchema.index({ 'block.hash': 1 });
 

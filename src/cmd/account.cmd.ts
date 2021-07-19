@@ -34,7 +34,9 @@ import { AccountDeltaMap, TokenDeltaMap } from './types';
 
 const printTransfer = (t: Transfer) => {
   console.log(
-    `Transfer #${t.clauseIndex},${t.logIndex}: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${t.logIndex})`
+    `Transfer #${t.clauseIndex},${t.logIndex}: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${
+      t.logIndex
+    })`
   );
 };
 
@@ -240,14 +242,14 @@ export class AccountCMD extends TxBlockReviewer {
 
     // save transfers
     if (transfers.length > 0) {
-      console.log(`saved ${transfers.length} transfers`);
       await this.transferRepo.bulkInsert(...transfers);
+      console.log(`saved ${transfers.length} transfers`);
     }
 
     // save bounds and unbounds
     if (bounds.length > 0) {
-      console.log(`saved ${bounds.length} bounds`);
       await this.boundRepo.bulkInsert(...bounds);
+      console.log(`saved ${bounds.length} bounds`);
     }
     if (unbounds.length > 0) {
       console.log(`saved ${unbounds.length} unbounds`);
