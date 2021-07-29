@@ -3,12 +3,21 @@ import { EventEmitter } from 'events';
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
-import { BlockType, GetPosConfig, Network, Token, ZeroAddress } from '../const';
+import {
+  BlockType,
+  GetPosConfig,
+  Network,
+  Token,
+  TokenBasic,
+  TransferEvent,
+  ZeroAddress,
+  getERC20Token,
+} from '../const';
 import { CommitteeMember } from '../model/block.interface';
 import { Block } from '../model/block.interface';
 import { BlockConcise } from '../model/blockConcise.interface';
 import { Committee } from '../model/committee.interface';
-import { Clause, GroupedTransfer, PosEvent, PosTransfer, Tx, TxOutput } from '../model/tx.interface';
+import { Clause, PosEvent, PosTransfer, Transfer, Tx, TxOutput } from '../model/tx.interface';
 import BlockRepo from '../repo/block.repo';
 import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
@@ -39,11 +48,18 @@ export class PosCMD extends CMD {
   private headRepo = new HeadRepo();
   private committeeRepo = new CommitteeRepo();
   private pos: Pos;
+  private network: Network;
+
+  private mtrSysToken: TokenBasic;
+  private mtrgSysToken: TokenBasic;
 
   constructor(net: Network) {
     super();
 
     this.pos = new Pos(net);
+    this.network = net;
+    this.mtrSysToken = getERC20Token(this.network, Token.MTR);
+    this.mtrgSysToken = getERC20Token(this.network, Token.MTRG);
     const posConfig = GetPosConfig(net);
     this.web3 = meterify(new Web3(), posConfig.url);
   }
@@ -201,12 +217,22 @@ export class PosCMD extends CMD {
     let totalClauseMTRG = new BigNumber(0);
     let totalTransferMTR = new BigNumber(0);
     let totalTransferMTRG = new BigNumber(0);
-    let groupedTransfers: GroupedTransfer[] = [];
+    let groupedTransfers: Transfer[] = [];
+    let sysContractTransfers: Transfer[] = [];
+    let relatedAddrs = new Set([]);
+    let erc20RelatedAddrs = new Set([]);
+
+    // add tx.origin
+    relatedAddrs.add(tx.origin);
+
     let toCount = 0;
     let tos: { [key: string]: boolean } = {};
     let majorTo = '';
 
     for (const c of tx.clauses) {
+      // add clauses.to
+      relatedAddrs.add(c.to.toLowerCase());
+
       clauses.push({
         to: c.to,
         value: new BigNumber(c.value),
@@ -234,8 +260,46 @@ export class PosCMD extends CMD {
       let transfers: PosTransfer[] = [];
       for (const evt of o.events) {
         evts.push({ ...evt });
+        if (evt.topics && evt.topics[0] === TransferEvent.signature) {
+          const decoded = TransferEvent.decode(evt.data, evt.topics);
+
+          // add ERC20 transfer.from && transfer.to
+          relatedAddrs.add(decoded._from.toLowerCase());
+          relatedAddrs.add(decoded._to.toLowerCase());
+          relatedAddrs.add(evt.address.toLowerCase());
+
+          if (
+            evt.address.toLowerCase() !== this.mtrSysToken.address &&
+            evt.address.toLowerCase() !== this.mtrgSysToken.address
+          ) {
+            // ERC20 Transfer
+            erc20RelatedAddrs.add(decoded._from.toLowerCase());
+            erc20RelatedAddrs.add(decoded._to.toLowerCase());
+            erc20RelatedAddrs.add(evt.address.toLowerCase());
+          } else {
+            let token: Token;
+            if (evt.address.toLowerCase() === this.mtrSysToken.address) {
+              token = Token.MTR;
+            } else if (evt.address.toLowerCase() === this.mtrgSysToken.address) {
+              token = Token.MTRG;
+            } else {
+              this.logger.info('unrecognized token');
+            }
+            // sys contract transfer
+            sysContractTransfers.push({
+              sender: decoded._from.toLowerCase(),
+              recipient: decoded._to.toLowerCase(),
+              amount: new BigNumber(decoded._value),
+              token,
+            });
+          }
+        }
       }
       for (const tr of o.transfers) {
+        // add transfer.sender && transfer.recipient
+        relatedAddrs.add(tr.sender.toLowerCase());
+        relatedAddrs.add(tr.recipient.toLowerCase());
+
         transfers.push({ ...tr });
 
         // update total transfer
@@ -322,6 +386,10 @@ export class PosCMD extends CMD {
       groupedTransfers: sortedGroupedTransfers,
       majorTo,
       toCount,
+
+      relatedAddrs: Array.from(relatedAddrs.values()),
+      erc20RelatedAddrs: Array.from(erc20RelatedAddrs.values()),
+      sysContractTransfers: sysContractTransfers,
     };
 
     this.logger.info({ hash: txModel.hash }, 'processed tx');

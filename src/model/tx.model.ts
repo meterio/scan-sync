@@ -71,6 +71,21 @@ const groupedTransferSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const sysContractTransferSchema = new mongoose.Schema(
+  {
+    sender: { type: String, required: true },
+    recipient: { type: String, required: true },
+    amount: {
+      type: String,
+      get: (num: string) => new BigNumber(num),
+      set: (bnum: BigNumber) => bnum.toFixed(0),
+      required: true,
+    },
+    token: { type: Number, required: false },
+  },
+  { _id: false }
+);
+
 const txSchema = new mongoose.Schema(
   {
     hash: { type: String, required: true, index: { unique: true } },
@@ -140,6 +155,13 @@ const txSchema = new mongoose.Schema(
     majorTo: { type: String, required: false },
     toCount: { type: Number, required: true },
 
+    // related address
+    relatedAddrs: [{ type: String, required: true }],
+    erc20RelatedAddrs: [{ type: String, required: true }],
+
+    // system contract transfers
+    sysContractTransfers: [sysContractTransferSchema],
+
     createdAt: { type: Number, index: true },
   },
   {
@@ -153,6 +175,12 @@ const txSchema = new mongoose.Schema(
 txSchema.index({ 'clauses.to': 1 });
 txSchema.index({ 'block.number': 1 });
 txSchema.index({ 'block.hash': 1 });
+txSchema.index({ 'groupedTransfers.sender': 1 });
+txSchema.index({ 'groupedTransfers.recipient': 1 });
+txSchema.index({ relatedAddrs: 1 });
+txSchema.index({ erc20RelatedAddrs: 1 });
+txSchema.index({ 'sysContractTransfers.sender': 1 });
+txSchema.index({ 'sysContractTransfers.recipient': 1 });
 
 txSchema.set('toJSON', {
   transform: (doc, ret, options) => {

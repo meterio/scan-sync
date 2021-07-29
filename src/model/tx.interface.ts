@@ -29,7 +29,7 @@ export interface Clause {
   data: string;
 }
 
-export interface GroupedTransfer {
+export interface Transfer {
   sender: string;
   recipient: string;
   amount: BigNumber;
@@ -67,7 +67,12 @@ export interface Tx {
   totalClauseMTR: BigNumber;
   totalTransferMTRG: BigNumber;
   totalTransferMTR: BigNumber;
-  groupedTransfers: GroupedTransfer[];
+
+  groupedTransfers: Transfer[]; // merged transfers (no sys contract events)
   majorTo?: string;
   toCount: number;
+  relatedAddrs: string[]; // address in tx.origin / clauses.to / transfer sender and  recipient / sys contract sender and recipient / token transfer event _from, _to and contract address
+  erc20RelatedAddrs: string[]; // erc20 transfer addresses (_from, _to, contract address)
+
+  sysContractTransfers: Transfer[]; // system contract events converted to transfers
 }

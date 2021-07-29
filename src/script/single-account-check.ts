@@ -221,6 +221,7 @@ const processAccount = async () => {
         d.isSend ? 'to' : 'from'
       } ${d.isSend ? d.recipient : d.sender}`
     );
+    console.log(receipt.meta.txID);
     if (d.paid.isGreaterThan(0)) {
       console.log(`Fee: ${fromWei(d.paid)} MTR`);
     }
