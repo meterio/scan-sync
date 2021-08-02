@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 
+import { abi } from '@meterio/devkit';
 import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
@@ -231,7 +232,9 @@ export class PosCMD extends CMD {
 
     for (const c of tx.clauses) {
       // add clauses.to
-      relatedAddrs.add(c.to.toLowerCase());
+      if (c.to) {
+        relatedAddrs.add(c.to.toLowerCase());
+      }
 
       clauses.push({
         to: c.to,
@@ -261,7 +264,13 @@ export class PosCMD extends CMD {
       for (const evt of o.events) {
         evts.push({ ...evt });
         if (evt.topics && evt.topics[0] === TransferEvent.signature) {
-          const decoded = TransferEvent.decode(evt.data, evt.topics);
+          let decoded: abi.Decoded;
+          try {
+            decoded = TransferEvent.decode(evt.data, evt.topics);
+          } catch (e) {
+            console.log('error decoding topics');
+            continue;
+          }
 
           // add ERC20 transfer.from && transfer.to
           relatedAddrs.add(decoded._from.toLowerCase());

@@ -11,10 +11,10 @@ export const connectDB = async (network: Network) => {
       dbName = 'scanv2-main';
       break;
     case Network.TestNet:
-      dbName = 'scanv2-testnet';
+      dbName = 'scanv2-test';
       break;
     case Network.DevNet:
-      dbName = 'scanv2-devnet';
+      dbName = 'scanv2-dev';
       break;
   }
   console.log(`connect to DB path: ${MONGO_PATH}/${dbName}`);

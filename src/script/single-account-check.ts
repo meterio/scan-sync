@@ -190,6 +190,9 @@ const processAccount = async () => {
     if ('topics' in o) {
       if (o.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef') {
         d = await handleEvent(o, receipt);
+        if (!d) {
+          continue;
+        }
       } else if (o.topics[0] === '0xcd509811b292f7fa41cc2c45a621fcd510e31a4dd5b0bb6b8b1ee3622a59e67d') {
         // handle bound
         const decoded = BoundEvent.decode(o.data, o.topics);

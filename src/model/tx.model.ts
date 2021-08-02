@@ -56,22 +56,7 @@ const txOutputSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const groupedTransferSchema = new mongoose.Schema(
-  {
-    sender: { type: String, required: true },
-    recipient: { type: String, required: true },
-    amount: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    token: { type: Number, required: false },
-  },
-  { _id: false }
-);
-
-const sysContractTransferSchema = new mongoose.Schema(
+const transferSchema = new mongoose.Schema(
   {
     sender: { type: String, required: true },
     recipient: { type: String, required: true },
@@ -151,7 +136,7 @@ const txSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: true,
     },
-    groupedTransfers: [groupedTransferSchema],
+    groupedTransfers: [transferSchema],
     majorTo: { type: String, required: false },
     toCount: { type: Number, required: true },
 
@@ -160,7 +145,7 @@ const txSchema = new mongoose.Schema(
     erc20RelatedAddrs: [{ type: String, required: true }],
 
     // system contract transfers
-    sysContractTransfers: [sysContractTransferSchema],
+    sysContractTransfers: [transferSchema],
 
     createdAt: { type: Number, index: true },
   },
