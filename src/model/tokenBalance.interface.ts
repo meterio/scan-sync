@@ -1,6 +1,5 @@
 import BigNumber from 'bignumber.js';
 
-import { Token } from '../const';
 import { BlockConcise } from './blockConcise.interface';
 
 export interface TokenBalance {
@@ -9,6 +8,7 @@ export interface TokenBalance {
   balance: BigNumber;
   symbol?: string;
   rank: number;
+  decimals: number;
 
   lastUpdate: BlockConcise;
 }

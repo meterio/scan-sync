@@ -2,14 +2,14 @@ import * as mongoose from 'mongoose';
 
 import { Known } from './known.interface';
 
-const knownSchema = new mongoose.Schema({
-  ecdsaPK: { type: String, required: true },
+const knownSchema = new mongoose.Schema<Known>({
+  ecdsaPK: { type: String, required: true, unique: true },
   blsPK: { type: String, required: true },
 
   // updatable attributes
   name: { type: String, required: true },
-  description: { type: String, required: false },
-  address: { type: String, required: true, index: true, unique: true },
+  description: { type: String, required: true },
+  address: { type: String, required: true, index: true },
   ipAddress: { type: String, required: true },
   port: { type: Number, required: true },
 });
@@ -22,6 +22,10 @@ knownSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Known & mongoose.Document>('Known', knownSchema, 'knowns');
+const model = mongoose.model<Known & mongoose.Document>(
+  'Known',
+  knownSchema,
+  'knowns'
+);
 
 export default model;

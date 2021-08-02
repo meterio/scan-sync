@@ -30,4 +30,5 @@ export interface Auction {
   bidCount: number;
   autobidTotal: BigNumber;
   userbidTotal: BigNumber;
+  toSummary?(): object;
 }

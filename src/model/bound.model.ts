@@ -5,7 +5,7 @@ import { Token, enumKeys } from '../const';
 import { blockConciseSchema } from './blockConcise.model';
 import { Bound } from './bound.interface';
 
-const boundSchema = new mongoose.Schema(
+const boundSchema = new mongoose.Schema<Bound>(
   {
     owner: { type: String, required: true },
     amount: {

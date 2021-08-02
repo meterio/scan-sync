@@ -3,18 +3,18 @@ import * as mongoose from 'mongoose';
 
 import { TokenProfile } from './tokenProfile.interface';
 
-const tokenProfileSchema = new mongoose.Schema(
+const tokenProfileSchema = new mongoose.Schema<TokenProfile>(
   {
-    name: { type: String, required: false, default: 'Unnamed Token' },
-    symbol: { type: String, required: false, default: 'ERC20' },
+    name: { type: String, required: true },
+    symbol: { type: String, required: true },
     address: { type: String, required: true, unique: true },
     decimals: { type: Number, required: true, default: 18 },
-    officialSite: { type: String, required: false, default: '' },
+    officialSite: { type: String, required: false },
     totalSupply: {
       type: String,
       get: (num: string) => new BigNumber(num),
       set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: false,
+      required: true,
     },
     circulation: {
       type: String,
@@ -34,7 +34,6 @@ const tokenProfileSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: true,
     },
-    master: { type: String, required: true },
 
     createdAt: { type: Number, index: true },
     updatedAt: { type: Number },
@@ -54,6 +53,10 @@ tokenProfileSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<TokenProfile & mongoose.Document>('TokenProfile', tokenProfileSchema, 'tokenProfile');
+const model = mongoose.model<TokenProfile & mongoose.Document>(
+  'TokenProfile',
+  tokenProfileSchema,
+  'tokenProfile'
+);
 
 export default model;

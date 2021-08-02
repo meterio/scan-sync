@@ -3,7 +3,7 @@ import * as mongoose from 'mongoose';
 import { MetricType } from '../const';
 import { Metric } from './metric.interface';
 
-const metricSchema = new mongoose.Schema(
+const metricSchema = new mongoose.Schema<Metric>(
   {
     key: { type: String, required: true, unique: true },
     value: { type: String, required: true },
@@ -32,6 +32,9 @@ metricSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Metric & mongoose.Document>('Metric', metricSchema);
+const model = mongoose.model<Metric & mongoose.Document>(
+  'Metric',
+  metricSchema
+);
 
 export default model;

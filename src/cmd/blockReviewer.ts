@@ -88,7 +88,7 @@ export abstract class TxBlockReviewer extends CMD {
         }
         let head = await this.headRepo.findByKey(this.name);
         if (!head) {
-          await this.headRepo.create(this.name, -1, '0x');
+          head = await this.headRepo.create(this.name, -1, '0x');
         }
         let headNum = !!head ? head.num : -1;
 
@@ -117,7 +117,10 @@ export abstract class TxBlockReviewer extends CMD {
           if (!blk || blk.number > localBestNum || blk.number > endNum) {
             // update head before exit current loop
             let endBlock = await this.blockRepo.findByNumber(endNum);
-            head = await this.headRepo.update(this.name, endBlock.number, endBlock.hash);
+            // head = await this.headRepo.update(this.name, endBlock.number, endBlock.hash);
+            head.num = endBlock.number;
+            head.hash = endBlock.hash;
+            await head.save();
             break;
           }
           await this.processBlock(blk);
@@ -125,7 +128,10 @@ export abstract class TxBlockReviewer extends CMD {
           // update head
 
           console.log('after process block, update head to ', blk.number);
-          head = await this.headRepo.update(this.name, blk.number, blk.hash);
+          // head = await this.headRepo.update(this.name, blk.number, blk.hash);
+          head.num = blk.number;
+          head.hash = blk.hash;
+          await head.save();
           num = blk.number;
         }
       } catch (e) {
@@ -141,5 +147,5 @@ export abstract class TxBlockReviewer extends CMD {
     }
   }
 
-  abstract async processBlock(blk: Block);
+  abstract processBlock(blk: Block);
 }

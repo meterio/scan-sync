@@ -123,7 +123,10 @@ export class PowCMD extends CMD {
           if (!head) {
             head = await this.headRepo.create(this.name, blk.height, blk.hash);
           } else {
-            head = await this.headRepo.update(this.name, blk.height, blk.hash);
+            // head = await this.headRepo.update(this.name, blk.height, blk.hash);
+            head.num = blk.height;
+            head.hash = blk.hash;
+            await head.save();
           }
         }
       } catch (e) {

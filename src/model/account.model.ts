@@ -4,10 +4,10 @@ import * as mongoose from 'mongoose';
 import { Account } from './account.interface';
 import { blockConciseSchema } from './blockConcise.model';
 
-const accountSchema = new mongoose.Schema(
+const accountSchema = new mongoose.Schema<Account>(
   {
-    name: { type: String, required: false },
     address: { type: String, required: true },
+    name: { type: String, required: false },
     mtrBalance: {
       type: String,
       get: (num: string) => new BigNumber(num),
@@ -32,7 +32,6 @@ const accountSchema = new mongoose.Schema(
       set: (bnum: BigNumber) => bnum.toFixed(0),
       required: false,
     },
-
     mtrRank: { type: Number, required: false },
     mtrgRank: { type: Number, required: false },
     code: { type: String, required: false },
@@ -60,6 +59,9 @@ accountSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Account & mongoose.Document>('Account', accountSchema);
+const model = mongoose.model<Account & mongoose.Document>(
+  'Account',
+  accountSchema
+);
 
 export default model;

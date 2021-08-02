@@ -56,4 +56,5 @@ export interface Block {
   kblockData: string[];
   powBlocks?: PowBlock[];
   createdAt?: number;
+  toSummary?(): object;
 }

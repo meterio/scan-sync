@@ -1,6 +1,8 @@
-import * as mongoose from "mongoose";
+import * as mongoose from 'mongoose';
 
-export const blockConciseSchema = new mongoose.Schema(
+import { BlockConcise } from './blockConcise.interface';
+
+export const blockConciseSchema = new mongoose.Schema<BlockConcise>(
   {
     hash: { type: String, required: true },
     number: { type: Number, required: true },

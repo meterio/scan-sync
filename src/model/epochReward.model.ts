@@ -3,7 +3,7 @@ import * as mongoose from 'mongoose';
 
 import { EpochReward } from './epochReward.interface';
 
-const epochRewardSchema = new mongoose.Schema({
+const epochRewardSchema = new mongoose.Schema<EpochReward>({
   epoch: { type: Number, required: true, index: true },
   blockNum: { type: Number, required: true },
   txHash: { type: String, required: true },

@@ -1,9 +1,9 @@
 import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
-import { PowTx } from './powTx.interface';
+import { PowIn, PowOut, PowTx } from './powTx.interface';
 
-const powInSchema = new mongoose.Schema(
+const powInSchema = new mongoose.Schema<PowIn>(
   {
     hash: { type: String, required: true },
     index: { type: Number, required: true },
@@ -13,7 +13,7 @@ const powInSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-const powOutSchema = new mongoose.Schema(
+const powOutSchema = new mongoose.Schema<PowOut>(
   {
     value: { type: Number, required: true },
     script: { type: String, required: true },
@@ -21,7 +21,7 @@ const powOutSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const powTxSchema = new mongoose.Schema(
+const powTxSchema = new mongoose.Schema<PowTx>(
   {
     hash: { type: String, required: true, index: { unique: true } },
     version: { type: Number, required: true },
@@ -47,6 +47,10 @@ powTxSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<PowTx & mongoose.Document>('PowTx', powTxSchema, 'powTxs');
+const model = mongoose.model<PowTx & mongoose.Document>(
+  'PowTx',
+  powTxSchema,
+  'powTxs'
+);
 
 export default model;

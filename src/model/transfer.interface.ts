@@ -9,6 +9,8 @@ export interface Transfer {
   amount: BigNumber;
   token: Token;
   tokenAddress: string;
+  symbol?: string;
+  decimals?: number;
 
   block: BlockConcise;
   txHash: string;

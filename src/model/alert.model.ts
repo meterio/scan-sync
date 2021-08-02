@@ -2,7 +2,7 @@ import * as mongoose from 'mongoose';
 
 import { Alert } from './alert.interface';
 
-const alertSchema = new mongoose.Schema(
+const alertSchema = new mongoose.Schema<Alert>(
   {
     network: { type: String, enum: ['mainnet', 'testnet', 'devnet'], required: true },
     number: { type: Number, required: true },

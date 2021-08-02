@@ -3,9 +3,13 @@ import * as mongoose from 'mongoose';
 
 import { Token, enumKeys } from '../const';
 import { fromWei } from '../utils/utils';
-import { AuctionSummary } from './auctionSummary.interface';
+import {
+  AuctionDist,
+  AuctionSummary,
+  AuctionTx,
+} from './auctionSummary.interface';
 
-const auctionDistSchema = new mongoose.Schema(
+const auctionDistSchema = new mongoose.Schema<AuctionDist>(
   {
     address: { type: String, required: true },
     amount: {
@@ -25,7 +29,7 @@ const auctionDistSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const auctionTxSchema = new mongoose.Schema(
+const auctionTxSchema = new mongoose.Schema<AuctionTx>(
   {
     txid: { type: String, required: true },
     address: { type: String, required: true },
@@ -37,7 +41,7 @@ const auctionTxSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const auctionSummarySchema = new mongoose.Schema({
+const auctionSummarySchema = new mongoose.Schema<AuctionSummary>({
   id: { type: String, required: true, unique: true },
   startHeight: { type: Number, required: true },
   startEpoch: { type: Number, required: true },

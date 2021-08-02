@@ -160,7 +160,10 @@ export class PosCMD extends CMD {
               head = await this.headRepo.create(this.name, res.block.number, res.block.hash);
             } else {
               this.logger.info({ num: res.block.number }, 'update head');
-              head = await this.headRepo.update(this.name, res.block.number, res.block.hash);
+              // head = await this.headRepo.update(this.name, res.block.number, res.block.hash);
+              head.num = res.block.number;
+              head.hash = res.block.hash;
+              await head.save();
             }
           }
 
@@ -187,7 +190,10 @@ export class PosCMD extends CMD {
               head = await this.headRepo.create(this.name, last.number, last.hash);
             } else {
               this.logger.info({ num: last.number }, 'update head');
-              head = await this.headRepo.update(this.name, last.number, last.hash);
+              // head = await this.headRepo.update(this.name, last.number, last.hash);
+              head.num = last.number;
+              head.hash = last.hash;
+              await head.save();
             }
           }
           if (txs.length > 0) {

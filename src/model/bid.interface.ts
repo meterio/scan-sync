@@ -17,4 +17,5 @@ export interface Bid {
   pending: boolean;
   hammerPrice?: BigNumber;
   lotAmount?: BigNumber;
+  toSummary?(): object;
 }

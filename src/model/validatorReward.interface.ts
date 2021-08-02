@@ -10,4 +10,5 @@ export interface ValidatorReward {
   baseReward: BigNumber;
   totalReward: BigNumber;
   rewards: RewardInfo[];
+  toSummary?(): Object;
 }

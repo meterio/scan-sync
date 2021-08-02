@@ -2,9 +2,9 @@ import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
 import { ValidatorStatus, enumKeys } from '../const';
-import { Validator } from './validator.interface';
+import { Distributor, Validator } from './validator.interface';
 
-const distributorSchema = new mongoose.Schema(
+const distributorSchema = new mongoose.Schema<Distributor>(
   {
     address: { type: String, required: true },
     shares: { type: Number, required: true },
@@ -12,12 +12,11 @@ const distributorSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const validatorSchema = new mongoose.Schema({
+const validatorSchema = new mongoose.Schema<Validator>({
   pubKey: { type: String, required: true, unique: true },
 
   // updatable attributes
   name: { type: String, required: true },
-  description: { type: String, required: false },
   address: { type: String, required: true },
   ipAddress: { type: String, required: true },
   port: { type: Number, required: true },
@@ -26,7 +25,8 @@ const validatorSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: enumKeys(ValidatorStatus),
-    get: (enumValue: string) => ValidatorStatus[enumValue as keyof typeof ValidatorStatus],
+    get: (enumValue: string) =>
+      ValidatorStatus[enumValue as keyof typeof ValidatorStatus],
     set: (enumValue: ValidatorStatus) => ValidatorStatus[enumValue],
     required: true,
   },
@@ -65,6 +65,10 @@ validatorSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Validator & mongoose.Document>('Validator', validatorSchema, 'validators');
+const model = mongoose.model<Validator & mongoose.Document>(
+  'Validator',
+  validatorSchema,
+  'validators'
+);
 
 export default model;

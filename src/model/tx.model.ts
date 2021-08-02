@@ -3,11 +3,22 @@ import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
 import { Token, ZeroAddress, enumKeys } from '../const';
-import { AccountLockModuleAddress, AuctionModuleAddress, StakingModuleAddress } from '../const/address';
+import {
+  AccountLockModuleAddress,
+  AuctionModuleAddress,
+  StakingModuleAddress,
+} from '../const/address';
 import { blockConciseSchema } from './blockConcise.model';
-import { Tx } from './tx.interface';
+import {
+  Clause,
+  PosEvent,
+  PosTransfer,
+  Transfer,
+  Tx,
+  TxOutput,
+} from './tx.interface';
 
-const clauseSchema = new mongoose.Schema(
+const clauseSchema = new mongoose.Schema<Clause>(
   {
     to: { type: String, required: false },
     value: {
@@ -28,7 +39,7 @@ const clauseSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const posEventSchema = new mongoose.Schema(
+const posEventSchema = new mongoose.Schema<PosEvent>(
   {
     address: { type: String, required: true },
     topics: [{ type: String, required: true }],
@@ -37,7 +48,15 @@ const posEventSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const posTransferSchema = new mongoose.Schema(
+posEventSchema.set('toJSON', {
+  transform: (doc, ret, options) => {
+    delete ret.__v;
+    delete ret._id;
+    return ret;
+  },
+});
+
+const posTransferSchema = new mongoose.Schema<PosTransfer>(
   {
     sender: { type: String, required: true },
     recipient: { type: String, required: true },
@@ -47,7 +66,15 @@ const posTransferSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const txOutputSchema = new mongoose.Schema(
+posTransferSchema.set('toJSON', {
+  transform: (doc, ret, options) => {
+    delete ret.__v;
+    delete ret._id;
+    return ret;
+  },
+});
+
+const txOutputSchema = new mongoose.Schema<TxOutput>(
   {
     contractAddress: { type: String, required: false },
     events: [posEventSchema],
@@ -56,7 +83,7 @@ const txOutputSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const transferSchema = new mongoose.Schema(
+const transferSchema = new mongoose.Schema<Transfer>(
   {
     sender: { type: String, required: true },
     recipient: { type: String, required: true },
@@ -71,21 +98,21 @@ const transferSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const txSchema = new mongoose.Schema(
+const txSchema = new mongoose.Schema<Tx>(
   {
     hash: { type: String, required: true, index: { unique: true } },
 
     block: blockConciseSchema,
     txIndex: { type: Number, required: true },
 
-    chainTag: { type: Number, required: true, index: true },
+    chainTag: { type: Number, required: true },
     blockRef: { type: String, required: true },
     expiration: { type: Number, required: true },
     gasPriceCoef: { type: Number, required: true },
     gas: { type: Number, required: true },
     nonce: { type: String, required: true },
     dependsOn: { type: String, required: false },
-    origin: { type: String, required: true, index: true },
+    origin: { type: String, required: true },
 
     clauses: [clauseSchema],
     clauseCount: { type: Number, required: true },
@@ -157,16 +184,6 @@ const txSchema = new mongoose.Schema(
   }
 );
 
-txSchema.index({ 'clauses.to': 1 });
-txSchema.index({ 'block.number': 1 });
-txSchema.index({ 'block.hash': 1 });
-txSchema.index({ 'groupedTransfers.sender': 1 });
-txSchema.index({ 'groupedTransfers.recipient': 1 });
-txSchema.index({ relatedAddrs: 1 });
-txSchema.index({ erc20RelatedAddrs: 1 });
-txSchema.index({ 'sysContractTransfers.sender': 1 });
-txSchema.index({ 'sysContractTransfers.recipient': 1 });
-
 txSchema.set('toJSON', {
   transform: (doc, ret, options) => {
     delete ret.__v;
@@ -200,21 +217,19 @@ txSchema.methods.getType = function () {
         if (c.to.toLowerCase() === AuctionModuleAddress) {
           return 'auction';
         }
-      } else {
-        const se = devkit.ScriptEngine;
-        if (se.IsScriptEngineData(c.data)) {
-          const scriptData = se.decodeScriptData(c.data);
-          if (scriptData.header.modId === se.ModuleID.Staking) {
-            return 'staking';
-          }
-          if (scriptData.header.modId === se.ModuleID.Auction) {
-            return 'auction';
-          }
-          if (scriptData.header.modId === se.ModuleID.AccountLock) {
-            return 'account lock';
-          }
+      }
+      const se = devkit.ScriptEngine;
+      if (se.IsScriptEngineData(c.data)) {
+        const scriptData = se.decodeScriptData(c.data);
+        if (scriptData.header.modId === se.ModuleID.Staking) {
+          return 'staking';
         }
-        return 'empty';
+        if (scriptData.header.modId === se.ModuleID.Auction) {
+          return 'auction';
+        }
+        if (scriptData.header.modId === se.ModuleID.AccountLock) {
+          return 'account lock';
+        }
       }
       return 'call';
     }
@@ -225,8 +240,27 @@ txSchema.methods.getType = function () {
   return 'transfer';
 };
 
-txSchema.methods.toSummary = function () {
+txSchema.methods.toSummary = function (addr) {
   const token = this.clauseCount > 0 ? this.clauses[0].token : 0;
+
+  let totalClauseAmount = '0';
+  if (token == 0) {
+    totalClauseAmount = this.totalClauseMTR.toFixed();
+  } else {
+    totalClauseAmount = this.totalClauseMTRG.toFixed();
+  }
+
+  let relatedTransfers = [];
+  if (!!addr) {
+    let transfers = []
+      .concat(this.groupedTransfers)
+      .concat(this.sysContractTransfers);
+    relatedTransfers = transfers.filter(
+      (t) =>
+        t.sender.toLowerCase() === addr.toLowerCase() ||
+        t.recipient.toLowerCase() === addr.toLowerCase()
+    );
+  }
 
   return {
     hash: this.hash,
@@ -235,15 +269,23 @@ txSchema.methods.toSummary = function () {
     clauseCount: this.clauses ? this.clauses.length : 0,
     type: this.getType(),
     paid: this.paid.toFixed(),
+    gasUsed: this.gasUsed,
+    gasPriceCoef: this.gasPriceCoef,
+    gasPrice: 5e11 + 5e11 * (this.gasPriceCoef / 255),
     totalClauseMTR: this.totalClauseMTR.toFixed(),
     totalClauseMTRG: this.totalClauseMTRG.toFixed(),
     totalTransferMTR: this.totalTransferMTR.toFixed(),
     totalTransferMTRG: this.totalTransferMTRG.toFixed(),
     token: token == 0 ? 'MTR' : 'MTRG',
     reverted: this.reverted,
-    groupedTransfers: this.groupedTransfers,
     majorTo: this.majorTo,
     toCount: this.toCount,
+    groupedTransferCount: this.groupedTransfers
+      ? this.groupedTransfers.length
+      : 0,
+    relatedTransfers,
+    // calculated
+    totalClauseAmount,
   };
 };
 const model = mongoose.model<Tx & mongoose.Document>('Tx', txSchema, 'txs');
