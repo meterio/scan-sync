@@ -20,6 +20,7 @@ import {
 } from '../const';
 import { Block } from '../model/block.interface';
 import { BlockConcise } from '../model/blockConcise.interface';
+import { blockConciseSchema } from '../model/blockConcise.model';
 import { Bound } from '../model/bound.interface';
 import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
@@ -67,6 +68,7 @@ export class AccountCMD extends TxBlockReviewer {
     let bounds: Bound[] = [];
     let unbounds: Unbound[] = [];
     let contracts: { [key: string]: string } = {};
+    const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash };
 
     if (tx.reverted) {
       this.logger.info(`Tx is reverted`);
@@ -131,6 +133,8 @@ export class AccountCMD extends TxBlockReviewer {
               new BigNumber(0),
               // new BigNumber(totalSupplyVal),
               master,
+              tx.hash,
+              blockConcise,
               decimals
             );
           } catch (e) {
@@ -141,6 +145,9 @@ export class AccountCMD extends TxBlockReviewer {
 
         // system contract transfers
         if (e.topics[0] === TransferEvent.signature) {
+          if (!e.topics || !e.data || e.topics.length !== 2) {
+            continue;
+          }
           const decoded = TransferEvent.decode(e.data, e.topics);
           let transfer = {
             from: decoded._from.toLowerCase(),

@@ -28,6 +28,10 @@ export class BucketRepo {
   public async deleteAll() {
     return this.model.deleteMany({});
   }
+
+  public async deleteAfterTimestamp(ts: number) {
+    return this.model.deleteMany({ createTime: { $gte: ts } });
+  }
 }
 
 export default BucketRepo;

@@ -19,6 +19,10 @@ export class EpochRewardSummaryRepo {
   public async create(epochRewardSummary: EpochRewardSummary) {
     return this.model.create(epochRewardSummary);
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ blockNum: { $gte: blockNum } });
+  }
 }
 
 export default EpochRewardSummaryRepo;

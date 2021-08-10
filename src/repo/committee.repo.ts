@@ -23,6 +23,10 @@ export class CommitteeRepo {
   public async updateEndBlock(epoch: number, endBlock: BlockConcise) {
     return this.committee.updateOne({ epoch }, { $set: { endBlock } });
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.committee.deleteMany({ 'startBlock.number': { $gte: blockNum } });
+  }
 }
 
 export default CommitteeRepo;

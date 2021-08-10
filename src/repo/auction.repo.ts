@@ -23,6 +23,10 @@ export class AuctionRepo {
   public async findPresent() {
     return this.model.findOne({ pending: true });
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ auctionStartHeight: { $gte: blockNum } });
+  }
 }
 
 export default AuctionRepo;

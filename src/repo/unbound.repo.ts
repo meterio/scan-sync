@@ -23,6 +23,10 @@ export class UnboundRepo {
   public async bulkInsert(...unbounds: Unbound[]) {
     return this.model.create(unbounds);
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
+  }
 }
 
 export default UnboundRepo;

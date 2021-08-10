@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
+import { blockConciseSchema } from './blockConcise.model';
 import { TokenProfile } from './tokenProfile.interface';
 
 const tokenProfileSchema = new mongoose.Schema<TokenProfile>(
@@ -35,6 +36,9 @@ const tokenProfileSchema = new mongoose.Schema<TokenProfile>(
       required: true,
     },
 
+    creationTxHash: { type: String, required: false },
+    firstSeen: blockConciseSchema,
+
     createdAt: { type: Number, index: true },
     updatedAt: { type: Number },
   },
@@ -53,10 +57,6 @@ tokenProfileSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<TokenProfile & mongoose.Document>(
-  'TokenProfile',
-  tokenProfileSchema,
-  'tokenProfile'
-);
+const model = mongoose.model<TokenProfile & mongoose.Document>('TokenProfile', tokenProfileSchema, 'tokenProfile');
 
 export default model;

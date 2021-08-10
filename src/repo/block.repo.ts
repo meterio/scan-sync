@@ -61,6 +61,10 @@ export class BlockRepo {
     const limit = 20;
     return this.model.find({ blockType: BlockType.KBlock, powBlocks: { $exists: false } }).limit(limit);
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ number: { $gte: blockNum } });
+  }
 }
 
 export default BlockRepo;

@@ -60,6 +60,10 @@ export class TxRepo {
   public async findByOrigin(address: string) {
     return this.model.find({ origin: address });
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
+  }
 }
 
 export default TxRepo;

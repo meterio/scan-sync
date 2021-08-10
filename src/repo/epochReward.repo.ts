@@ -21,6 +21,10 @@ export class EpochRewardRepo {
   public async findByBid(epoch: number, blockNum: number, address: string, amount: BigNumber) {
     return this.model.findOne({ epoch, blockNum, address, amount });
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ blockNum: { $gte: blockNum } });
+  }
 }
 
 export default EpochRewardRepo;

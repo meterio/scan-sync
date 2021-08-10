@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js';
 
+import { BlockConcise } from '../model/blockConcise.interface';
 import tokenProfileModel from '../model/tokenProfile.model';
 
 export class TokenProfileRepo {
@@ -24,6 +25,8 @@ export class TokenProfileRepo {
     officialSite: string,
     totalSupply: BigNumber,
     master: string,
+    creationTxHash: string,
+    firstSeen: BlockConcise,
     decimals: 18
   ) {
     return this.model.create({
@@ -37,6 +40,8 @@ export class TokenProfileRepo {
       holdersCount: new BigNumber(0),
       transfersCount: new BigNumber(0),
       master,
+      creationTxHash,
+      firstSeen,
     });
   }
 }

@@ -29,6 +29,10 @@ export class BidRepo {
   public async bulkInsert(...bids: Bid[]) {
     return this.model.create(bids);
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ blockNum: { $gte: blockNum } });
+  }
 }
 
 export default BidRepo;

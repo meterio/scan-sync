@@ -61,6 +61,10 @@ export class AccountRepo {
       }
     );
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ 'firstSeen.number': { $gte: blockNum } });
+  }
 }
 
 export default AccountRepo;

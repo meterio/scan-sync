@@ -1,5 +1,7 @@
 import BigNumber from 'bignumber.js';
 
+import { BlockConcise } from './blockConcise.interface';
+
 export interface TokenProfile {
   name: string;
   symbol: string;
@@ -10,4 +12,7 @@ export interface TokenProfile {
   circulation: BigNumber;
   holdersCount: BigNumber;
   transfersCount: BigNumber;
+
+  creationTxHash?: string;
+  firstSeen?: BlockConcise;
 }

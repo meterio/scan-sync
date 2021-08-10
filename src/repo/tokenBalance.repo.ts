@@ -30,6 +30,7 @@ export class TokenBalanceRepo {
       balance: new BigNumber(0),
       symbol,
       tokenAddress: tokenAddress.toLowerCase(),
+      firstSeen: lastUpdate,
       lastUpdate,
       rank: 99999999,
     });

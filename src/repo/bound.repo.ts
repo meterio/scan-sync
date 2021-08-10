@@ -23,6 +23,10 @@ export class BoundRepo {
   public async bulkInsert(...bounds: Bound[]) {
     return this.model.create(bounds);
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
+  }
 }
 
 export default BoundRepo;

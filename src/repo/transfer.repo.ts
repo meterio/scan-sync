@@ -58,6 +58,10 @@ export class TransferRepo {
   public async bulkInsert(...transfers: Transfer[]) {
     return this.model.create(transfers);
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
+  }
 }
 
 export default TransferRepo;

@@ -21,6 +21,10 @@ export class AuctionSummaryRepo {
   public async create(auctionSummary: AuctionSummary) {
     return this.model.create(auctionSummary);
   }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ startHeight: { $gte: blockNum } });
+  }
 }
 
 export default AuctionSummaryRepo;
