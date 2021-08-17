@@ -76,17 +76,31 @@ const adjustBalance = async () => {
       acc.mtrgBounded.toFixed() !== boundedBalance.toFixed() ||
       acc.mtrBounded.toFixed() !== boundedEnergy.toFixed()
     ) {
-      // acc.mtrBalance = balance;
-      // await acc.save();
+      const preMTR = acc.mtrBalance;
+      const preMTRG = acc.mtrgBalance;
+      const preBoundedMTR = acc.mtrBounded;
+      const preBoundedMTRG = acc.mtrgBounded;
       acc.mtrBalance = energy;
       acc.mtrgBalance = balance;
       acc.mtrBounded = boundedEnergy;
       acc.mtrgBounded = boundedBalance;
+
       await acc.save();
+
       console.log('-'.repeat(50));
       console.log(`Fixing Account(${acc.address}):`);
-      console.log(`balance: ${fromWei(balance)} MTRG, energy: ${fromWei(energy)} MTR`);
-      console.log(`bounded balance: ${fromWei(boundedBalance)} MTRG, bounded energy: ${fromWei(boundedEnergy)} MTR`);
+      if (!preMTR.isEqualTo(energy)) {
+        console.log(`MTR: ${fromWei(preMTR)} -> ${fromWei(energy)} `);
+      }
+      if (!preMTRG.isEqualTo(balance)) {
+        console.log(`MTRG: ${fromWei(preMTRG)} -> ${fromWei(balance)}`);
+      }
+      if (!preBoundedMTR.isEqualTo(boundedEnergy)) {
+        console.log(`Bounded MTR: ${fromWei(preBoundedMTR)} -> ${fromWei(boundedEnergy)}`);
+      }
+      if (!preBoundedMTRG.isEqualTo(boundedBalance)) {
+        console.log(`Bounded MTRG: ${fromWei(preBoundedMTRG)} -> ${fromWei(boundedBalance)}`);
+      }
     }
   }
 };
