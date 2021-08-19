@@ -145,33 +145,34 @@ export class AccountCMD extends TxBlockReviewer {
 
         // system contract transfers
         if (e.topics[0] === TransferEvent.signature) {
-          if (!e.topics || !e.data || e.topics.length !== 2) {
-            continue;
+          try {
+            const decoded = TransferEvent.decode(e.data, e.topics);
+            let transfer = {
+              from: decoded._from.toLowerCase(),
+              to: decoded._to.toLowerCase(),
+              token: Token.ERC20,
+              amount: new BigNumber(decoded._value),
+              tokenAddress: '',
+              txHash: tx.hash,
+              block: tx.block,
+              clauseIndex,
+              logIndex,
+            };
+            if (e.address.toLowerCase() === this.mtrSysToken.address) {
+              // MTR: convert system contract event into system transfer
+              transfer.token = Token.MTR;
+            } else if (e.address.toLowerCase() === this.mtrgSysToken.address) {
+              // MTRG: convert system contract event into system transfer
+              transfer.token = Token.MTRG;
+            } else {
+              // ERC20: other erc20 transfer
+              transfer.token = Token.ERC20;
+              transfer.tokenAddress = e.address.toLowerCase();
+            }
+            transfers.push(transfer);
+          } catch (e) {
+            console.log('Error happened, but ignored:', e);
           }
-          const decoded = TransferEvent.decode(e.data, e.topics);
-          let transfer = {
-            from: decoded._from.toLowerCase(),
-            to: decoded._to.toLowerCase(),
-            token: Token.ERC20,
-            amount: new BigNumber(decoded._value),
-            tokenAddress: '',
-            txHash: tx.hash,
-            block: tx.block,
-            clauseIndex,
-            logIndex,
-          };
-          if (e.address.toLowerCase() === this.mtrSysToken.address) {
-            // MTR: convert system contract event into system transfer
-            transfer.token = Token.MTR;
-          } else if (e.address.toLowerCase() === this.mtrgSysToken.address) {
-            // MTRG: convert system contract event into system transfer
-            transfer.token = Token.MTRG;
-          } else {
-            // ERC20: other erc20 transfer
-            transfer.token = Token.ERC20;
-            transfer.tokenAddress = e.address.toLowerCase();
-          }
-          transfers.push(transfer);
         }
 
         // staking bound event
