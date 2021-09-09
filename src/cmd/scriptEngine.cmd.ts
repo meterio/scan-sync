@@ -106,19 +106,19 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             let autobidTotal = new BigNumber(0);
             let userbidTotal = new BigNumber(0);
             for (const [i, t] of txs.entries()) {
-              const d = dists[i];
+              // const d = dists[i];
               const bid = await this.bidRepo.findById(t.txid);
               if (!bid) {
                 console.log('Bid not found! probably missed one bid');
                 continue;
               }
-              if (bid.address.toLowerCase() !== d.address.toLowerCase()) {
-                console.log('Address mismatch! probably the order is different');
-                continue;
-              }
+              // if (bid.address.toLowerCase() !== d.address.toLowerCase()) {
+              //   console.log('Address mismatch! probably the order is different');
+              //   continue;
+              // }
               bid.pending = false;
               bid.hammerPrice = new BigNumber(endedAuction.actualPrice);
-              bid.lotAmount = d.amount;
+              bid.lotAmount = new BigNumber(t.amount).dividedBy(endedAuction.actualPrice);
               await bid.save();
 
               if (t.type === 'autobid') {
