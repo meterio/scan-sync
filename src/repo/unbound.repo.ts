@@ -27,6 +27,10 @@ export class UnboundRepo {
   public async deleteAfter(blockNum: number) {
     return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
   }
+
+  public async findBeforeNum(blockNum: number) {
+    return this.model.find({ 'block.number': { $gt: blockNum } });
+  }
 }
 
 export default UnboundRepo;

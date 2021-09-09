@@ -56,8 +56,8 @@ export class InterruptedError extends Error {
   }
 }
 
-export const fromWei = (val: string | number | BigNumber) => {
-  return new BigNumber(val).dividedBy(UNIT_WEI).toFixed();
+export const fromWei = (val: string | number | BigNumber, precision: number | undefined = undefined) => {
+  return new BigNumber(val).dividedBy(UNIT_WEI).toFixed(precision);
 };
 
 export const toWei = (val: string | number | BigNumber) => {

@@ -27,6 +27,10 @@ export class BoundRepo {
   public async deleteAfter(blockNum: number) {
     return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
   }
+
+  public async findBeforeNum(blockNum: number) {
+    return this.model.find({ 'block.number': { $lt: blockNum } });
+  }
 }
 
 export default BoundRepo;

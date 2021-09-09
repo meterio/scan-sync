@@ -200,6 +200,13 @@ export namespace Pos {
     auctionTxs: AuctionTx[];
   };
 
+  export type AccountBalance = {
+    balance: string;
+    energy: string;
+    boundbalance: string;
+    boundenergy: string;
+  };
+
   export type EpochInfo = {
     epochID: number;
     powBlocks: Flex.Meter.PowBlock[];
@@ -224,6 +231,10 @@ export class Pos {
     const posConfig = GetPosConfig(genesisID);
     this.net = new Net(posConfig.url);
     this.cache = new LRU<string, any>(1024 * 4);
+  }
+
+  public async getBalanceOnRevision(revision: string | number, address: string) {
+    return this.httpGet<Pos.AccountBalance>(`accounts/${address}?revision=${revision}`);
   }
 
   public async getBlock<T extends 'expanded' | 'regular'>(
