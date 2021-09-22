@@ -1,3 +1,6 @@
+import { createRequire } from 'module';
+import { stringify } from 'querystring';
+
 import BigNumber from 'bignumber.js';
 
 import { Token } from '../const';
@@ -8,14 +11,20 @@ export interface AccountDelta {
 
   mtrBounded: BigNumber;
   mtrgBounded: BigNumber;
+  creationTxHash: string;
+}
+
+export interface ContractInfo {
+  creationTxHash: string;
+  master: string;
 }
 
 export class AccountDeltaMap {
   private accts: { [key: string]: AccountDelta } = {};
 
-  public minus(addrStr: string, token: Token, amount: string | BigNumber) {
+  public minus(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
-    this.setDefault(addrStr);
+    this.setDefault(addrStr, creationTxHash);
     if (token === Token.MTR) {
       this.accts[addr].mtr = this.accts[addr].mtr.minus(amount);
     }
@@ -24,7 +33,7 @@ export class AccountDeltaMap {
     }
   }
 
-  private setDefault(addrStr: string) {
+  private setDefault(addrStr: string, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
     if (!(addr in this.accts)) {
       this.accts[addr] = {
@@ -32,13 +41,14 @@ export class AccountDeltaMap {
         mtrg: new BigNumber(0),
         mtrBounded: new BigNumber(0),
         mtrgBounded: new BigNumber(0),
+        creationTxHash,
       };
     }
   }
 
-  public plus(addrStr: string, token: Token, amount: string | BigNumber) {
+  public plus(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
-    this.setDefault(addrStr);
+    this.setDefault(addrStr, creationTxHash);
     if (token === Token.MTR) {
       this.accts[addr].mtr = this.accts[addr].mtr.plus(amount);
     }
@@ -47,9 +57,9 @@ export class AccountDeltaMap {
     }
   }
 
-  public bound(addrStr: string, token: Token, amount: string | BigNumber) {
+  public bound(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
-    this.setDefault(addrStr);
+    this.setDefault(addrStr, creationTxHash);
     if (token === Token.MTR) {
       this.accts[addr].mtr = this.accts[addr].mtr.minus(amount);
       this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.plus(amount);
@@ -60,9 +70,9 @@ export class AccountDeltaMap {
     }
   }
 
-  public unbound(addrStr: string, token: Token, amount: string | BigNumber) {
+  public unbound(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
-    this.setDefault(addrStr);
+    this.setDefault(addrStr, creationTxHash);
     if (token === Token.MTR) {
       this.accts[addr].mtr = this.accts[addr].mtr.plus(amount);
       this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.minus(amount);
@@ -83,7 +93,7 @@ export class AccountDeltaMap {
   }
 
   public getDelta(addrStr: string): AccountDelta {
-    this.setDefault(addrStr);
+    this.setDefault(addrStr, '0x');
     const addr = addrStr.toLowerCase();
     if (addr in this.accts) {
       return this.accts[addr];

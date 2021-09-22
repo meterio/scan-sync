@@ -37,6 +37,7 @@ const accountSchema = new mongoose.Schema<Account>(
     code: { type: String, required: false },
     master: { type: String, required: false },
 
+    creationTxHash: { type: String, required: true },
     firstSeen: blockConciseSchema,
     lastUpdate: blockConciseSchema,
 
@@ -59,9 +60,6 @@ accountSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Account & mongoose.Document>(
-  'Account',
-  accountSchema
-);
+const model = mongoose.model<Account & mongoose.Document>('Account', accountSchema);
 
 export default model;

@@ -17,6 +17,7 @@ export interface Account {
   code?: string;
   master?: string;
 
+  creationTxHash: string;
   firstSeen: BlockConcise;
   lastUpdate: BlockConcise;
 }

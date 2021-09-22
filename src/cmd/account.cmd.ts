@@ -31,7 +31,7 @@ import TokenProfileRepo from '../repo/tokenProfile.repo';
 import UnboundRepo from '../repo/unbound.repo';
 import { fromWei } from '../utils/utils';
 import { TxBlockReviewer } from './blockReviewer';
-import { AccountDeltaMap, TokenDeltaMap } from './types';
+import { AccountDeltaMap, ContractInfo, TokenDeltaMap } from './types';
 
 const printTransfer = (t: Transfer) => {
   console.log(
@@ -220,7 +220,7 @@ export class AccountCMD extends TxBlockReviewer {
     let transfers = [];
     let bounds: Bound[] = [];
     let unbounds: Unbound[] = [];
-    let contracts: { [key: string]: string } = {};
+    let contracts: { [key: string]: ContractInfo } = {};
     let accts = new AccountDeltaMap();
     let totalFees = new BigNumber(0);
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
@@ -229,15 +229,18 @@ export class AccountCMD extends TxBlockReviewer {
         throw new Error('could not find tx, maybe the block is still being processed');
       }
       const res = await this.processTx(txModel, txIndex, blk);
-      transfers = transfers.concat(res.transfers);
-      bounds = bounds.concat(res.bounds);
-      unbounds = unbounds.concat(res.unbounds);
+      transfers = transfers.concat(res.transfers.map((tr) => ({ ...tr, txHash })));
+      bounds = bounds.concat(res.bounds.map((b) => ({ ...b, txHash })));
+      unbounds = unbounds.concat(res.unbounds.map((u) => ({ ...u, txHash })));
       for (const addr of Object.keys(res.contracts)) {
-        contracts[addr] = res.contracts[addr];
+        contracts[addr] = {
+          master: res.contracts[addr].toLowerCase(),
+          creationTxHash: txHash,
+        };
       }
 
       // substract fee from gas payer
-      accts.minus(txModel.gasPayer, Token.MTR, txModel.paid);
+      accts.minus(txModel.gasPayer, Token.MTR, txModel.paid, txHash);
 
       // calculate total fee paid in this block
       if (txModel.origin.toLowerCase() !== ZeroAddress) {
@@ -246,7 +249,7 @@ export class AccountCMD extends TxBlockReviewer {
     }
 
     // add block reward beneficiary account
-    accts.plus(blk.beneficiary, Token.MTR, totalFees);
+    accts.plus(blk.beneficiary, Token.MTR, totalFees, '0x');
 
     // save transfers
     if (transfers.length > 0) {
@@ -284,18 +287,18 @@ export class AccountCMD extends TxBlockReviewer {
     for (const tr of transfers) {
       const from = tr.from;
       const to = tr.to;
-      accts.minus(from, tr.token, tr.amount);
-      accts.plus(to, tr.token, tr.amount);
+      accts.minus(from, tr.token, tr.amount, tr.txHash);
+      accts.plus(to, tr.token, tr.amount, tr.txHash);
     }
 
     // collect bounds updates to accounts
     for (const b of bounds) {
-      accts.bound(b.owner, b.token, b.amount);
+      accts.bound(b.owner, b.token, b.amount, b.txHash);
     }
 
     // collect unbound updates to accounts
     for (const ub of unbounds) {
-      accts.unbound(ub.owner, ub.token, ub.amount);
+      accts.unbound(ub.owner, ub.token, ub.amount, ub.txHash);
     }
 
     const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash };
@@ -320,7 +323,7 @@ export class AccountCMD extends TxBlockReviewer {
       const chainAcc = await this.pos.getAccount(addr, genesis.hash);
 
       const blockConcise = { number: genesis.number, hash: genesis.hash, timestamp: genesis.timestamp };
-      let acct = await this.accountRepo.create(this.network, addr.toLowerCase(), blockConcise, blockConcise);
+      let acct = await this.accountRepo.create(this.network, addr.toLowerCase(), blockConcise, blockConcise, '0x');
       acct.mtrgBalance = new BigNumber(chainAcc.balance);
       acct.mtrBalance = new BigNumber(chainAcc.energy);
 
@@ -345,7 +348,13 @@ export class AccountCMD extends TxBlockReviewer {
       this.logger.info({ addr }, 'ready to update address balance');
       if (!acct) {
         this.logger.info({ mtr: '0', mtrg: '0' }, 'account doesnt exist before update');
-        acct = await this.accountRepo.create(this.network, addr.toLowerCase(), blockConcise, blockConcise);
+        acct = await this.accountRepo.create(
+          this.network,
+          addr.toLowerCase(),
+          blockConcise,
+          blockConcise,
+          delta.creationTxHash
+        );
       }
 
       let balanceDeltas = {};
@@ -386,12 +395,19 @@ export class AccountCMD extends TxBlockReviewer {
     }
   }
 
-  private async updateContracts(contracts: { [key: string]: string }, blockConcise: BlockConcise) {
+  private async updateContracts(contracts: { [key: string]: ContractInfo }, blockConcise: BlockConcise) {
     // contract creation
     for (const address in contracts) {
       let acct = await this.accountRepo.findByAddress(address);
       if (!acct) {
-        acct = await this.accountRepo.create(this.network, address.toLowerCase(), blockConcise, blockConcise);
+        acct = await this.accountRepo.create(
+          this.network,
+          address.toLowerCase(),
+          blockConcise,
+          blockConcise,
+          contracts[address].creationTxHash,
+          contracts[address].master
+        );
       }
       const code = await this.pos.getCode(address, blockConcise.hash);
       if (code && code.code !== '0x') {

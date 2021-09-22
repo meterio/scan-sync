@@ -23,7 +23,14 @@ export class AccountRepo {
     });
   }
 
-  public async create(network: Network, address: string, firstSeen: BlockConcise, lastUpdate: BlockConcise) {
+  public async create(
+    network: Network,
+    address: string,
+    firstSeen: BlockConcise,
+    lastUpdate: BlockConcise,
+    creationTxHash: string,
+    master: string | undefined = undefined
+  ) {
     const name = getAccountName(network, address);
     return this.model.create({
       name: name,
@@ -37,6 +44,8 @@ export class AccountRepo {
 
       firstSeen,
       lastUpdate,
+      creationTxHash,
+      master,
     });
   }
 

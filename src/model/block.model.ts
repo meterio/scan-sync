@@ -38,7 +38,7 @@ const blockSchema = new mongoose.Schema<Block>(
     hash: { type: String, required: true, index: { unique: true } },
     number: { type: Number, required: true, index: { unique: true } },
     parentID: { type: String, required: true },
-    timestamp: { type: Number, required: true },
+    timestamp: { type: Number, required: true, index: true },
     gasLimit: { type: Number, required: true },
     gasUsed: { type: Number, required: true },
     txsRoot: { type: String, required: true },
@@ -73,8 +73,7 @@ const blockSchema = new mongoose.Schema<Block>(
     blockType: {
       type: String,
       enum: enumKeys(BlockType),
-      get: (enumValue: string) =>
-        BlockType[enumValue as keyof typeof BlockType],
+      get: (enumValue: string) => BlockType[enumValue as keyof typeof BlockType],
       set: (enumValue: BlockType) => BlockType[enumValue],
       required: true,
       index: true,
