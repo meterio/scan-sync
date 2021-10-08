@@ -81,7 +81,7 @@ const auditBalance = async () => {
         )} MTR`
       );
     }
-    if (acc.master !== chainMaster && acc.master !== undefined && chainMaster !== null) {
+    if (acc.master !== undefined && chainMaster !== null && acc.master.toLowerCase() !== chainMaster.toLowerCase()) {
       console.log(`Fatal: master of Account(${acc.address}) mismatch, chain: ${chainMaster} db: ${acc.master}`);
     }
     if (chainAcc.hasCode === true && acc.code !== chainCode.code) {
