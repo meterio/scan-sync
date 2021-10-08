@@ -45,7 +45,7 @@ const blockSchema = new mongoose.Schema<Block>(
     stateRoot: { type: String, required: true },
     receiptsRoot: { type: String, required: true },
     signer: { type: String, required: true, index: true },
-    beneficiary: { type: String, required: true },
+    beneficiary: { type: String, required: true, index: true },
     size: { type: Number, required: true },
 
     nonce: { type: String, required: true },
@@ -91,7 +91,7 @@ const blockSchema = new mongoose.Schema<Block>(
     },
   }
 );
-blockSchema.index({ beneficiary: 1 });
+blockSchema.index({ timestamp: -1 });
 
 blockSchema.set('toJSON', {
   transform: (doc, ret, options) => {

@@ -79,6 +79,7 @@ export class MetricCMD extends CMD {
 
   private async updatePowInfo(index: number, interval: number) {
     if (index % interval === 0) {
+      console.log('update PoW info');
       const mining = await this.pow.getMiningInfo();
       if (!!mining) {
         await this.cache.update(MetricName.DIFFICULTY, mining.difficulty);
@@ -119,6 +120,7 @@ export class MetricCMD extends CMD {
 
   private async updatePosInfo(index: number, interval: number) {
     if (index % interval === 0) {
+      console.log('update PoS info');
       const blk = await this.pos.getBlock('best', 'regular');
       if (!!blk) {
         const seq = blk.number - blk.lastKBlockHeight;
@@ -189,6 +191,7 @@ export class MetricCMD extends CMD {
 
   private async updateValidatorRewards(index: number, interval: number) {
     if (index % interval === 0) {
+      console.log('update validate rewards');
       const rwds = await this.pos.getValidatorRewards();
       if (!!rwds) {
         const updated = await this.cache.update(MetricName.VALIDATOR_REWARDS, JSON.stringify(rwds));
@@ -202,6 +205,7 @@ export class MetricCMD extends CMD {
   private async updateBitcoinInfo(index: number, interval: number) {
     if (index % interval === 0) {
       //blockchain.info/q/hashrate
+      console.log('update Bitcoin info');
       const stats = await this.blockchainInfo.http<any>('GET', 'stats');
       console.log('BTC Hashrate:', stats.hash_rate);
       if (!!stats) {
@@ -220,6 +224,7 @@ export class MetricCMD extends CMD {
 
   private async updateMarketPrice(index: number, interval: number) {
     if (index % interval === 0) {
+      console.log('update market price');
       const price = await this.coingecko.http<any>('GET', 'simple/price', {
         query: { ids: 'meter,meter-stable', vs_currencies: 'usd,usd', include_24hr_change: 'true' },
       });
@@ -242,7 +247,7 @@ export class MetricCMD extends CMD {
 
   private async updateAuctionInfo(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('UPDATE AUCTION');
+      console.log('update auction info');
       let sUpdated = false,
         pUpdated = false;
       const present = await this.pos.getPresentAuction();
@@ -258,6 +263,7 @@ export class MetricCMD extends CMD {
 
   private async updateInvalidNodes(index: number, interval: number) {
     if (index % interval === 0) {
+      console.log('update invalid nodes');
       try {
         let invalidNodes = [];
         const res = await axios.get(`http://monitor.meter.io:9090/api/v1/query?query=best_height`);
@@ -318,6 +324,7 @@ export class MetricCMD extends CMD {
 
   private async updateSlashingInfo(index: number, interval: number) {
     if (index % interval === 0) {
+      console.log('update slashing info');
       let updated = false;
       const stats = await this.pos.getValidatorStats();
       if (!!stats) {
@@ -352,6 +359,7 @@ export class MetricCMD extends CMD {
   private async updateStakingInfo(index: number, interval: number) {
     // update staking/slashing every 5 minutes
     if (index % interval === 0) {
+      console.log('update staking info');
       let cUpdated = false,
         jUpdated = false,
         bUpdated = false,
@@ -480,7 +488,7 @@ export class MetricCMD extends CMD {
   private async updateCirculationAndRank(index: number, interval: number) {
     if (index % interval === 0) {
       // Update circulation
-
+      console.log('update circulation and rank');
       const bucketStr = this.cache.get(MetricName.BUCKETS);
       const buckets = JSON.parse(bucketStr);
       let totalStaked = new BigNumber(0);

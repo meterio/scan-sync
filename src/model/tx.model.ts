@@ -3,20 +3,9 @@ import BigNumber from 'bignumber.js';
 import * as mongoose from 'mongoose';
 
 import { Token, ZeroAddress, enumKeys } from '../const';
-import {
-  AccountLockModuleAddress,
-  AuctionModuleAddress,
-  StakingModuleAddress,
-} from '../const/address';
+import { AccountLockModuleAddress, AuctionModuleAddress, StakingModuleAddress } from '../const/address';
 import { blockConciseSchema } from './blockConcise.model';
-import {
-  Clause,
-  PosEvent,
-  PosTransfer,
-  Transfer,
-  Tx,
-  TxOutput,
-} from './tx.interface';
+import { Clause, PosEvent, PosTransfer, Transfer, Tx, TxOutput } from './tx.interface';
 
 const clauseSchema = new mongoose.Schema<Clause>(
   {
@@ -192,6 +181,15 @@ txSchema.set('toJSON', {
   },
 });
 
+txSchema.index({ relatedAddres: 1 });
+txSchema.index({ erc20RelatedAddres: 1 });
+txSchema.index({ 'groupedTransfers.sender': 1 });
+txSchema.index({ 'groupedTransfers.recipient': 1 });
+txSchema.index({ 'sysContractTransfers.sender': 1 });
+txSchema.index({ 'sysContractTransfers.recipient': 1 });
+txSchema.index({ 'block.hash': 1 });
+txSchema.index({ 'block.number': -1 });
+
 txSchema.methods.getType = function () {
   for (const c of this.clauses) {
     if (c.data !== '0x') {
@@ -252,13 +250,9 @@ txSchema.methods.toSummary = function (addr) {
 
   let relatedTransfers = [];
   if (!!addr) {
-    let transfers = []
-      .concat(this.groupedTransfers)
-      .concat(this.sysContractTransfers);
+    let transfers = [].concat(this.groupedTransfers).concat(this.sysContractTransfers);
     relatedTransfers = transfers.filter(
-      (t) =>
-        t.sender.toLowerCase() === addr.toLowerCase() ||
-        t.recipient.toLowerCase() === addr.toLowerCase()
+      (t) => t.sender.toLowerCase() === addr.toLowerCase() || t.recipient.toLowerCase() === addr.toLowerCase()
     );
   }
 
@@ -280,9 +274,7 @@ txSchema.methods.toSummary = function (addr) {
     reverted: this.reverted,
     majorTo: this.majorTo,
     toCount: this.toCount,
-    groupedTransferCount: this.groupedTransfers
-      ? this.groupedTransfers.length
-      : 0,
+    groupedTransferCount: this.groupedTransfers ? this.groupedTransfers.length : 0,
     relatedTransfers,
     // calculated
     totalClauseAmount,

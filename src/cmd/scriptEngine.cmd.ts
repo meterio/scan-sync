@@ -233,7 +233,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           const blsPK = items[1];
           const address = '0x' + body.candidateAddr.toString('hex').toLowerCase();
 
-          const exist = await this.knownRepo.exist(address);
+          const exist = await this.knownRepo.exist(ecdsaPK);
           if (!exist) {
             const known: Known = {
               ecdsaPK,
@@ -246,7 +246,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             };
             await this.knownRepo.create(known);
           } else {
-            let known = await this.knownRepo.findByAddress(address);
+            let known = await this.knownRepo.findByECDSAPK(ecdsaPK);
             let updated = false;
             if (body.candidateName.toString() != '') {
               known.name = body.candidateName.toString();

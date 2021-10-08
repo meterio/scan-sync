@@ -7,12 +7,12 @@ export class KnownRepo {
     return this.model.find();
   }
 
-  public async exist(address: string) {
-    return this.model.exists({ address });
+  public async exist(ecdsaPK: string) {
+    return this.model.exists({ ecdsaPK });
   }
 
-  public async findByAddress(address: string) {
-    return this.model.findOne({ address: address.toLowerCase() });
+  public async findByECDSAPK(ecdsaPK: string) {
+    return this.model.findOne({ ecdsaPK });
   }
 
   public async create(known: Known) {

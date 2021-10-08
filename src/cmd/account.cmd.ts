@@ -35,8 +35,8 @@ import { AccountDeltaMap, ContractInfo, TokenDeltaMap } from './types';
 
 const printTransfer = (t: Transfer) => {
   console.log(
-    `Transfer #${t.clauseIndex},${t.logIndex}: ${t.from} to ${t.to} with ${fromWei(t.amount)} ${Token[t.token]} (${
-      t.logIndex
+    `Transfer #(ci:${t.clauseIndex},li:${t.logIndex},t:${t.token}): ${t.from} to ${t.to} with ${fromWei(t.amount)} ${
+      Token[t.token]
     })`
   );
 };
