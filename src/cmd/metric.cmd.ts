@@ -576,7 +576,7 @@ export class MetricCMD extends CMD {
         await sleep(SAMPLING_INTERVAL);
 
         // update pos best, difficulty && hps
-        await this.updatePowInfo(index, every10m);
+        // await this.updatePowInfo(index, every10m);
 
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);
@@ -603,7 +603,7 @@ export class MetricCMD extends CMD {
         await this.updateInvalidNodes(index, every2m);
 
         // update auction info
-        await this.updateAuctionInfo(index, every5m);
+        // await this.updateAuctionInfo(index, every5m);
 
         // update validator rewards
         await this.updateValidatorRewards(index, every5m);
