@@ -335,18 +335,18 @@ export class Pos {
   }
 
   // Auction related
-  // public getAuctionSummaries() {
-  //   return this.httpGet<Pos.AuctionSummary[]>(`auction/summaries`);
-  // }
-  // public getLastAuctionSummary(revision: number | string) {
-  //   return this.httpGet<Pos.AuctionSummary>(`auction/last/summary?revision=${revision}`);
-  // }
-  // public getPresentAuction() {
-  //   return this.httpGet<Pos.Auction>(`auction/present`);
-  // }
-  // public getPresentAuctionByRevision(revision: number) {
-  //   return this.httpGet<Pos.Auction>(`auction/present?revision=${revision}`);
-  // }
+  public getAuctionSummaries() {
+    return this.httpGet<Pos.AuctionSummary[]>(`auction/summaries`);
+  }
+  public getLastAuctionSummary(revision: number | string) {
+    return this.httpGet<Pos.AuctionSummary>(`auction/last/summary?revision=${revision}`);
+  }
+  public getPresentAuction() {
+    return this.httpGet<Pos.Auction>(`auction/present`);
+  }
+  public getPresentAuctionByRevision(revision: number) {
+    return this.httpGet<Pos.Auction>(`auction/present?revision=${revision}`);
+  }
 
   public async getAccount(addr: string, revision?: string) {
     const get = () => {
