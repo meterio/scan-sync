@@ -585,10 +585,10 @@ export class MetricCMD extends CMD {
         await this.alertIfNetworkHalt(index, every1m);
 
         // update bitcoin info every 5seconds
-        await this.updateBitcoinInfo(index, every5m);
+        // await this.updateBitcoinInfo(index, every5m);
 
         // update price/change every 10 minutes
-        await this.updateMarketPrice(index, every5m);
+        // await this.updateMarketPrice(index, every5m);
 
         // update circulation
         await this.updateCirculationAndRank(index, every4h);
