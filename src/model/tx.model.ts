@@ -270,7 +270,7 @@ txSchema.methods.toSummary = function (addr) {
     totalClauseMTRG: this.totalClauseMTRG.toFixed(),
     totalTransferMTR: this.totalTransferMTR.toFixed(),
     totalTransferMTRG: this.totalTransferMTRG.toFixed(),
-    token: token == 0 ? 'MTR' : 'MTRG',
+    token: token == 0 ? 'STPT' : 'VERSE',
     reverted: this.reverted,
     majorTo: this.majorTo,
     toCount: this.toCount,

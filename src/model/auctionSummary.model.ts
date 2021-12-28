@@ -109,15 +109,15 @@ auctionSummarySchema.methods.toSummary = function () {
     bidCount: this.txs ? this.txs.length : 0,
     distCount: this.dist ? this.dist.length : 0,
     released: this.releasedMTRG.toFixed(),
-    releasedStr: `${fromWei(this.releasedMTRG)} MTRG`,
+    releasedStr: `${fromWei(this.releasedMTRG)} VERSE`,
     received: this.receivedMTR.toFixed(),
-    receivedStr: `${fromWei(this.receivedMTR)} MTR`,
+    receivedStr: `${fromWei(this.receivedMTR)} STPT`,
     reserved: this.reservedMTRG.toFixed(),
-    reservedStr: `${fromWei(this.reservedMTRG)} MTRG`,
+    reservedStr: `${fromWei(this.reservedMTRG)} VERSE`,
     reservedPrice: this.reservedPrice.toFixed(),
     actualPrice: this.actualPrice.toFixed(),
     leftover: this.leftoverMTRG.toFixed(),
-    leftoeverStr: `${fromWei(this.leftoverMTRG)} MTRG`,
+    leftoeverStr: `${fromWei(this.leftoverMTRG)} VERSE`,
   };
 };
 
