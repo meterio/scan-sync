@@ -38,9 +38,9 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
   let mtrgDelta = new BigNumber(0);
   let token = '';
   if (evt.address.toLowerCase() === MTRGSysContratAddr) {
-    token = 'MTRG';
+    token = 'VERSE';
   } else if (evt.address.toLowerCase() === MTRSysContratAddr) {
-    token = 'MTR';
+    token = 'STPT';
   } else {
     return;
   }
@@ -51,7 +51,7 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
   if (evt.topics[1].toLowerCase() === acctAddressBytes32) {
     // send
     isSend = true;
-    if (token === 'MTR') {
+    if (token === 'STPT') {
       mtrDelta = mtrDelta.minus(amount);
     } else {
       mtrgDelta = mtrgDelta.minus(amount);
@@ -60,7 +60,7 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
     // paid = new BigNumber(0);
   } else if (evt.topics[2].toLowerCase() === acctAddressBytes32) {
     // recv
-    if (token === 'MTR') {
+    if (token === 'STPT') {
       mtrDelta = mtrDelta.plus(amount);
     } else {
       mtrgDelta = mtrgDelta.plus(amount);
@@ -82,7 +82,7 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
 };
 
 const handleTransfer = async (transfer: any, receipt: Flex.Meter.Receipt) => {
-  const token = transfer.token === 1 ? 'MTRG' : 'MTR';
+  const token = transfer.token === 1 ? 'VERSE' : 'STPT';
   const amount = new BigNumber(transfer.amount);
   let paid = new BigNumber(0);
   let isSend = false;
@@ -90,7 +90,7 @@ const handleTransfer = async (transfer: any, receipt: Flex.Meter.Receipt) => {
   let mtrgDelta = new BigNumber(0);
   if (transfer.sender.toLowerCase() === acctAddress.toLowerCase()) {
     isSend = true;
-    if (token === 'MTR') {
+    if (token === 'STPT') {
       mtrDelta = mtrDelta.minus(amount);
     } else {
       mtrgDelta = mtrgDelta.minus(amount);
@@ -100,7 +100,7 @@ const handleTransfer = async (transfer: any, receipt: Flex.Meter.Receipt) => {
   }
   if (transfer.recipient.toLowerCase() === acctAddress.toLowerCase()) {
     isSend = false;
-    if (token === 'MTR') {
+    if (token === 'STPT') {
       mtrDelta = mtrDelta.plus(amount);
     } else {
       mtrgDelta = mtrgDelta.plus(amount);
