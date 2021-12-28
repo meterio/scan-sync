@@ -1,6 +1,6 @@
 export enum Network {
   MainNet = '0x000000008d23443cdb7c8b00391d41d957eab0d5bf812a1657f73f75ead5f997', // mainnet
-  TestNet = '0x000000003383aa3278b83f8c66d7ec335d5b1409fc832b8dd627c55dd8213665', // warringstakes
+  TestNet = '0x0000000066429e45f4fac1771b85c839ccbc9bece7c03bdf9003e295739dd6e0', // warringstakes
   DevNet = '0x00000000ed77a5a4cc2cb585ed7fba4200b89751142cd6fe124aecc3d3350e58', // tetra
 }
 

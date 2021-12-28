@@ -10,7 +10,7 @@ export const RECENT_WINDOW = 5;
 export const UNIT_SHANNON = 1e9;
 export const UNIT_WEI = 1e18;
 
-const TESTNET_PROVIDER_URL = 'http://warringstakes.meter.io';
+const TESTNET_PROVIDER_URL = 'http://13.214.56.167:8669';
 const TESTNET_POW_RPC_HOST = 's03.meter.io';
 const TESTNET_POW_RPC_PORT = 8332;
 const TESTNET_POW_RPC_USER = 'testuser';
