@@ -9,15 +9,15 @@ export interface TokenBasic {
 }
 
 export const MTRSystemContract = {
-  token: Token.MTR,
-  address: '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2'.toLowerCase(),
-  name: 'Meter ERC20',
+  token: Token.STPT,
+  address: '0x000000000000000000004d657465724552433230'.toLowerCase(),
+  name: 'STP Token ERC20',
   decimals: 18,
 };
 export const MTRGSystemContract = {
-  token: Token.MTRG,
-  address: '0x228ebBeE999c6a7ad74A6130E81b12f9Fe237Ba3'.toLowerCase(),
-  name: 'Meter Governance ERC20',
+  token: Token.VERSE,
+  address: '0x000000000000004d65746572476f764552433230'.toLowerCase(),
+  name: 'Verse Network ERC20',
   decimals: 18,
 };
 

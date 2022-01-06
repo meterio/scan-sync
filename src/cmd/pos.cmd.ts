@@ -59,8 +59,8 @@ export class PosCMD extends CMD {
 
     this.pos = new Pos(net);
     this.network = net;
-    this.mtrSysToken = getERC20Token(this.network, Token.MTR);
-    this.mtrgSysToken = getERC20Token(this.network, Token.MTRG);
+    this.mtrSysToken = getERC20Token(this.network, Token.STPT);
+    this.mtrgSysToken = getERC20Token(this.network, Token.VERSE);
     const posConfig = GetPosConfig(net);
     this.web3 = meterify(new Web3(), posConfig.url);
   }
@@ -294,9 +294,9 @@ export class PosCMD extends CMD {
           } else {
             let token: Token;
             if (evt.address.toLowerCase() === this.mtrSysToken.address) {
-              token = Token.MTR;
+              token = Token.STPT;
             } else if (evt.address.toLowerCase() === this.mtrgSysToken.address) {
-              token = Token.MTRG;
+              token = Token.VERSE;
             } else {
               this.logger.info('unrecognized token');
             }

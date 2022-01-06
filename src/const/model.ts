@@ -1,6 +1,6 @@
 export enum Token {
-  MTR = 0,
-  MTRG,
+  STPT = 0,
+  VERSE,
   ERC20,
 }
 
