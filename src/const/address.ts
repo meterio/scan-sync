@@ -20,8 +20,6 @@ export const ZeroAddress = '0x0000000000000000000000000000000000000000';
 export const KnowExchange = new Map<string, string>();
 export const BridgePoolAddress = '0x5c5713656c6819ebe3921936fd28bed2a387cda5';
 
-export const KeyPowPoolCoef = '0x' + Buffer.from('powpool-coef', 'utf-8').toString('hex').padStart(64, '0');
-
 export const LockedMeterGovAddrs: { [key: string]: true } = {
   ZeroAddress: true,
   BridgePoolAddress: true,

@@ -3,6 +3,7 @@ import * as Logger from 'bunyan';
 
 import {
   BoundEvent,
+  MetricName,
   Network,
   PrototypeAddress,
   Token,
@@ -26,6 +27,7 @@ import { Transfer } from '../model/transfer.interface';
 import { Tx } from '../model/tx.interface';
 import { Unbound } from '../model/unbound.interface';
 import BoundRepo from '../repo/bound.repo';
+import MetricRepo from '../repo/metric.repo';
 import TokenBalanceRepo from '../repo/tokenBalance.repo';
 import TokenProfileRepo from '../repo/tokenProfile.repo';
 import UnboundRepo from '../repo/unbound.repo';
@@ -46,6 +48,7 @@ export class AccountCMD extends TxBlockReviewer {
   protected unboundRepo = new UnboundRepo();
   protected tokenProfileRepo = new TokenProfileRepo();
   protected tokenBalanceRepo = new TokenBalanceRepo();
+  protected metricRepo = new MetricRepo();
 
   private mtrSysToken: TokenBasic;
   private mtrgSysToken: TokenBasic;
@@ -217,6 +220,11 @@ export class AccountCMD extends TxBlockReviewer {
 
   async processBlock(blk: Block) {
     this.logger.info(`start to process block ${blk.number}`);
+    const txFeeBeneficiary = await this.metricRepo.findByKey(MetricName.TX_FEE_BENEFICIARY);
+    let sysBeneficiary = '0x';
+    if (txFeeBeneficiary) {
+      sysBeneficiary = txFeeBeneficiary.value;
+    }
     let transfers = [];
     let bounds: Bound[] = [];
     let unbounds: Unbound[] = [];
@@ -249,7 +257,11 @@ export class AccountCMD extends TxBlockReviewer {
     }
 
     // add block reward beneficiary account
-    accts.plus(blk.beneficiary, Token.MTR, totalFees, '0x');
+    if (sysBeneficiary === ZeroAddress || sysBeneficiary === '0x') {
+      accts.plus(blk.beneficiary, Token.MTR, totalFees, '0x');
+    } else {
+      accts.plus(sysBeneficiary, Token.MTR, totalFees, '0x');
+    }
 
     // save transfers
     if (transfers.length > 0) {
@@ -427,7 +439,7 @@ export class AccountCMD extends TxBlockReviewer {
       const delta = tokens.getDelta(key);
       if (profile) {
         // FIXME: monkey patch, should have dig into why profile does not exist
-        if (addr === '0x0000000000000000000000000000000000000000') {
+        if (addr === ZeroAddress) {
           if (delta.isLessThan(0)) {
             // mint
             profile.circulation = profile.circulation.plus(delta.times(-1));

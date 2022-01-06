@@ -52,6 +52,7 @@ export enum MetricName {
   INVALID_NODES_COUNT = 'invalid_nodes_count',
   MTRG_STAKED = 'mtrg_staked',
   MTRG_STAKED_LOCKED = 'mtrg_staked_locked',
+  TX_FEE_BENEFICIARY = 'tx_fee_beneficiary',
 }
 
 export enum ValidatorStatus {

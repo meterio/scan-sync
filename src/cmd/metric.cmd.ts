@@ -1,10 +1,21 @@
 import { EventEmitter } from 'events';
+import internal from 'stream';
 
 import axios from 'axios';
 import BigNumber from 'bignumber.js';
 import Logger from 'bunyan';
 
-import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, Network, Token, ValidatorStatus } from '../const';
+import {
+  LockedMeterAddrs,
+  LockedMeterGovAddrs,
+  MetricName,
+  Network,
+  ParamsAddress,
+  Token,
+  ValidatorStatus,
+  params,
+} from '../const';
+import { KeyTransactionFeeAddress } from '../const/key';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
 import AccountRepo from '../repo/account.repo';
@@ -77,6 +88,19 @@ export class MetricCMD extends CMD {
     });
   }
 
+  private async updateTransactionFeeBeneficiary(index: number, interval: number) {
+    if (index % interval === 0) {
+      console.log('update transaction-fee-beneficiary');
+      const txFeeAddr = await this.pos.getStorage(ParamsAddress, KeyTransactionFeeAddress, '1');
+      console.log('Tx Fee Addr:', txFeeAddr);
+      if (!!txFeeAddr && txFeeAddr.value) {
+        const addrVal = txFeeAddr.value;
+        const n = 40;
+        const sysBeneficiary = '0x' + addrVal.substring(addrVal.length - n);
+        await this.cache.update(MetricName.TX_FEE_BENEFICIARY, sysBeneficiary);
+      }
+    }
+  }
   private async updatePowInfo(index: number, interval: number) {
     if (index % interval === 0) {
       console.log('update PoW info');
@@ -577,6 +601,9 @@ export class MetricCMD extends CMD {
 
         // update pos best, difficulty && hps
         await this.updatePowInfo(index, every10m);
+
+        // update transaction-fee-beneficiary
+        await this.updateTransactionFeeBeneficiary(index, every1m);
 
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);

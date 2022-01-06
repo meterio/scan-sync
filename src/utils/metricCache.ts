@@ -58,6 +58,7 @@ export const METRIC_DEFS = [
   // Staked
   { key: MetricName.MTRG_STAKED, type: MetricType.STRING, default: '0' },
   { key: MetricName.MTRG_STAKED_LOCKED, type: MetricType.STRING, default: '0' },
+  { key: MetricName.TX_FEE_BENEFICIARY, type: MetricType.STRING, default: '0x' },
 ];
 
 export class MetricCache {
