@@ -425,24 +425,30 @@ export class AccountCMD extends TxBlockReviewer {
       const tokenAddr = items[1];
       let profile = await this.tokenProfileRepo.findByAddress(tokenAddr);
       const delta = tokens.getDelta(key);
-      if (addr === '0x0000000000000000000000000000000000000000') {
-        if (delta.isLessThan(0)) {
-          // mint
-          profile.circulation = profile.circulation.plus(delta.times(-1));
-          await profile.save();
-        } else if (delta.isGreaterThan(0)) {
-          // burn
-          profile.circulation = profile.circulation.minus(delta.times(-1));
-          await profile.save();
+      if (profile) {
+        // FIXME: monkey patch, should have dig into why profile does not exist
+        if (addr === '0x0000000000000000000000000000000000000000') {
+          if (delta.isLessThan(0)) {
+            // mint
+            profile.circulation = profile.circulation.plus(delta.times(-1));
+            await profile.save();
+          } else if (delta.isGreaterThan(0)) {
+            // burn
+            profile.circulation = profile.circulation.minus(delta.times(-1));
+            await profile.save();
+          }
+          continue;
         }
-        continue;
       }
       let tb = await this.tokenBalanceRepo.findByAddress(addr, tokenAddr);
       if (!tb) {
         let symbol = profile ? profile.symbol : 'ERC20';
         tb = await this.tokenBalanceRepo.create(addr, tokenAddr, symbol, blockConcise);
-        profile.holdersCount = profile.holdersCount.plus(1);
-        await profile.save();
+        if (profile) {
+          // FIXME: monkey patch, should have dig into why profile does not exist
+          profile.holdersCount = profile.holdersCount.plus(1);
+          await profile.save();
+        }
       }
       this.logger.info(
         {
