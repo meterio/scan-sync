@@ -226,17 +226,17 @@ export class MetricCMD extends CMD {
     if (index % interval === 0) {
       console.log('update market price');
       const price = await this.coingecko.http<any>('GET', 'simple/price', {
-        query: { ids: 'meter,meter-stable', vs_currencies: 'usd,usd', include_24hr_change: 'true' },
+        query: { ids: 'stp-network', vs_currencies: 'usd', include_24hr_change: 'true' },
       });
       if (!!price) {
-        if (price.meter) {
-          const m = price.meter;
-          const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
-          this.cache.update(MetricName.MTRG_PRICE, String(m.usd));
-          this.cache.update(MetricName.MTRG_PRICE_CHANGE, `${percent20h}%`);
-        }
-        if (price['meter-stable']) {
-          const m = price['meter-stable'];
+        // if (price.meter) {
+        //   const m = price.meter;
+        //   const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
+        //   this.cache.update(MetricName.MTRG_PRICE, String(m.usd));
+        //   this.cache.update(MetricName.MTRG_PRICE_CHANGE, `${percent20h}%`);
+        // }
+        if (price['stp-network']) {
+          const m = price['stp-network'];
           const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
           this.cache.update(MetricName.MTR_PRICE, String(m.usd));
           this.cache.update(MetricName.MTR_PRICE_CHANGE, `${percent20h}%`);
@@ -588,7 +588,7 @@ export class MetricCMD extends CMD {
         // await this.updateBitcoinInfo(index, every5m);
 
         // update price/change every 10 minutes
-        // await this.updateMarketPrice(index, every5m);
+        await this.updateMarketPrice(index, every5m);
 
         // update circulation
         await this.updateCirculationAndRank(index, every4h);
