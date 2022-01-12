@@ -52,7 +52,7 @@ const adjustBalance = async () => {
               to: PrototypeAddress,
               value: '0x0',
               data: prototype.master.encode(acc.address),
-              token: Token.STPT,
+              token: Token.SYSTEM_COIN,
             },
           ],
         },

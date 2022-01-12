@@ -9,13 +9,13 @@ export interface TokenBasic {
 }
 
 export const MTRSystemContract = {
-  token: Token.STPT,
+  token: Token.SYSTEM_COIN,
   address: '0x000000000000000000004d657465724552433230'.toLowerCase(),
   name: 'STP Token ERC20',
   decimals: 18,
 };
 export const MTRGSystemContract = {
-  token: Token.VERSE,
+  token: Token.SYSTEM_TOKEN,
   address: '0x000000000000004d65746572476f764552433230'.toLowerCase(),
   name: 'Verse Network ERC20',
   decimals: 18,

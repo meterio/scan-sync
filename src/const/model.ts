@@ -1,6 +1,6 @@
 export enum Token {
-  STPT = 0,
-  VERSE,
+  SYSTEM_COIN = 0,
+  SYSTEM_TOKEN,
   ERC20,
 }
 

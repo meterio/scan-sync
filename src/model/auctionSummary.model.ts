@@ -8,6 +8,7 @@ import {
   AuctionSummary,
   AuctionTx,
 } from './auctionSummary.interface';
+import { SYSTEM_COIN_SYMBOL, SYSTEM_TOKEN_SYMBOL } from '../const/config';
 
 const auctionDistSchema = new mongoose.Schema<AuctionDist>(
   {
@@ -98,6 +99,12 @@ auctionSummarySchema.methods.toSummary = function () {
       amountStr: `${fromWei(d.amount)} ${Token[d.token]}`,
     });
   }
+
+  let releasedStr = `${fromWei(this.releasedMTRG)} ${SYSTEM_TOKEN_SYMBOL}`
+  let receivedStr = `${fromWei(this.receivedMTR)} ${SYSTEM_COIN_SYMBOL}`
+  let reservedStr = `${fromWei(this.reservedMTRG)} ${SYSTEM_TOKEN_SYMBOL}`
+  let leftoeverStr = `${fromWei(this.leftoverMTRG)} ${SYSTEM_TOKEN_SYMBOL}`
+
   return {
     id: this.id,
     startHeight: this.startHeight,
@@ -109,15 +116,15 @@ auctionSummarySchema.methods.toSummary = function () {
     bidCount: this.txs ? this.txs.length : 0,
     distCount: this.dist ? this.dist.length : 0,
     released: this.releasedMTRG.toFixed(),
-    releasedStr: `${fromWei(this.releasedMTRG)} VERSE`,
+    releasedStr: releasedStr,
     received: this.receivedMTR.toFixed(),
-    receivedStr: `${fromWei(this.receivedMTR)} STPT`,
+    receivedStr: receivedStr,
     reserved: this.reservedMTRG.toFixed(),
-    reservedStr: `${fromWei(this.reservedMTRG)} VERSE`,
+    reservedStr: reservedStr,
     reservedPrice: this.reservedPrice.toFixed(),
     actualPrice: this.actualPrice.toFixed(),
     leftover: this.leftoverMTRG.toFixed(),
-    leftoeverStr: `${fromWei(this.leftoverMTRG)} VERSE`,
+    leftoeverStr: leftoeverStr,
   };
 };
 

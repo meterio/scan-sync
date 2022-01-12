@@ -7,13 +7,12 @@ import mongoose from 'mongoose';
 import { BoundEvent, GetPosConfig, Network, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
 import { Balance } from './types/balance';
+import {MTRGSysContratAddr, MTRSysContratAddr, SYSTEM_COIN_SYMBOL, SYSTEM_TOKEN_SYMBOL} from '../const/config'
 
 const network = Network.MainNet;
 const posConfig = GetPosConfig(network);
 const net = new Net(posConfig.url);
 const pos = new Pos(network);
-const MTRGSysContratAddr = '0x228ebBeE999c6a7ad74A6130E81b12f9Fe237Ba3'.toLowerCase();
-const MTRSysContratAddr = '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2'.toLowerCase();
 const args = process.argv.slice(2);
 const receipts = {};
 
@@ -38,9 +37,9 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
   let mtrgDelta = new BigNumber(0);
   let token = '';
   if (evt.address.toLowerCase() === MTRGSysContratAddr) {
-    token = 'VERSE';
+    token = SYSTEM_TOKEN_SYMBOL;
   } else if (evt.address.toLowerCase() === MTRSysContratAddr) {
-    token = 'STPT';
+    token = SYSTEM_COIN_SYMBOL;
   } else {
     return;
   }
@@ -51,7 +50,7 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
   if (evt.topics[1].toLowerCase() === acctAddressBytes32) {
     // send
     isSend = true;
-    if (token === 'STPT') {
+    if (token === SYSTEM_COIN_SYMBOL) {
       mtrDelta = mtrDelta.minus(amount);
     } else {
       mtrgDelta = mtrgDelta.minus(amount);
@@ -60,7 +59,7 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
     // paid = new BigNumber(0);
   } else if (evt.topics[2].toLowerCase() === acctAddressBytes32) {
     // recv
-    if (token === 'STPT') {
+    if (token === SYSTEM_COIN_SYMBOL) {
       mtrDelta = mtrDelta.plus(amount);
     } else {
       mtrgDelta = mtrgDelta.plus(amount);
@@ -82,7 +81,7 @@ const handleEvent = async (evt: any, receipt: Flex.Meter.Receipt) => {
 };
 
 const handleTransfer = async (transfer: any, receipt: Flex.Meter.Receipt) => {
-  const token = transfer.token === 1 ? 'VERSE' : 'STPT';
+  const token = transfer.token === 1 ? SYSTEM_TOKEN_SYMBOL : SYSTEM_COIN_SYMBOL;
   const amount = new BigNumber(transfer.amount);
   let paid = new BigNumber(0);
   let isSend = false;
@@ -90,7 +89,7 @@ const handleTransfer = async (transfer: any, receipt: Flex.Meter.Receipt) => {
   let mtrgDelta = new BigNumber(0);
   if (transfer.sender.toLowerCase() === acctAddress.toLowerCase()) {
     isSend = true;
-    if (token === 'STPT') {
+    if (token === SYSTEM_COIN_SYMBOL) {
       mtrDelta = mtrDelta.minus(amount);
     } else {
       mtrgDelta = mtrgDelta.minus(amount);
@@ -100,7 +99,7 @@ const handleTransfer = async (transfer: any, receipt: Flex.Meter.Receipt) => {
   }
   if (transfer.recipient.toLowerCase() === acctAddress.toLowerCase()) {
     isSend = false;
-    if (token === 'STPT') {
+    if (token === SYSTEM_COIN_SYMBOL) {
       mtrDelta = mtrDelta.plus(amount);
     } else {
       mtrgDelta = mtrgDelta.plus(amount);

@@ -6,6 +6,7 @@ import { Token, ZeroAddress, enumKeys } from '../const';
 import { AccountLockModuleAddress, AuctionModuleAddress, StakingModuleAddress } from '../const/address';
 import { blockConciseSchema } from './blockConcise.model';
 import { Clause, PosEvent, PosTransfer, Transfer, Tx, TxOutput } from './tx.interface';
+import {MTRGSysContratAddr, MTRSysContratAddr, SYSTEM_COIN_SYMBOL, SYSTEM_TOKEN_SYMBOL} from '../const/config'
 
 const clauseSchema = new mongoose.Schema<Clause>(
   {
@@ -270,7 +271,7 @@ txSchema.methods.toSummary = function (addr) {
     totalClauseMTRG: this.totalClauseMTRG.toFixed(),
     totalTransferMTR: this.totalTransferMTR.toFixed(),
     totalTransferMTRG: this.totalTransferMTRG.toFixed(),
-    token: token == 0 ? 'STPT' : 'VERSE',
+    token: token == 0 ? SYSTEM_COIN_SYMBOL : SYSTEM_TOKEN_SYMBOL,
     reverted: this.reverted,
     majorTo: this.majorTo,
     toCount: this.toCount,
