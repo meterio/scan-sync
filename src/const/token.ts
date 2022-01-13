@@ -8,13 +8,13 @@ export interface TokenBasic {
   decimals: number;
 }
 
-export const MTRSystemContract = {
+export const SystemCoinContract = {
   token: Token.SYSTEM_COIN,
   address: '0x000000000000000000004d657465724552433230'.toLowerCase(),
   name: 'STP Token ERC20',
   decimals: 18,
 };
-export const MTRGSystemContract = {
+export const SystemTokenContract = {
   token: Token.SYSTEM_TOKEN,
   address: '0x000000000000004d65746572476f764552433230'.toLowerCase(),
   name: 'Verse Network ERC20',
@@ -42,11 +42,11 @@ const testnet = new TokenRegistry();
 const devnet = new TokenRegistry();
 const knownTokens = new Map<Network, TokenRegistry>();
 
-mainnet.add(MTRSystemContract);
-mainnet.add(MTRGSystemContract);
+mainnet.add(SystemCoinContract);
+mainnet.add(SystemTokenContract);
 
-testnet.add({ ...MTRSystemContract, address: '' });
-testnet.add({ ...MTRGSystemContract, address: '' });
+testnet.add(SystemCoinContract);
+testnet.add(SystemTokenContract);
 
 knownTokens.set(Network.MainNet, mainnet);
 knownTokens.set(Network.TestNet, testnet);
