@@ -25,10 +25,10 @@ export class AccountDeltaMap {
   public minus(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
     this.setDefault(addrStr, creationTxHash);
-    if (token === Token.SYSTEM_COIN) {
+    if (token === Token.STPT) {
       this.accts[addr].mtr = this.accts[addr].mtr.minus(amount);
     }
-    if (token === Token.SYSTEM_TOKEN) {
+    if (token === Token.STPD) {
       this.accts[addr].mtrg = this.accts[addr].mtrg.minus(amount);
     }
   }
@@ -49,10 +49,10 @@ export class AccountDeltaMap {
   public plus(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
     this.setDefault(addrStr, creationTxHash);
-    if (token === Token.SYSTEM_COIN) {
+    if (token === Token.STPT) {
       this.accts[addr].mtr = this.accts[addr].mtr.plus(amount);
     }
-    if (token === Token.SYSTEM_TOKEN) {
+    if (token === Token.STPD) {
       this.accts[addr].mtrg = this.accts[addr].mtrg.plus(amount);
     }
   }
@@ -60,11 +60,11 @@ export class AccountDeltaMap {
   public bound(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
     this.setDefault(addrStr, creationTxHash);
-    if (token === Token.SYSTEM_COIN) {
+    if (token === Token.STPT) {
       this.accts[addr].mtr = this.accts[addr].mtr.minus(amount);
       this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.plus(amount);
     }
-    if (token === Token.SYSTEM_TOKEN) {
+    if (token === Token.STPD) {
       this.accts[addr].mtrg = this.accts[addr].mtrg.minus(amount);
       this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.plus(amount);
     }
@@ -73,11 +73,11 @@ export class AccountDeltaMap {
   public unbound(addrStr: string, token: Token, amount: string | BigNumber, creationTxHash: string) {
     const addr = addrStr.toLowerCase();
     this.setDefault(addrStr, creationTxHash);
-    if (token === Token.SYSTEM_COIN) {
+    if (token === Token.STPT) {
       this.accts[addr].mtr = this.accts[addr].mtr.plus(amount);
       this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.minus(amount);
     }
-    if (token === Token.SYSTEM_TOKEN) {
+    if (token === Token.STPD) {
       this.accts[addr].mtrg = this.accts[addr].mtrg.plus(amount);
       this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.minus(amount);
     }

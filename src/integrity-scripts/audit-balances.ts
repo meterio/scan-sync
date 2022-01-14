@@ -47,7 +47,7 @@ const auditBalance = async () => {
               to: PrototypeAddress,
               value: '0x0',
               data: prototype.master.encode(acc.address),
-              token: Token.SYSTEM_COIN,
+              token: Token.STPT,
             },
           ],
         },

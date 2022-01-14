@@ -54,8 +54,8 @@ export class AccountCMD extends TxBlockReviewer {
     super(net);
     this.name = 'account';
     this.logger = Logger.createLogger({ name: this.name });
-    this.mtrSysToken = getERC20Token(this.network, Token.SYSTEM_COIN);
-    this.mtrgSysToken = getERC20Token(this.network, Token.SYSTEM_TOKEN);
+    this.mtrSysToken = getERC20Token(this.network, Token.STPT);
+    this.mtrgSysToken = getERC20Token(this.network, Token.STPD);
   }
 
   async processTx(
@@ -84,7 +84,7 @@ export class AccountCMD extends TxBlockReviewer {
         transfers.push({
           from: t.sender.toLowerCase(),
           to: t.recipient.toLowerCase(),
-          token: new BigNumber(t.token).isEqualTo(1) ? Token.SYSTEM_TOKEN : Token.SYSTEM_COIN,
+          token: new BigNumber(t.token).isEqualTo(1) ? Token.STPD : Token.STPT,
           tokenAddress: '',
           amount: new BigNumber(t.amount),
           txHash: tx.hash,
@@ -106,10 +106,10 @@ export class AccountCMD extends TxBlockReviewer {
             const outputs = await this.pos.explain(
               {
                 clauses: [
-                  { to: e.address, value: '0x0', data: nameABIFunc.encode(), token: Token.SYSTEM_COIN },
-                  { to: e.address, value: '0x0', data: symbolABIFunc.encode(), token: Token.SYSTEM_COIN },
-                  { to: e.address, value: '0x0', data: decimalsABIFunc.encode(), token: Token.SYSTEM_COIN },
-                  { to: PrototypeAddress, value: '0x0', data: prototype.master.encode(e.address), token: Token.SYSTEM_COIN },
+                  { to: e.address, value: '0x0', data: nameABIFunc.encode(), token: Token.STPT },
+                  { to: e.address, value: '0x0', data: symbolABIFunc.encode(), token: Token.STPT },
+                  { to: e.address, value: '0x0', data: decimalsABIFunc.encode(), token: Token.STPT },
+                  { to: PrototypeAddress, value: '0x0', data: prototype.master.encode(e.address), token: Token.STPT },
                   // { to: e.address, value: '0x0', data: totalSupply.encode(), token: Token.MTR },
                 ],
               },
@@ -160,10 +160,10 @@ export class AccountCMD extends TxBlockReviewer {
             };
             if (e.address.toLowerCase() === this.mtrSysToken.address) {
               // MTR: convert system contract event into system transfer
-              transfer.token = Token.SYSTEM_COIN;
+              transfer.token = Token.STPT;
             } else if (e.address.toLowerCase() === this.mtrgSysToken.address) {
               // MTRG: convert system contract event into system transfer
-              transfer.token = Token.SYSTEM_TOKEN;
+              transfer.token = Token.STPD;
             } else {
               // ERC20: other erc20 transfer
               transfer.token = Token.ERC20;
@@ -182,7 +182,7 @@ export class AccountCMD extends TxBlockReviewer {
           bounds.push({
             owner,
             amount: new BigNumber(decoded.amount),
-            token: decoded.token == 1 ? Token.SYSTEM_TOKEN : Token.SYSTEM_COIN,
+            token: decoded.token == 1 ? Token.STPD : Token.STPT,
             txHash: tx.hash,
             block: tx.block,
             clauseIndex,
@@ -196,7 +196,7 @@ export class AccountCMD extends TxBlockReviewer {
           unbounds.push({
             owner: decoded.owner.toLowerCase(),
             amount: new BigNumber(decoded.amount),
-            token: decoded.token == 1 ? Token.SYSTEM_TOKEN : Token.SYSTEM_COIN,
+            token: decoded.token == 1 ? Token.STPD : Token.STPT,
             txHash: tx.hash,
             block: tx.block,
             clauseIndex,
@@ -240,7 +240,7 @@ export class AccountCMD extends TxBlockReviewer {
       }
 
       // substract fee from gas payer
-      accts.minus(txModel.gasPayer, Token.SYSTEM_COIN, txModel.paid, txHash);
+      accts.minus(txModel.gasPayer, Token.STPT, txModel.paid, txHash);
 
       // calculate total fee paid in this block
       if (txModel.origin.toLowerCase() !== ZeroAddress) {
@@ -249,7 +249,7 @@ export class AccountCMD extends TxBlockReviewer {
     }
 
     // add block reward beneficiary account
-    accts.plus(blk.beneficiary, Token.SYSTEM_COIN, totalFees, '0x');
+    accts.plus(blk.beneficiary, Token.STPT, totalFees, '0x');
 
     // save transfers
     if (transfers.length > 0) {

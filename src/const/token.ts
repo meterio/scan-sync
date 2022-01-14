@@ -10,13 +10,13 @@ export interface TokenBasic {
 }
 
 export const SystemCoinContract = {
-  token: Token.SYSTEM_COIN,
+  token: Token.STPT,
   address: SystemCoinContractAddress,
   name: 'STP Token ERC20',
   decimals: 18,
 };
 export const SystemTokenContract = {
-  token: Token.SYSTEM_TOKEN,
+  token: Token.STPD,
   address: SystemTokenContractAddress,
   name: 'Verse Network ERC20',
   decimals: 18,
