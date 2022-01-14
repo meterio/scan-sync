@@ -1,5 +1,6 @@
 import { Token } from './model';
 import { Network } from './network';
+import { SystemCoinContractAddress, SystemTokenContractAddress } from './address';
 
 export interface TokenBasic {
   name: string;
@@ -10,13 +11,13 @@ export interface TokenBasic {
 
 export const SystemCoinContract = {
   token: Token.SYSTEM_COIN,
-  address: '0x000000000000000000004d657465724552433230'.toLowerCase(),
+  address: SystemCoinContractAddress,
   name: 'STP Token ERC20',
   decimals: 18,
 };
 export const SystemTokenContract = {
   token: Token.SYSTEM_TOKEN,
-  address: '0x000000000000004d65746572476f764552433230'.toLowerCase(),
+  address: SystemTokenContractAddress,
   name: 'Verse Network ERC20',
   decimals: 18,
 };
