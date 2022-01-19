@@ -126,4 +126,34 @@ const testnetKnown = {
 const testnet = [
   { address: '0x1a07d16b152e9a3f5c353bf05944ade8de1a37e9', name: 'executor', epoch: '0' },
   { address: '0x1de8ca2f973d026300af89041b0ecb1c0803a7e6', name: 'account0', epoch: '0' },
+
+  // team accounts
+  { address: "0x671e86B2929688e2667E2dB56e0472B7a3AF6Ad6", name: "Team 1", epoch: "4380"},  // 182.5 days
+  { address: "0x3D63757898984ab66716A0F4aAF1A60eFc0608e1", name: "Team 2", epoch: "8760"},  // 365 days
+  { address: "0x6e4c7C6dB73371C049Ee2E9ac15557DceEbff4a0", name: "Team 3", epoch: "13140"}, // 547.5 days
+  { address: "0xdC7b7279ef4940a0776CA15d08ab5296a0ECBE96", name: "Team 4", epoch: "17520"}, // 730 days
+  { address: "0xFa1424A93C7cF926fFFACBb9858C480102585C24", name: "Team 5", epoch: "21900"}, // 912.5 days
+  { address: "0x826e9f61c8179Aca37fe81620B989125Ccb36089", name: "Team 6", epoch: "26280"}, // 1095 days
+  { address: "0x11A9E06994968b696bEE2f643fFdcAe7c0D5c060", name: "Team 7", epoch: "30660"}, // 1277.5 days
+  { address: "0x8E7896D70618D38651c7231d26A2ABee259216c0", name: "Team 8", epoch: "35050"}, // 1460 days
+
+  // Foundation
+  { address: "0x61ad236FCcCF342B1b76a7DE5D0475EEeb8405a9", name: "Marketing", epoch: "3"}, // 1 day
+  { address: "0xAca2D120eE27e0E493bF91Ee9f3315Ec005b9CE3", name: "Foundation Ops", epoch: "24"},
+  { address: "0x8B9Ef3147950C00422cDED432DC5b4c0AA2D2Cdd", name: "Public Sale", epoch: "3"},
+  { address: "0x78BA7A9E73e219E85bE44D484529944355BF6701", name: "Foundation Lock", epoch: "17520"}, // 730 days
+
+  // testnet meter mapping
+  { address: "0xfB88393e18e1B8c45fC2a90b9c533C61D20E290c", name: "Account for DFL STPT", epoch: "3"}, // 1 day
+  { address: "0xa6FfDc4f4de5D00f1a218d702a5283300Dfbd5f2", name: "Account for DFL Airdrop", epoch: "24"},
+  { address: "0xe7f434Ed3b2ff7f0a2C1582C1cd4321713167419", name: "MC", epoch: "24"},
+  { address: "0x79440D5193b2D83fc828002901D4036a65aF1b4C", name: "PO", epoch: "24"},
+  { address: "0xfc1091aF3f7720D73D1A29134B74bE6f15F35c90", name: "lin zhong shu bai", epoch: "24"},
+  { address: "0xd9f35d8b5E23CCE0b70A723a930863708defE0E0", name: "Anothny", epoch: "24"},
+  { address: "0xF57e2c52f570147A7D8c811f4D03d5932cD8FdA5", name: "beng deng", epoch: "24"},
+  { address: "0x08fEA8CcD3AA6811E213182731c137eEB291D294", name: "ni liu sha", epoch: "24"},
+  { address: "0x9f4a27264Cc89cfb0D385881C348551e4009918F", name: "da qi", epoch: "24"},
+  { address: "0x25aA205E81b442A2760aF51A1d8C7D708868F9bA", name: "Shuai", epoch: "24"},
+  { address: "0xfd746a652b3a3A81bAA01CB92faE5ba4C32c3667", name: "Tony Wang", epoch: "24"},
+  { address: "0xf53E2Edf6d35c163e23F196faA49aB7181322d1e", name: "sdk Dong", epoch: "3"},
 ];
