@@ -21,7 +21,8 @@ const adjustTotalSupply = async () => {
   await checkNetworkWithDB(net);
 
   const profiles = await tokenProfileRepo.findAll();
-  console.log('start checking...');
+  console.log(`start checking ${profiles.length} token profiles...`);
+  let updateCount = 0;
   for (const p of profiles) {
     const ret = await pos.explain(
       { clauses: [{ to: p.address, value: '0x0', data: totalSupply.encode(), token: Token.MTR }] },
@@ -41,9 +42,11 @@ const adjustTotalSupply = async () => {
       updated = true;
     }
     if (updated) {
+      updateCount++;
       await p.save();
     }
   }
+  console.log(`Updated ${updateCount} token profiles`);
 };
 
 (async () => {
