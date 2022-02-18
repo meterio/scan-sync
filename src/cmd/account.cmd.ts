@@ -11,6 +11,7 @@ import {
   TransferEvent,
   UnboundEvent,
   ZeroAddress,
+  balanceOf,
   decimalsABIFunc,
   getERC20Token,
   getPreAllocAccount,
@@ -65,17 +66,24 @@ export class AccountCMD extends TxBlockReviewer {
     tx: Tx,
     txIndex: number,
     blk: Block
-  ): Promise<{ transfers: Transfer[]; bounds: Bound[]; unbounds: Unbound[]; contracts: { [key: string]: string } }> {
+  ): Promise<{
+    transfers: Transfer[];
+    bounds: Bound[];
+    unbounds: Unbound[];
+    contracts: { [key: string]: string };
+    rebasings: string[];
+  }> {
     this.logger.info(`start to process ${tx.hash}`);
     let transfers: Transfer[] = [];
     let bounds: Bound[] = [];
     let unbounds: Unbound[] = [];
     let contracts: { [key: string]: string } = {};
+    let rebasings: string[] = [];
     const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash };
 
     if (tx.reverted) {
       this.logger.info(`Tx is reverted`);
-      return { transfers: [], bounds: [], unbounds: [], contracts: {} };
+      return { transfers: [], bounds: [], unbounds: [], contracts: {}, rebasings: [] };
     }
 
     // process outputs
@@ -99,6 +107,11 @@ export class AccountCMD extends TxBlockReviewer {
 
       // process events
       for (const [logIndex, e] of o.events.entries()) {
+        // rebasing events (by AMPL)
+        if (e.topics[0] === '0x72725a3b1e5bd622d6bcd1339bb31279c351abe8f541ac7fd320f24e1b1641f2') {
+          rebasings.push(e.address);
+        }
+
         // contract creation
         if (e.topics[0] === prototype.$Master.signature) {
           const decoded = prototype.$Master.decode(e.data, e.topics);
@@ -215,7 +228,7 @@ export class AccountCMD extends TxBlockReviewer {
     for (const t of transfers) {
       printTransfer(t);
     }
-    return { transfers, bounds, unbounds, contracts };
+    return { transfers, bounds, unbounds, contracts, rebasings };
   }
 
   async processBlock(blk: Block) {
@@ -231,6 +244,7 @@ export class AccountCMD extends TxBlockReviewer {
     let contracts: { [key: string]: ContractInfo } = {};
     let accts = new AccountDeltaMap();
     let totalFees = new BigNumber(0);
+    let rebasings = [];
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
       const txModel = await this.txRepo.findByHash(txHash);
       if (!txModel) {
@@ -240,6 +254,7 @@ export class AccountCMD extends TxBlockReviewer {
       transfers = transfers.concat(res.transfers.map((tr) => ({ ...tr, txHash })));
       bounds = bounds.concat(res.bounds.map((b) => ({ ...b, txHash })));
       unbounds = unbounds.concat(res.unbounds.map((u) => ({ ...u, txHash })));
+      rebasings = rebasings.concat(res.rebasings);
       for (const addr of Object.keys(res.contracts)) {
         contracts[addr] = {
           master: res.contracts[addr].toLowerCase(),
@@ -320,6 +335,8 @@ export class AccountCMD extends TxBlockReviewer {
     await this.updateContracts(contracts, blockConcise);
 
     await this.updateTokenBalances(tokens, blockConcise);
+
+    await this.handleRebasing(rebasings);
 
     this.logger.info(
       { hash: blk.hash, transfers: transfers.length, contracts: contracts.length },
@@ -426,6 +443,32 @@ export class AccountCMD extends TxBlockReviewer {
         acct.code = code.code;
       }
       await acct.save();
+    }
+  }
+
+  private async handleRebasing(rebasings: string[]) {
+    for (const tokenAddr of rebasings) {
+      console.log(`Handling rebasing events on ${tokenAddr}`);
+      const bals = await this.tokenBalanceRepo.findByTokenAddress(tokenAddr);
+      for (const bal of bals) {
+        const res = await this.pos.explain(
+          {
+            clauses: [{ to: tokenAddr, value: '0x0', token: Token.MTR, data: balanceOf.encode(bal.address) }],
+          },
+          'best'
+        );
+        const decoded = balanceOf.decode(res[0].data);
+        const chainBal = decoded['0'];
+        if (!bal.balance.isEqualTo(chainBal)) {
+          console.log(
+            `Update ${bal.symbol} ${bal.tokenAddress} with balance ${chainBal}, originally was ${bal.balance.toFixed(
+              0
+            )}`
+          );
+          bal.balance = new BigNumber(chainBal);
+          await bal.save();
+        }
+      }
     }
   }
 
