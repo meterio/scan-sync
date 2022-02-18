@@ -450,6 +450,7 @@ export class AccountCMD extends TxBlockReviewer {
           'best'
         );
         const decoded = totalSupply.decode(output[0].data);
+        profile.totalSupply = new BigNumber(decoded['0']);
         profile.circulation = new BigNumber(decoded['0']);
         // if (delta.isLessThan(0)) {
         //   // mint
