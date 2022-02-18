@@ -437,49 +437,57 @@ export class AccountCMD extends TxBlockReviewer {
       const tokenAddr = items[1];
       let profile = await this.tokenProfileRepo.findByAddress(tokenAddr);
       const delta = tokens.getDelta(key);
-      if (profile) {
-        // FIXME: monkey patch, should have dig into why profile does not exist
-        if (addr === ZeroAddress) {
-          if (delta.isLessThan(0)) {
-            // mint
-            profile.circulation = profile.circulation.plus(delta.times(-1));
-            await profile.save();
-          } else if (delta.isGreaterThan(0)) {
-            // burn
-            profile.circulation = profile.circulation.minus(delta.times(-1));
-            await profile.save();
-          }
-          continue;
-        }
+      if (!profile) {
+        console.log(`missing profile for token ${tokenAddr}`);
+        continue;
       }
-      let tb = await this.tokenBalanceRepo.findByAddress(addr, tokenAddr);
-      if (!tb) {
-        let symbol = profile ? profile.symbol : 'ERC20';
-        tb = await this.tokenBalanceRepo.create(addr, tokenAddr, symbol, blockConcise);
-        if (profile) {
-          // FIXME: monkey patch, should have dig into why profile does not exist
+      if (addr === ZeroAddress) {
+        // if current address is zero
+        // typically it's a mint/burn tx, so it changes token supply (circulation)
+        // read the actual total supply from the chain and update database
+        const output = await this.pos.explain(
+          { clauses: [{ to: tokenAddr, value: '0x0', data: totalSupply.encode(), token: Token.MTR }] },
+          'best'
+        );
+        const decoded = totalSupply.decode(output[0].data);
+        profile.circulation = new BigNumber(decoded['0']);
+        // if (delta.isLessThan(0)) {
+        //   // mint
+        //   profile.circulation = profile.circulation.plus(delta.times(-1));
+        //   await profile.save();
+        // } else if (delta.isGreaterThan(0)) {
+        //   // burn
+        //   profile.circulation = profile.circulation.minus(delta.times(-1));
+        //   await profile.save();
+        // }
+        // continue;
+      } else {
+        let tb = await this.tokenBalanceRepo.findByAddress(addr, tokenAddr);
+        if (!tb) {
+          let symbol = profile ? profile.symbol : 'ERC20';
+          tb = await this.tokenBalanceRepo.create(addr, tokenAddr, symbol, blockConcise);
           profile.holdersCount = profile.holdersCount.plus(1);
           await profile.save();
         }
-      }
-      this.logger.info(
-        {
-          address: addr,
-          tokenAddress: tokenAddr,
-          balance: fromWei(tb.balance),
-          delta: fromWei(delta),
-          symbol: tb.symbol,
-        },
-        'token balance before update'
-      );
+        this.logger.info(
+          {
+            address: addr,
+            tokenAddress: tokenAddr,
+            balance: fromWei(tb.balance),
+            delta: fromWei(delta),
+            symbol: tb.symbol,
+          },
+          'token balance before update'
+        );
 
-      tb.balance = tb.balance.plus(delta);
-      tb.lastUpdate = blockConcise;
-      this.logger.info(
-        { address: addr, tokenAddress: tokenAddr, balance: fromWei(tb.balance), symbol: tb.symbol },
-        'token balance after update'
-      );
-      await tb.save();
+        tb.balance = tb.balance.plus(delta);
+        tb.lastUpdate = blockConcise;
+        this.logger.info(
+          { address: addr, tokenAddress: tokenAddr, balance: fromWei(tb.balance), symbol: tb.symbol },
+          'token balance after update'
+        );
+        await tb.save();
+      }
     }
   }
 }
