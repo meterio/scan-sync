@@ -91,7 +91,7 @@ export class MetricCMD extends CMD {
   private async updateTransactionFeeBeneficiary(index: number, interval: number) {
     if (index % interval === 0) {
       console.log('update transaction-fee-beneficiary');
-      const txFeeAddr = await this.pos.getStorage(ParamsAddress, KeyTransactionFeeAddress, '1');
+      const txFeeAddr = await this.pos.getStorage(ParamsAddress, KeyTransactionFeeAddress);
       console.log('Tx Fee Addr:', txFeeAddr);
       if (!!txFeeAddr && txFeeAddr.value) {
         const addrVal = txFeeAddr.value;
