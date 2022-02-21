@@ -36,9 +36,10 @@ const auditTokenBalances = async () => {
   console.log('POS Head:', posHead);
 
   const balances = await tokenBalanceRepo.findAll();
-  console.log('start checking...');
+  console.log(`start checking ${balances.length} balances ...`);
 
   const balanceOfFunc = new abi.Function(balanceOfABI);
+  let n = 1;
   for (const bal of balances) {
     const { address, tokenAddress, symbol, balance } = bal;
     try {
@@ -53,6 +54,10 @@ const auditTokenBalances = async () => {
       if (!chainBal.isEqualTo(balance)) {
         console.log(`found NON-matching balance: chain ${chainBal} db:${balance}`);
         console.log(`tokenAddr: ${tokenAddress}, addr: ${address}, symbol: ${symbol}`);
+      }
+      n++;
+      if (n % 500 == 0) {
+        console.log(`checked ${n} balances`);
       }
     } catch {
       continue;
