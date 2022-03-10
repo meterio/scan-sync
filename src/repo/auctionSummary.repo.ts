@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import { AuctionSummary } from '../model/auctionSummary.interface';
 import AuctionSummaryModel from '../model/auctionSummary.model';
 
-export class AuctionSummaryRepo {
+export default class AuctionSummaryRepo {
   private model = AuctionSummaryModel;
 
   public async findAll() {
@@ -26,5 +26,3 @@ export class AuctionSummaryRepo {
     return this.model.deleteMany({ startHeight: { $gte: blockNum } });
   }
 }
-
-export default AuctionSummaryRepo;

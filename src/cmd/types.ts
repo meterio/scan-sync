@@ -1,6 +1,3 @@
-import { createRequire } from 'module';
-import { stringify } from 'querystring';
-
 import BigNumber from 'bignumber.js';
 
 import { Token } from '../const';
@@ -17,6 +14,7 @@ export interface AccountDelta {
 export interface ContractInfo {
   creationTxHash: string;
   master: string;
+  isToken: boolean;
 }
 
 export class AccountDeltaMap {

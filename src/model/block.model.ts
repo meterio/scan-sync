@@ -119,6 +119,6 @@ blockSchema.methods.toSummary = function () {
     actualReward: this.actualReward,
   };
 };
-const model = mongoose.model<Block & mongoose.Document>('Block', blockSchema);
+const model = mongoose.model<Block & mongoose.Document>('Block', blockSchema, 'block');
 
 export default model;

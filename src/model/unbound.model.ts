@@ -7,7 +7,7 @@ import { Unbound } from './unbound.interface';
 
 const unboundSchema = new mongoose.Schema<Unbound>(
   {
-    owner: { type: String, required: true },
+    owner: { type: String, required: true, index: true },
     amount: {
       type: String,
       get: (num: string) => new BigNumber(num),
@@ -23,7 +23,7 @@ const unboundSchema = new mongoose.Schema<Unbound>(
     },
 
     block: blockConciseSchema,
-    txHash: { type: String, required: true },
+    txHash: { type: String, required: true, index: true },
     clauseIndex: { type: Number, required: false },
     logIndex: { type: Number, required: false },
 
@@ -38,7 +38,7 @@ const unboundSchema = new mongoose.Schema<Unbound>(
 );
 
 unboundSchema.index({ txHash: 1, clauseIndex: 1, logIndex: 1 }, { unique: true });
-unboundSchema.index({ owner: 1 });
+unboundSchema.index({ 'block.number': 1 });
 
 unboundSchema.set('toJSON', {
   virtuals: false,
@@ -49,6 +49,6 @@ unboundSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Unbound & mongoose.Document>('Unbound', unboundSchema);
+const model = mongoose.model<Unbound & mongoose.Document>('Unbound', unboundSchema, 'unbound');
 
 export default model;

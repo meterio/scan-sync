@@ -1,7 +1,7 @@
 import { Known } from '../model/known.interface';
 import knownModel from '../model/known.model';
 
-export class KnownRepo {
+export default class KnownRepo {
   private model = knownModel;
   public async findAll() {
     return this.model.find();
@@ -23,5 +23,3 @@ export class KnownRepo {
     return this.model.deleteOne({ hash });
   }
 }
-
-export default KnownRepo;

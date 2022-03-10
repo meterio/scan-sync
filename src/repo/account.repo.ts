@@ -4,7 +4,7 @@ import { Network, getAccountName } from '../const';
 import accountModel from '../model/account.model';
 import { BlockConcise } from '../model/blockConcise.interface';
 
-export class AccountRepo {
+export default class AccountRepo {
   private model = accountModel;
 
   public async findAll() {
@@ -29,6 +29,7 @@ export class AccountRepo {
     firstSeen: BlockConcise,
     lastUpdate: BlockConcise,
     creationTxHash: string,
+    type: string,
     master: string | undefined = undefined
   ) {
     const name = getAccountName(network, address);
@@ -45,6 +46,7 @@ export class AccountRepo {
       firstSeen,
       lastUpdate,
       creationTxHash,
+      type,
       master,
     });
   }
@@ -75,5 +77,3 @@ export class AccountRepo {
     return this.model.deleteMany({ 'firstSeen.number': { $gte: blockNum } });
   }
 }
-
-export default AccountRepo;

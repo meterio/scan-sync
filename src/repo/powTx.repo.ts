@@ -1,7 +1,7 @@
 import { PowTx } from '../model/powTx.interface';
 import powTxModel from '../model/powTx.model';
 
-export class PowTxRepo {
+export default class PowTxRepo {
   private model = powTxModel;
 
   public async findAll() {
@@ -22,5 +22,3 @@ export class PowTxRepo {
     return this.model.deleteOne({ hash });
   }
 }
-
-export default PowTxRepo;

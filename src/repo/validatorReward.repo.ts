@@ -1,7 +1,7 @@
 import { ValidatorReward } from '../model/validatorReward.interface';
 import ValidatorRewardModel from '../model/validatorReward.model';
 
-export class ValidatorRewardRepo {
+export default class ValidatorRewardRepo {
   private model = ValidatorRewardModel;
 
   public async findAll() {
@@ -20,5 +20,3 @@ export class ValidatorRewardRepo {
     return this.model.create(validatorReward);
   }
 }
-
-export default ValidatorRewardRepo;

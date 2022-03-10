@@ -10,7 +10,7 @@ import AccountRepo from '../repo/account.repo';
 import BlockRepo from '../repo/block.repo';
 import CommitteeRepo from '../repo/committee.repo';
 import HeadRepo from '../repo/head.repo';
-import TransferRepo from '../repo/transfer.repo';
+import MovementRepo from '../repo/movement.repo';
 import TxRepo from '../repo/tx.repo';
 import { InterruptedError, Pos, sleep } from '../utils';
 import { CMD } from './cmd';
@@ -31,7 +31,7 @@ export abstract class TxBlockReviewer extends CMD {
   protected txRepo = new TxRepo();
   protected blockRepo = new BlockRepo();
   protected accountRepo = new AccountRepo();
-  protected transferRepo = new TransferRepo();
+  protected movementRepo = new MovementRepo();
   protected committeeRepo = new CommitteeRepo();
 
   constructor(net: Network) {

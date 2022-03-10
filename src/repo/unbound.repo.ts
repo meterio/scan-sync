@@ -1,7 +1,7 @@
 import { Unbound } from '../model/unbound.interface';
 import unboundModel from '../model/unbound.model';
 
-export class UnboundRepo {
+export default class UnboundRepo {
   private model = unboundModel;
 
   public async findAll() {
@@ -10,6 +10,10 @@ export class UnboundRepo {
 
   public async findByOwner(owner: string) {
     return this.model.find({ owner: owner.toLowerCase() });
+  }
+
+  public async findByBlockNum(blockNum: number) {
+    return this.model.find({ 'block.number': 1 });
   }
 
   public async exist(txHash: string, clauseIndex: number) {
@@ -32,5 +36,3 @@ export class UnboundRepo {
     return this.model.find({ 'block.number': { $gt: blockNum } });
   }
 }
-
-export default UnboundRepo;

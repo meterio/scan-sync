@@ -3,12 +3,12 @@ import * as mongoose from 'mongoose';
 
 import { Token, enumKeys } from '../const';
 import { blockConciseSchema } from './blockConcise.model';
-import { Transfer } from './transfer.interface';
+import { Movement } from './movement.interface';
 
-const transferSchema = new mongoose.Schema<Transfer>(
+const schema = new mongoose.Schema<Movement>(
   {
-    from: { type: String, required: true },
-    to: { type: String, required: true },
+    from: { type: String, required: true, index: true },
+    to: { type: String, required: true, index: true },
     amount: {
       type: String,
       get: (num: string) => new BigNumber(num),
@@ -24,8 +24,10 @@ const transferSchema = new mongoose.Schema<Transfer>(
     },
     tokenAddress: { type: String, required: false },
 
+    isSysContract: { type: Boolean, required: true, default: false },
+
     block: blockConciseSchema,
-    txHash: { type: String, required: true },
+    txHash: { type: String, required: true, index: true },
     clauseIndex: { type: Number, required: false },
     logIndex: { type: Number, required: false },
 
@@ -39,12 +41,14 @@ const transferSchema = new mongoose.Schema<Transfer>(
   }
 );
 
-transferSchema.index({ txHash: 1, clauseIndex: 1, logIndex: 1, token: 1 }, { unique: true });
-transferSchema.index({ from: 1 });
-transferSchema.index({ to: 1 });
-transferSchema.index({ token: 1, tokenAddress: 1 });
+schema.index({ txHash: 1, clauseIndex: 1, logIndex: 1, token: 1 }, { unique: true });
+schema.index({ from: 1, to: 1 });
+schema.index({ from: 1, to: 1, token: 1 });
+schema.index({ from: 1, to: 1, token: 1, tokenAddress: 1 });
+schema.index({ token: 1, tokenAddress: 1 });
+schema.index({ 'block.number': 1 });
 
-transferSchema.set('toJSON', {
+schema.set('toJSON', {
   virtuals: false,
   transform: (doc, ret, options) => {
     delete ret.__v;
@@ -53,6 +57,6 @@ transferSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Transfer & mongoose.Document>('Transfer', transferSchema);
+const model = mongoose.model<Movement & mongoose.Document>('Movement', schema, 'movement');
 
 export default model;

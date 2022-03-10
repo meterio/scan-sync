@@ -1,7 +1,7 @@
 import { Bound } from '../model/bound.interface';
 import boundModel from '../model/bound.model';
 
-export class BoundRepo {
+export default class BoundRepo {
   private model = boundModel;
 
   public async findAll() {
@@ -10,6 +10,10 @@ export class BoundRepo {
 
   public async findByOwner(owner: string) {
     return this.model.find({ owner: owner.toLowerCase() });
+  }
+
+  public async findByBlockNum(blockNum: number) {
+    return this.model.find({ 'block.number': blockNum });
   }
 
   public async exist(txHash: string, clauseIndex: number) {
@@ -32,5 +36,3 @@ export class BoundRepo {
     return this.model.find({ 'block.number': { $lt: blockNum } });
   }
 }
-
-export default BoundRepo;

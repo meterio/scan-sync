@@ -6,18 +6,12 @@ import { TokenProfile } from './tokenProfile.interface';
 
 const tokenProfileSchema = new mongoose.Schema<TokenProfile>(
   {
-    name: { type: String, required: true },
-    symbol: { type: String, required: true },
-    address: { type: String, required: true, unique: true },
+    name: { type: String, required: true, index: true },
+    symbol: { type: String, required: true, index: true },
+    address: { type: String, required: true, unique: true, index: true },
     decimals: { type: Number, required: true, default: 18 },
     officialSite: { type: String, required: false },
     totalSupply: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    circulation: {
       type: String,
       get: (num: string) => new BigNumber(num),
       set: (bnum: BigNumber) => bnum.toFixed(0),
@@ -36,10 +30,11 @@ const tokenProfileSchema = new mongoose.Schema<TokenProfile>(
       required: true,
     },
 
+    master: { type: String, required: false },
     creationTxHash: { type: String, required: false },
     firstSeen: blockConciseSchema,
 
-    createdAt: { type: Number, index: true },
+    createdAt: { type: Number, required: true, index: true },
     updatedAt: { type: Number },
   },
   {
@@ -47,7 +42,7 @@ const tokenProfileSchema = new mongoose.Schema<TokenProfile>(
   }
 );
 
-tokenProfileSchema.index({ address: 1 });
+tokenProfileSchema.index({ 'block.number': 1 });
 
 tokenProfileSchema.set('toJSON', {
   transform: (obj, ret, options) => {
@@ -57,6 +52,6 @@ tokenProfileSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<TokenProfile & mongoose.Document>('TokenProfile', tokenProfileSchema, 'tokenProfile');
+const model = mongoose.model<TokenProfile & mongoose.Document>('TokenProfile', tokenProfileSchema, 'token_profile');
 
 export default model;

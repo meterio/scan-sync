@@ -2,7 +2,7 @@ import { RECENT_WINDOW } from '../const';
 import { Tx } from '../model/tx.interface';
 import txModel from '../model/tx.model';
 
-export class TxRepo {
+export default class TxRepo {
   private model = txModel;
 
   public async findAll() {
@@ -65,5 +65,3 @@ export class TxRepo {
     return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
   }
 }
-
-export default TxRepo;

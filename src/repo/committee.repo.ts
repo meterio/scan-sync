@@ -2,7 +2,7 @@ import { BlockConcise } from '../model/blockConcise.interface';
 import { Committee } from '../model/committee.interface';
 import committeeModel from '../model/committee.model';
 
-export class CommitteeRepo {
+export default class CommitteeRepo {
   private committee = committeeModel;
 
   public async findCurrent() {
@@ -28,5 +28,3 @@ export class CommitteeRepo {
     return this.committee.deleteMany({ 'startBlock.number': { $gte: blockNum } });
   }
 }
-
-export default CommitteeRepo;

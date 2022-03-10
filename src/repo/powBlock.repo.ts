@@ -2,7 +2,7 @@ import { RECENT_WINDOW } from '../const';
 import { PowBlock } from '../model/powBlock.interface';
 import powBlockModel from '../model/powBlock.model';
 
-export class PowBlockRepo {
+export default class PowBlockRepo {
   private model = powBlockModel;
 
   public async getBestBlock() {
@@ -41,5 +41,3 @@ export class PowBlockRepo {
     return this.model.deleteOne({ hash });
   }
 }
-
-export default PowBlockRepo;

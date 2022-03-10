@@ -1,11 +1,8 @@
-import BigNumber from 'bignumber.js';
-
 import { ValidatorStatus } from '../const';
-import { BlockConcise } from '../model/blockConcise.interface';
 import { Validator } from '../model/validator.interface';
 import validatorModel from '../model/validator.model';
 
-export class ValidatorRepo {
+export default class ValidatorRepo {
   private model = validatorModel;
 
   public async findAll() {
@@ -37,5 +34,3 @@ export class ValidatorRepo {
     );
   }
 }
-
-export default ValidatorRepo;

@@ -24,6 +24,17 @@ const epochRewardSchema = new mongoose.Schema<EpochReward>({
   },
 });
 
-const model = mongoose.model<EpochReward & mongoose.Document>('EpochReward', epochRewardSchema, 'epochRewards');
+epochRewardSchema.set('toJSON', {
+  transform: (obj, ret, options) => {
+    delete ret.__v;
+    delete ret._id;
+    delete ret.blockNum;
+    delete ret.epoch;
+    delete ret.txHash;
+    return ret;
+  },
+});
+
+const model = mongoose.model<EpochReward & mongoose.Document>('EpochReward', epochRewardSchema, 'epoch_reward');
 
 export default model;

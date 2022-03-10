@@ -53,6 +53,6 @@ bidSchema.methods.toSummary = function (doc: Bid & mongoose.Document) {
   };
 };
 
-const model = mongoose.model<Bid & mongoose.Document>('Bid', bidSchema, 'bids');
+const model = mongoose.model<Bid & mongoose.Document>('Bid', bidSchema, 'bid');
 
 export default model;

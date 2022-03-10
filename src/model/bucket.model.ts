@@ -61,10 +61,6 @@ bucketSchema.methods.format = function () {
   };
 };
 
-const model = mongoose.model<Bucket & mongoose.Document>(
-  'Bucket',
-  bucketSchema,
-  'buckets'
-);
+const model = mongoose.model<Bucket & mongoose.Document>('Bucket', bucketSchema, 'bucket');
 
 export default model;

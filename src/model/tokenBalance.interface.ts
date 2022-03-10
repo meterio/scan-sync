@@ -10,6 +10,6 @@ export interface TokenBalance {
   rank: number;
   decimals: number;
 
-  firstSeend: BlockConcise;
+  firstSeen: BlockConcise;
   lastUpdate: BlockConcise;
 }

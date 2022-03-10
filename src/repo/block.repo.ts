@@ -5,7 +5,7 @@ import { BlockType } from '../const';
 import { Block } from '../model/block.interface';
 import blockModel from '../model/block.model';
 
-export class BlockRepo {
+export default class BlockRepo {
   private model = blockModel;
   public async getBestBlock() {
     return this.model.findOne({}).sort({ number: -1 });
@@ -66,5 +66,3 @@ export class BlockRepo {
     return this.model.deleteMany({ number: { $gte: blockNum } });
   }
 }
-
-export default BlockRepo;

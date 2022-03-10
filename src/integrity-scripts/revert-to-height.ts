@@ -15,7 +15,7 @@ import CommitteeRepo from '../repo/committee.repo';
 import EpochRewardRepo from '../repo/epochReward.repo';
 import EpochRewardSummaryRepo from '../repo/epochRewardSummary.repo';
 import HeadRepo from '../repo/head.repo';
-import TransferRepo from '../repo/transfer.repo';
+import MovementRepo from '../repo/movement.repo';
 import TxRepo from '../repo/tx.repo';
 import UnboundRepo from '../repo/unbound.repo';
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
@@ -55,7 +55,7 @@ const revertToHeight = async () => {
   const committeeRepo = new CommitteeRepo();
   const epochRewardRepo = new EpochRewardRepo();
   const epochRewardSummaryRepo = new EpochRewardSummaryRepo();
-  const transferRepo = new TransferRepo();
+  const movementRepo = new MovementRepo();
   const txRepo = new TxRepo();
 
   console.log('update accounts');
@@ -89,7 +89,7 @@ const revertToHeight = async () => {
   await epochRewardSummaryRepo.deleteAfter(revertHeight);
 
   console.log('update transfers');
-  await transferRepo.deleteAfter(revertHeight);
+  await movementRepo.deleteAfter(revertHeight);
 
   console.log('update txs');
   await txRepo.deleteAfter(revertHeight);

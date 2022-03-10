@@ -22,10 +22,6 @@ knownSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Known & mongoose.Document>(
-  'Known',
-  knownSchema,
-  'knowns'
-);
+const model = mongoose.model<Known & mongoose.Document>('Known', knownSchema, 'known');
 
 export default model;

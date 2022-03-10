@@ -53,3 +53,6 @@ export const GetPosConfig = (network: Network) => {
     };
   }
 };
+
+export const ENERGY_SYM = 'MTR';
+export const BALANCE_SYM = 'MTRG';

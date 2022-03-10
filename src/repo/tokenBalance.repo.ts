@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import { BlockConcise } from '../model/blockConcise.interface';
 import tokenBalanceModel from '../model/tokenBalance.model';
 
-export class TokenBalanceRepo {
+export default class TokenBalanceRepo {
   private model = tokenBalanceModel;
 
   public async findAll() {
@@ -42,5 +42,3 @@ export class TokenBalanceRepo {
     });
   }
 }
-
-export default TokenBalanceRepo;

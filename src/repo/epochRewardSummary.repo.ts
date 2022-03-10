@@ -1,7 +1,7 @@
 import { EpochRewardSummary } from '../model/epochRewardSummary.interface';
 import EpochRewardSummaryModel from '../model/epochRewardSummary.model';
 
-export class EpochRewardSummaryRepo {
+export default class EpochRewardSummaryRepo {
   private model = EpochRewardSummaryModel;
 
   public async findAll() {
@@ -24,5 +24,3 @@ export class EpochRewardSummaryRepo {
     return this.model.deleteMany({ blockNum: { $gte: blockNum } });
   }
 }
-
-export default EpochRewardSummaryRepo;

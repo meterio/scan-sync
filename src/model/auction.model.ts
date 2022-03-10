@@ -119,10 +119,6 @@ auctionSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Auction & mongoose.Document>(
-  'Auction',
-  auctionSchema,
-  'auctions'
-);
+const model = mongoose.model<Auction & mongoose.Document>('Auction', auctionSchema, 'auction');
 
 export default model;

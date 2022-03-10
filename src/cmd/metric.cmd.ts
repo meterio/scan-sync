@@ -1,20 +1,10 @@
 import { EventEmitter } from 'events';
-import internal from 'stream';
 
 import axios from 'axios';
 import BigNumber from 'bignumber.js';
 import Logger from 'bunyan';
 
-import {
-  LockedMeterAddrs,
-  LockedMeterGovAddrs,
-  MetricName,
-  Network,
-  ParamsAddress,
-  Token,
-  ValidatorStatus,
-  params,
-} from '../const';
+import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, Network, ParamsAddress, ValidatorStatus } from '../const';
 import { KeyTransactionFeeAddress } from '../const/key';
 import { Bucket } from '../model/bucket.interface';
 import { Validator } from '../model/validator.interface';
@@ -22,6 +12,7 @@ import AccountRepo from '../repo/account.repo';
 import AlertRepo from '../repo/alert.repo';
 import BlockRepo from '../repo/block.repo';
 import BucketRepo from '../repo/bucket.repo';
+import HeadRepo from '../repo/head.repo';
 import MetricRepo from '../repo/metric.repo';
 import ValidatorRepo from '../repo/validator.repo';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
@@ -58,6 +49,7 @@ export class MetricCMD extends CMD {
   private accountRepo = new AccountRepo();
   private blockRepo = new BlockRepo();
   private alertRepo = new AlertRepo();
+  private headRepo = new HeadRepo();
 
   private cache = new MetricCache();
 
@@ -91,7 +83,8 @@ export class MetricCMD extends CMD {
   private async updateTransactionFeeBeneficiary(index: number, interval: number) {
     if (index % interval === 0) {
       console.log('update transaction-fee-beneficiary');
-      const txFeeAddr = await this.pos.getStorage(ParamsAddress, KeyTransactionFeeAddress);
+      const h = await this.headRepo.findByKey('account');
+      const txFeeAddr = await this.pos.getStorage(ParamsAddress, KeyTransactionFeeAddress, h.num.toString());
       console.log('Tx Fee Addr:', txFeeAddr);
       if (!!txFeeAddr && txFeeAddr.value) {
         const addrVal = txFeeAddr.value;
@@ -101,6 +94,7 @@ export class MetricCMD extends CMD {
       }
     }
   }
+
   private async updatePowInfo(index: number, interval: number) {
     if (index % interval === 0) {
       console.log('update PoW info');

@@ -1,7 +1,7 @@
 import { MetricType } from '../const';
 import metricModel from '../model/metric.model';
 
-export class MetricRepo {
+export default class MetricRepo {
   private model = metricModel;
 
   public async findByKey(key: string) {
@@ -24,5 +24,3 @@ export class MetricRepo {
     return this.model.updateOne({ key }, { $set: { value } });
   }
 }
-
-export default MetricRepo;

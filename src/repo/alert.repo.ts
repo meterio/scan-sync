@@ -2,7 +2,7 @@ import { RECENT_WINDOW } from '../const';
 import { Alert } from '../model/alert.interface';
 import alertModel from '../model/alert.model';
 
-export class AlertRepo {
+export default class AlertRepo {
   private model = alertModel;
   public async findAll() {
     return this.model.find();
@@ -40,5 +40,3 @@ export class AlertRepo {
     return this.model.deleteOne({ hash });
   }
 }
-
-export default AlertRepo;

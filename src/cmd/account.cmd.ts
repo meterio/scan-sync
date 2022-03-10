@@ -2,33 +2,22 @@ import BigNumber from 'bignumber.js';
 import * as Logger from 'bunyan';
 
 import {
-  BoundEvent,
   MetricName,
   Network,
-  PrototypeAddress,
   Token,
-  TokenBasic,
-  TransferEvent,
-  UnboundEvent,
   ZeroAddress,
   balanceOf,
-  decimalsABIFunc,
-  getERC20Token,
   getPreAllocAccount,
-  nameABIFunc,
   prototype,
-  symbolABIFunc,
   totalSupply,
 } from '../const';
 import { Block } from '../model/block.interface';
 import { BlockConcise } from '../model/blockConcise.interface';
-import { blockConciseSchema } from '../model/blockConcise.model';
-import { Bound } from '../model/bound.interface';
-import { Transfer } from '../model/transfer.interface';
+import { Movement } from '../model/movement.interface';
 import { Tx } from '../model/tx.interface';
-import { Unbound } from '../model/unbound.interface';
 import BoundRepo from '../repo/bound.repo';
 import MetricRepo from '../repo/metric.repo';
+import MovementRepo from '../repo/movement.repo';
 import TokenBalanceRepo from '../repo/tokenBalance.repo';
 import TokenProfileRepo from '../repo/tokenProfile.repo';
 import UnboundRepo from '../repo/unbound.repo';
@@ -36,30 +25,26 @@ import { fromWei } from '../utils/utils';
 import { TxBlockReviewer } from './blockReviewer';
 import { AccountDeltaMap, ContractInfo, TokenDeltaMap } from './types';
 
-const printTransfer = (t: Transfer) => {
+const printMovement = (m: Movement) => {
   console.log(
-    `Transfer #(ci:${t.clauseIndex},li:${t.logIndex},t:${t.token}): ${t.from} to ${t.to} with ${fromWei(t.amount)} ${
-      Token[t.token]
+    `Transfer #(ci:${m.clauseIndex},li:${m.logIndex},t:${m.token}): ${m.from} to ${m.to} with ${fromWei(m.amount)} ${
+      Token[m.token]
     })`
   );
 };
 
 export class AccountCMD extends TxBlockReviewer {
-  protected boundRepo = new BoundRepo();
-  protected unboundRepo = new UnboundRepo();
   protected tokenProfileRepo = new TokenProfileRepo();
   protected tokenBalanceRepo = new TokenBalanceRepo();
   protected metricRepo = new MetricRepo();
-
-  private mtrSysToken: TokenBasic;
-  private mtrgSysToken: TokenBasic;
+  protected boundRepo = new BoundRepo();
+  protected unboundRepo = new UnboundRepo();
+  protected movementRepo = new MovementRepo();
 
   constructor(net: Network) {
     super(net);
     this.name = 'account';
     this.logger = Logger.createLogger({ name: this.name });
-    this.mtrSysToken = getERC20Token(this.network, Token.MTR);
-    this.mtrgSysToken = getERC20Token(this.network, Token.MTRG);
   }
 
   async processTx(
@@ -67,43 +52,21 @@ export class AccountCMD extends TxBlockReviewer {
     txIndex: number,
     blk: Block
   ): Promise<{
-    transfers: Transfer[];
-    bounds: Bound[];
-    unbounds: Unbound[];
-    contracts: { [key: string]: string };
+    contracts: { [key: string]: ContractInfo };
     rebasings: string[];
   }> {
     this.logger.info(`start to process ${tx.hash}`);
-    let transfers: Transfer[] = [];
-    let bounds: Bound[] = [];
-    let unbounds: Unbound[] = [];
-    let contracts: { [key: string]: string } = {};
+    let contracts: { [key: string]: ContractInfo } = {};
     let rebasings: string[] = [];
-    const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash };
 
     if (tx.reverted) {
       this.logger.info(`Tx is reverted`);
-      return { transfers: [], bounds: [], unbounds: [], contracts: {}, rebasings: [] };
+      return { contracts: {}, rebasings: [] };
     }
 
     // process outputs
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       const clause = tx.clauses[clauseIndex];
-
-      // process native transfers
-      for (const [logIndex, t] of o.transfers.entries()) {
-        transfers.push({
-          from: t.sender.toLowerCase(),
-          to: t.recipient.toLowerCase(),
-          token: new BigNumber(t.token).isEqualTo(1) ? Token.MTRG : Token.MTR,
-          tokenAddress: '',
-          amount: new BigNumber(t.amount),
-          txHash: tx.hash,
-          block: tx.block,
-          clauseIndex,
-          logIndex,
-        });
-      } // end of process native transfers
 
       // process events
       for (const [logIndex, e] of o.events.entries()) {
@@ -112,123 +75,16 @@ export class AccountCMD extends TxBlockReviewer {
           rebasings.push(e.address);
         }
 
-        // contract creation
+        // contracts
         if (e.topics[0] === prototype.$Master.signature) {
           const decoded = prototype.$Master.decode(e.data, e.topics);
-          contracts[e.address] = decoded.newMaster;
-
-          try {
-            // try to load information for erc20 token
-            const outputs = await this.pos.explain(
-              {
-                clauses: [
-                  { to: e.address, value: '0x0', data: nameABIFunc.encode(), token: Token.MTR },
-                  { to: e.address, value: '0x0', data: symbolABIFunc.encode(), token: Token.MTR },
-                  { to: e.address, value: '0x0', data: decimalsABIFunc.encode(), token: Token.MTR },
-                  { to: PrototypeAddress, value: '0x0', data: prototype.master.encode(e.address), token: Token.MTR },
-                  // { to: e.address, value: '0x0', data: totalSupply.encode(), token: Token.MTR },
-                ],
-              },
-              blk.hash
-            );
-            const nameDecoded = nameABIFunc.decode(outputs[0].data);
-            const symbolDecoded = symbolABIFunc.decode(outputs[1].data);
-            const decimalsDecoded = decimalsABIFunc.decode(outputs[2].data);
-            // const totalSupplyDecoded = totalSupply.decode(outputs[3].data);
-            const masterDecoded = prototype.master.decode(outputs[3].data);
-            const name = nameDecoded['0'];
-            const symbol = symbolDecoded['0'];
-            const decimals = decimalsDecoded['0'];
-            const master = masterDecoded['0'];
-            // const totalSupplyVal = totalSupplyDecoded['0'];
-            await this.tokenProfileRepo.create(
-              name,
-              symbol,
-              e.address.toLowerCase(),
-              '',
-              new BigNumber(0),
-              // new BigNumber(totalSupplyVal),
-              master,
-              tx.hash,
-              blockConcise,
-              decimals
-            );
-          } catch (e) {
-            console.log('contract created does not apply with ERC20 interface');
-            console.log(e);
-          }
-        }
-
-        // system contract transfers
-        if (e.topics[0] === TransferEvent.signature) {
-          try {
-            const decoded = TransferEvent.decode(e.data, e.topics);
-            let transfer = {
-              from: decoded._from.toLowerCase(),
-              to: decoded._to.toLowerCase(),
-              token: Token.ERC20,
-              amount: new BigNumber(decoded._value),
-              tokenAddress: '',
-              txHash: tx.hash,
-              block: tx.block,
-              clauseIndex,
-              logIndex,
-            };
-            if (e.address.toLowerCase() === this.mtrSysToken.address) {
-              // MTR: convert system contract event into system transfer
-              transfer.token = Token.MTR;
-            } else if (e.address.toLowerCase() === this.mtrgSysToken.address) {
-              // MTRG: convert system contract event into system transfer
-              transfer.token = Token.MTRG;
-            } else {
-              // ERC20: other erc20 transfer
-              transfer.token = Token.ERC20;
-              transfer.tokenAddress = e.address.toLowerCase();
-            }
-            transfers.push(transfer);
-          } catch (e) {
-            console.log('Error happened, but ignored:', e);
-          }
-        }
-
-        // staking bound event
-        if (e.topics[0] === BoundEvent.signature) {
-          const decoded = BoundEvent.decode(e.data, e.topics);
-          const owner = decoded.owner.toLowerCase();
-          bounds.push({
-            owner,
-            amount: new BigNumber(decoded.amount),
-            token: decoded.token == 1 ? Token.MTRG : Token.MTR,
-            txHash: tx.hash,
-            block: tx.block,
-            clauseIndex,
-            logIndex,
-          });
-        }
-
-        // staking unbound event
-        if (e.topics[0] === UnboundEvent.signature) {
-          const decoded = UnboundEvent.decode(e.data, e.topics);
-          unbounds.push({
-            owner: decoded.owner.toLowerCase(),
-            amount: new BigNumber(decoded.amount),
-            token: decoded.token == 1 ? Token.MTRG : Token.MTR,
-            txHash: tx.hash,
-            block: tx.block,
-            clauseIndex,
-            logIndex,
-          });
+          const isToken = await this.tokenProfileRepo.existsByAddress(e.address);
+          contracts[e.address] = { master: decoded.newMaster, creationTxHash: tx.hash, isToken };
         }
       }
     } // end of process outputs
 
-    if (transfers.length > 0) {
-      console.log(`Extracted ${transfers.length} transfers`);
-    }
-    for (const t of transfers) {
-      printTransfer(t);
-    }
-    return { transfers, bounds, unbounds, contracts, rebasings };
+    return { contracts, rebasings };
   }
 
   async processBlock(blk: Block) {
@@ -238,9 +94,6 @@ export class AccountCMD extends TxBlockReviewer {
     if (txFeeBeneficiary) {
       sysBeneficiary = txFeeBeneficiary.value;
     }
-    let transfers = [];
-    let bounds: Bound[] = [];
-    let unbounds: Unbound[] = [];
     let contracts: { [key: string]: ContractInfo } = {};
     let accts = new AccountDeltaMap();
     let totalFees = new BigNumber(0);
@@ -251,16 +104,8 @@ export class AccountCMD extends TxBlockReviewer {
         throw new Error('could not find tx, maybe the block is still being processed');
       }
       const res = await this.processTx(txModel, txIndex, blk);
-      transfers = transfers.concat(res.transfers.map((tr) => ({ ...tr, txHash })));
-      bounds = bounds.concat(res.bounds.map((b) => ({ ...b, txHash })));
-      unbounds = unbounds.concat(res.unbounds.map((u) => ({ ...u, txHash })));
       rebasings = rebasings.concat(res.rebasings);
-      for (const addr of Object.keys(res.contracts)) {
-        contracts[addr] = {
-          master: res.contracts[addr].toLowerCase(),
-          creationTxHash: txHash,
-        };
-      }
+      contracts = res.contracts;
 
       // substract fee from gas payer
       accts.minus(txModel.gasPayer, Token.MTR, txModel.paid, txHash);
@@ -278,52 +123,31 @@ export class AccountCMD extends TxBlockReviewer {
       accts.plus(sysBeneficiary, Token.MTR, totalFees, '0x');
     }
 
-    // save transfers
-    if (transfers.length > 0) {
-      await this.transferRepo.bulkInsert(...transfers);
-      console.log(`saved ${transfers.length} transfers`);
-    }
-
-    // save bounds and unbounds
-    if (bounds.length > 0) {
-      await this.boundRepo.bulkInsert(...bounds);
-      console.log(`saved ${bounds.length} bounds`);
-    }
-    if (unbounds.length > 0) {
-      console.log(`saved ${unbounds.length} unbounds`);
-      await this.unboundRepo.bulkInsert(...unbounds);
-    }
-
     // calculate token balance deltas
     let tokens = new TokenDeltaMap();
-    for (const tr of transfers) {
-      if (tr.token !== Token.ERC20) {
-        continue;
-      }
-      const from = tr.from;
-      const to = tr.to;
-      tokens.minus(from, tr.tokenAddress, tr.amount);
-      tokens.plus(to, tr.tokenAddress, tr.amount);
-      // this.logger.info(
-      //   { from, to, amount: tr.amount.toFixed(0), token: Token[tr.token], tokenAddress: tr.tokenAddress },
-      //   'ERC20 transfer'
-      // );
-    }
 
     // collect updates in accounts
-    for (const tr of transfers) {
-      const from = tr.from;
-      const to = tr.to;
-      accts.minus(from, tr.token, tr.amount, tr.txHash);
-      accts.plus(to, tr.token, tr.amount, tr.txHash);
+    const movements = await this.movementRepo.findByBlockNum(blk.number);
+    for (const m of movements) {
+      printMovement(m);
+      const { from, to, amount, txHash, token, tokenAddress } = m;
+      if (token === Token.MTR || token === Token.MTRG) {
+        accts.minus(from, token, amount, txHash);
+        accts.plus(to, token, amount, txHash);
+      } else {
+        tokens.minus(from, tokenAddress, amount);
+        tokens.plus(to, tokenAddress, amount);
+      }
     }
 
     // collect bounds updates to accounts
+    const bounds = await this.boundRepo.findByBlockNum(blk.number);
     for (const b of bounds) {
       accts.bound(b.owner, b.token, b.amount, b.txHash);
     }
 
     // collect unbound updates to accounts
+    const unbounds = await this.unboundRepo.findByBlockNum(blk.number);
     for (const ub of unbounds) {
       accts.unbound(ub.owner, ub.token, ub.amount, ub.txHash);
     }
@@ -338,10 +162,7 @@ export class AccountCMD extends TxBlockReviewer {
 
     await this.handleRebasing(rebasings);
 
-    this.logger.info(
-      { hash: blk.hash, transfers: transfers.length, contracts: contracts.length },
-      `processed block ${blk.number}`
-    );
+    this.logger.info({ hash: blk.hash, contracts: contracts.length }, `processed block ${blk.number}`);
   }
 
   protected async processGenesis() {
@@ -352,7 +173,14 @@ export class AccountCMD extends TxBlockReviewer {
       const chainAcc = await this.pos.getAccount(addr, genesis.hash);
 
       const blockConcise = { number: genesis.number, hash: genesis.hash, timestamp: genesis.timestamp };
-      let acct = await this.accountRepo.create(this.network, addr.toLowerCase(), blockConcise, blockConcise, '0x');
+      let acct = await this.accountRepo.create(
+        this.network,
+        addr.toLowerCase(),
+        blockConcise,
+        blockConcise,
+        '0x',
+        'user'
+      );
       acct.mtrgBalance = new BigNumber(chainAcc.balance);
       acct.mtrBalance = new BigNumber(chainAcc.energy);
 
@@ -382,7 +210,8 @@ export class AccountCMD extends TxBlockReviewer {
           addr.toLowerCase(),
           blockConcise,
           blockConcise,
-          delta.creationTxHash
+          delta.creationTxHash,
+          'user'
         );
       }
 
@@ -435,6 +264,7 @@ export class AccountCMD extends TxBlockReviewer {
           blockConcise,
           blockConcise,
           contracts[address].creationTxHash,
+          contracts[address].isToken ? 'token' : 'contract',
           contracts[address].master
         );
       }
@@ -494,7 +324,7 @@ export class AccountCMD extends TxBlockReviewer {
         );
         const decoded = totalSupply.decode(output[0].data);
         profile.totalSupply = new BigNumber(decoded['0']);
-        profile.circulation = new BigNumber(decoded['0']);
+        // profile.circulation = new BigNumber(decoded['0']);
         // if (delta.isLessThan(0)) {
         //   // mint
         //   profile.circulation = profile.circulation.plus(delta.times(-1));

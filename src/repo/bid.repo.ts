@@ -1,7 +1,7 @@
 import { Bid } from '../model/bid.interface';
 import bidModel from '../model/bid.model';
 
-export class BidRepo {
+export default class BidRepo {
   private model = bidModel;
 
   public async findAll() {
@@ -34,5 +34,3 @@ export class BidRepo {
     return this.model.deleteMany({ blockNum: { $gte: blockNum } });
   }
 }
-
-export default BidRepo;

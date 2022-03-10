@@ -1,10 +1,10 @@
 import { Token } from '../const';
 import { RECENT_WINDOW } from '../const';
-import { Transfer } from '../model/transfer.interface';
-import transferModel from '../model/transfer.model';
+import { Movement } from '../model/movement.interface';
+import movementModel from '../model/movement.model';
 
-export class TransferRepo {
-  private model = transferModel;
+export default class MovementRepo {
+  private model = movementModel;
 
   public async findAll() {
     return this.model.find();
@@ -16,6 +16,10 @@ export class TransferRepo {
 
   public async findByHash(hash: string) {
     return this.model.findOne({ hash });
+  }
+
+  public async findByBlockNum(blockNum: number) {
+    return this.model.find({ 'block.number': blockNum });
   }
 
   public async findByRange(token: Token, startTS: number, endTS: number) {
@@ -47,21 +51,19 @@ export class TransferRepo {
     return this.model.exists({ txHash, clauseIndex });
   }
 
-  public async create(transfer: Transfer) {
-    return this.model.create(transfer);
+  public async create(movement: Movement) {
+    return this.model.create(movement);
   }
 
-  public async deleteFutureTransfers(num: number) {
+  public async deleteFutureMovements(num: number) {
     return this.model.find({ 'block.number': { $gt: num } });
   }
 
-  public async bulkInsert(...transfers: Transfer[]) {
-    return this.model.create(transfers);
+  public async bulkInsert(...movements: Movement[]) {
+    return this.model.create(movements);
   }
 
   public async deleteAfter(blockNum: number) {
     return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
   }
 }
-
-export default TransferRepo;

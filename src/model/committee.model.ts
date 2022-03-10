@@ -19,9 +19,6 @@ committeeSchema.set('toJSON', {
     return ret;
   },
 });
-const model = mongoose.model<Committee & mongoose.Document>(
-  'Committee',
-  committeeSchema
-);
+const model = mongoose.model<Committee & mongoose.Document>('Committee', committeeSchema, 'committee');
 
 export default model;

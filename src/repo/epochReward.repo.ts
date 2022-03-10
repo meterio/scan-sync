@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import { EpochReward } from '../model/epochReward.interface';
 import EpochRewardModel from '../model/epochReward.model';
 
-export class EpochRewardRepo {
+export default class EpochRewardRepo {
   private model = EpochRewardModel;
 
   public async findAll() {
@@ -26,5 +26,3 @@ export class EpochRewardRepo {
     return this.model.deleteMany({ blockNum: { $gte: blockNum } });
   }
 }
-
-export default EpochRewardRepo;

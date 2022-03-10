@@ -9,10 +9,10 @@ export interface TokenProfile {
   decimals: number;
   officialSite: string;
   totalSupply: BigNumber;
-  circulation: BigNumber;
   holdersCount: BigNumber;
   transfersCount: BigNumber;
 
-  creationTxHash?: string;
-  firstSeen?: BlockConcise;
+  master: string;
+  creationTxHash: string;
+  firstSeen: BlockConcise;
 }

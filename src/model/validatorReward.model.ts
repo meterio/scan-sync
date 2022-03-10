@@ -44,7 +44,7 @@ validatorRewardSchema.methods.toSummary = function () {
 const model = mongoose.model<ValidatorReward & mongoose.Document>(
   'ValidatorReward',
   validatorRewardSchema,
-  'validatorRewards'
+  'validator_reward'
 );
 
 export default model;

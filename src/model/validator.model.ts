@@ -25,8 +25,7 @@ const validatorSchema = new mongoose.Schema<Validator>({
   status: {
     type: String,
     enum: enumKeys(ValidatorStatus),
-    get: (enumValue: string) =>
-      ValidatorStatus[enumValue as keyof typeof ValidatorStatus],
+    get: (enumValue: string) => ValidatorStatus[enumValue as keyof typeof ValidatorStatus],
     set: (enumValue: ValidatorStatus) => ValidatorStatus[enumValue],
     required: true,
   },
@@ -65,10 +64,6 @@ validatorSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Validator & mongoose.Document>(
-  'Validator',
-  validatorSchema,
-  'validators'
-);
+const model = mongoose.model<Validator & mongoose.Document>('Validator', validatorSchema, 'validator');
 
 export default model;

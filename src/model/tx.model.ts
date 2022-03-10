@@ -72,21 +72,6 @@ const txOutputSchema = new mongoose.Schema<TxOutput>(
   { _id: false }
 );
 
-const transferSchema = new mongoose.Schema<Transfer>(
-  {
-    sender: { type: String, required: true },
-    recipient: { type: String, required: true },
-    amount: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    token: { type: Number, required: false },
-  },
-  { _id: false }
-);
-
 const txSchema = new mongoose.Schema<Tx>(
   {
     hash: { type: String, required: true, index: { unique: true } },
@@ -128,41 +113,6 @@ const txSchema = new mongoose.Schema<Tx>(
     },
     outputs: [txOutputSchema],
 
-    totalClauseMTRG: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    totalClauseMTR: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    totalTransferMTRG: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    totalTransferMTR: {
-      type: String,
-      get: (num: string) => new BigNumber(num),
-      set: (bnum: BigNumber) => bnum.toFixed(0),
-      required: true,
-    },
-    groupedTransfers: [transferSchema],
-    majorTo: { type: String, required: false },
-    toCount: { type: Number, required: true },
-
-    // related address
-    relatedAddrs: [{ type: String, required: true }],
-    erc20RelatedAddrs: [{ type: String, required: true }],
-
-    // system contract transfers
-    sysContractTransfers: [transferSchema],
-
     createdAt: { type: Number, index: true },
   },
   {
@@ -181,12 +131,6 @@ txSchema.set('toJSON', {
   },
 });
 
-txSchema.index({ relatedAddres: 1 });
-txSchema.index({ erc20RelatedAddres: 1 });
-txSchema.index({ 'groupedTransfers.sender': 1 });
-txSchema.index({ 'groupedTransfers.recipient': 1 });
-txSchema.index({ 'sysContractTransfers.sender': 1 });
-txSchema.index({ 'sysContractTransfers.recipient': 1 });
 txSchema.index({ 'block.hash': 1 });
 txSchema.index({ 'block.number': -1 });
 
@@ -241,21 +185,6 @@ txSchema.methods.getType = function () {
 txSchema.methods.toSummary = function (addr) {
   const token = this.clauseCount > 0 ? this.clauses[0].token : 0;
 
-  let totalClauseAmount = '0';
-  if (token == 0) {
-    totalClauseAmount = this.totalClauseMTR.toFixed();
-  } else {
-    totalClauseAmount = this.totalClauseMTRG.toFixed();
-  }
-
-  let relatedTransfers = [];
-  if (!!addr) {
-    let transfers = [].concat(this.groupedTransfers).concat(this.sysContractTransfers);
-    relatedTransfers = transfers.filter(
-      (t) => t.sender.toLowerCase() === addr.toLowerCase() || t.recipient.toLowerCase() === addr.toLowerCase()
-    );
-  }
-
   return {
     hash: this.hash,
     block: this.block,
@@ -266,20 +195,11 @@ txSchema.methods.toSummary = function (addr) {
     gasUsed: this.gasUsed,
     gasPriceCoef: this.gasPriceCoef,
     gasPrice: 5e11 + 5e11 * (this.gasPriceCoef / 255),
-    totalClauseMTR: this.totalClauseMTR.toFixed(),
-    totalClauseMTRG: this.totalClauseMTRG.toFixed(),
-    totalTransferMTR: this.totalTransferMTR.toFixed(),
-    totalTransferMTRG: this.totalTransferMTRG.toFixed(),
     token: token == 0 ? 'MTR' : 'MTRG',
     reverted: this.reverted,
-    majorTo: this.majorTo,
     toCount: this.toCount,
-    groupedTransferCount: this.groupedTransfers ? this.groupedTransfers.length : 0,
-    relatedTransfers,
-    // calculated
-    totalClauseAmount,
   };
 };
-const model = mongoose.model<Tx & mongoose.Document>('Tx', txSchema, 'txs');
+const model = mongoose.model<Tx & mongoose.Document>('Tx', txSchema, 'tx');
 
 export default model;

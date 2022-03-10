@@ -41,7 +41,7 @@ epochRewardSummarySchema.set('toJSON', {
 const model = mongoose.model<EpochRewardSummary & mongoose.Document>(
   'EpochRewardSummary',
   epochRewardSummarySchema,
-  'epochRewardSummaries'
+  'epoch_reward_summary'
 );
 
 export default model;

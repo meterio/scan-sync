@@ -16,7 +16,7 @@ const tokenBalanceSchema = new mongoose.Schema<TokenBalance>(
     },
     symbol: { type: String, required: false },
     rank: { type: Number, required: true, default: 99999999 },
-    firstSeend: blockConciseSchema,
+    firstSeen: blockConciseSchema,
     lastUpdate: blockConciseSchema,
 
     createdAt: { type: Number, index: true },
@@ -38,6 +38,6 @@ tokenBalanceSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<TokenBalance & mongoose.Document>('TokenBalance', tokenBalanceSchema, 'tokenBalance');
+const model = mongoose.model<TokenBalance & mongoose.Document>('TokenBalance', tokenBalanceSchema, 'token_balance');
 
 export default model;

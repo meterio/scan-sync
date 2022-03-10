@@ -8,6 +8,7 @@ const accountSchema = new mongoose.Schema<Account>(
   {
     address: { type: String, required: true },
     name: { type: String, required: false },
+    type: { type: String, required: true },
     mtrBalance: {
       type: String,
       get: (num: string) => new BigNumber(num),
@@ -60,6 +61,6 @@ accountSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Account & mongoose.Document>('Account', accountSchema);
+const model = mongoose.model<Account & mongoose.Document>('Account', accountSchema, 'account');
 
 export default model;

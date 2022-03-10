@@ -47,10 +47,6 @@ powTxSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<PowTx & mongoose.Document>(
-  'PowTx',
-  powTxSchema,
-  'powTxs'
-);
+const model = mongoose.model<PowTx & mongoose.Document>('PowTx', powTxSchema, 'pow_tx');
 
 export default model;

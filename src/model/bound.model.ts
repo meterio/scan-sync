@@ -7,7 +7,7 @@ import { Bound } from './bound.interface';
 
 const boundSchema = new mongoose.Schema<Bound>(
   {
-    owner: { type: String, required: true },
+    owner: { type: String, required: true, index: true },
     amount: {
       type: String,
       get: (num: string) => new BigNumber(num),
@@ -23,7 +23,7 @@ const boundSchema = new mongoose.Schema<Bound>(
     },
 
     block: blockConciseSchema,
-    txHash: { type: String, required: true },
+    txHash: { type: String, required: true, index: true },
     clauseIndex: { type: Number, required: false },
     logIndex: { type: Number, required: false },
 
@@ -38,7 +38,7 @@ const boundSchema = new mongoose.Schema<Bound>(
 );
 
 boundSchema.index({ txHash: 1, clauseIndex: 1, logIndex: 1 }, { unique: true });
-boundSchema.index({ owner: 1 });
+boundSchema.index({ 'block.number': 1 });
 
 boundSchema.set('toJSON', {
   virtuals: false,
@@ -49,6 +49,6 @@ boundSchema.set('toJSON', {
   },
 });
 
-const model = mongoose.model<Bound & mongoose.Document>('Bound', boundSchema);
+const model = mongoose.model<Bound & mongoose.Document>('Bound', boundSchema, 'bound');
 
 export default model;

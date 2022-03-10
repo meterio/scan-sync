@@ -1,9 +1,10 @@
 import BigNumber from 'bignumber.js';
 
 import { BlockConcise } from '../model/blockConcise.interface';
+import { TokenProfile } from '../model/tokenProfile.interface';
 import tokenProfileModel from '../model/tokenProfile.model';
 
-export class TokenProfileRepo {
+export default class TokenProfileRepo {
   private model = tokenProfileModel;
 
   public async findAll() {
@@ -12,6 +13,10 @@ export class TokenProfileRepo {
 
   public async findByAddress(address: string) {
     return this.model.findOne({ address: address.toLowerCase() });
+  }
+
+  public async existsByAddress(address: string) {
+    return this.model.exists({ address: address.toLowerCase() });
   }
 
   public async findBySymbol(symbol: string) {
@@ -27,16 +32,15 @@ export class TokenProfileRepo {
     master: string,
     creationTxHash: string,
     firstSeen: BlockConcise,
-    decimals: 18
+    decimals = 18
   ) {
     return this.model.create({
       name,
-      symbol: symbol.toUpperCase(),
+      symbol,
       address,
       officialSite,
       decimals,
       totalSupply,
-      circulation: new BigNumber(0),
       holdersCount: new BigNumber(0),
       transfersCount: new BigNumber(0),
       master,
@@ -44,6 +48,12 @@ export class TokenProfileRepo {
       firstSeen,
     });
   }
-}
 
-export default TokenProfileRepo;
+  public async bulkInsert(...tokenProfiles: TokenProfile[]) {
+    return this.model.create(tokenProfiles);
+  }
+
+  public async deleteAfter(blockNum: number) {
+    return this.model.deleteMany({ 'block.number': { $gte: blockNum } });
+  }
+}

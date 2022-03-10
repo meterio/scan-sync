@@ -1,5 +1,5 @@
 import { MetricName, MetricType } from '../const';
-import { MetricRepo } from '../repo/metric.repo';
+import MetricRepo from '../repo/metric.repo';
 
 export const METRIC_DEFS = [
   { key: MetricName.DIFFICULTY, type: MetricType.BIGNUM, default: '1' },

@@ -1,8 +1,7 @@
 import { Bucket } from '../model/bucket.interface';
 import bucketModel from '../model/bucket.model';
-import { Validator } from '../model/validator.interface';
 
-export class BucketRepo {
+export default class BucketRepo {
   private model = bucketModel;
 
   public async findAll() {
@@ -33,5 +32,3 @@ export class BucketRepo {
     return this.model.deleteMany({ createTime: { $gte: ts } });
   }
 }
-
-export default BucketRepo;

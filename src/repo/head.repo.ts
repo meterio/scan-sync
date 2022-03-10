@@ -1,7 +1,11 @@
 import headModel from '../model/head.model';
 
-export class HeadRepo {
+export default class HeadRepo {
   private model = headModel;
+
+  public async exists(key: string) {
+    return this.model.exists({ key });
+  }
 
   public async findByKey(key: string) {
     return this.model.findOne({ key });
@@ -15,5 +19,3 @@ export class HeadRepo {
     return this.model.updateOne({ key }, { $set: { num, hash } });
   }
 }
-
-export default HeadRepo;

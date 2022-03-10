@@ -1,7 +1,7 @@
 import { Auction } from '../model/auction.interface';
 import AuctionModel from '../model/auction.model';
 
-export class AuctionRepo {
+export default class AuctionRepo {
   private model = AuctionModel;
 
   public async findAll() {
@@ -28,5 +28,3 @@ export class AuctionRepo {
     return this.model.deleteMany({ auctionStartHeight: { $gte: blockNum } });
   }
 }
-
-export default AuctionRepo;
