@@ -2,6 +2,7 @@
 require('./utils/usage');
 require('./utils/validateEnv');
 
+import { Network } from '@meterio/scan-db';
 // other imports
 import * as Logger from 'bunyan';
 import mongoose from 'mongoose';
@@ -13,7 +14,6 @@ import { MetricCMD } from './cmd/metric.cmd';
 import { PosCMD } from './cmd/pos.cmd';
 import { PowCMD } from './cmd/pow.cmd';
 import { ScriptEngineCMD } from './cmd/scriptEngine.cmd';
-import { Network } from './const/network';
 import { connectDB } from './utils/db';
 import { printUsage } from './utils/usage';
 

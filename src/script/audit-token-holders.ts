@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import BigNumber from 'bignumber.js';
+import { BigNumber, HeadRepo, Token, TokenBalanceRepo, TokenProfileRepo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Token, totalSupply } from '../const';
-import HeadRepo from '../repo/head.repo';
-import TokenBalanceRepo from '../repo/tokenBalance.repo';
-import TokenProfileRepo from '../repo/tokenProfile.repo';
+import { totalSupply } from '../const';
 import { Pos, checkNetworkWithDB, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 

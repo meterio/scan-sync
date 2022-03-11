@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
+import { BlockRepo, Network, PowInfo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Network } from '../const';
-import { PowBlock } from '../model/block.interface';
-import BlockRepo from '../repo/block.repo';
 import { Pos, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
@@ -27,11 +25,11 @@ const fillPowblocksInKBlock = async (net: Network) => {
     for (let kb of kblks) {
       console.log('fix for kblock: ', kb.number, kb.epoch);
       const info = await pos.getEpochInfo(kb.epoch);
-      let powBlocks: PowBlock[] = [];
+      let powBlocks: PowInfo[] = [];
       for (const pb of info.powBlocks) {
         powBlocks.push({
           hash: pb.hash,
-          prevBlock: pb.prevBlock,
+          prevBlock: pb.previousBlockHash,
           height: pb.height,
           beneficiary: pb.Beneficiary || pb.beneficiary,
         });

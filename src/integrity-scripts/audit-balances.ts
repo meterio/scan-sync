@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import BigNumber from 'bignumber.js';
+import { AccountRepo, BigNumber, BlockRepo, HeadRepo, Token } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { PrototypeAddress, Token, ZeroAddress, prototype } from '../const';
-import AccountRepo from '../repo/account.repo';
-import BlockRepo from '../repo/block.repo';
-import HeadRepo from '../repo/head.repo';
+import { PrototypeAddress, ZeroAddress, prototype } from '../const';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 

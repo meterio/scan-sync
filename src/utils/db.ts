@@ -1,6 +1,5 @@
+import { Network } from '@meterio/scan-db';
 import mongoose from 'mongoose';
-
-import { Network } from '../const';
 
 const { MONGO_USER, MONGO_PWD, MONGO_PATH, MONGO_SSL_CA } = process.env;
 

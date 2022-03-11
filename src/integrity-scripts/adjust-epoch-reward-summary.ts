@@ -2,14 +2,11 @@
 require('../utils/validateEnv');
 
 import { ScriptEngine } from '@meterio/devkit';
-import BigNumber from 'bignumber.js';
+import { BlockRepo, EpochRewardRepo, EpochRewardSummaryRepo, TxRepo } from '@meterio/scan-db';
+import { BigNumber } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
 import { StakingModuleAddress } from '../const';
-import BlockRepo from '../repo/block.repo';
-import EpochRewardRepo from '../repo/epochReward.repo';
-import EpochRewardSummaryRepo from '../repo/epochRewardSummary.repo';
-import TxRepo from '../repo/tx.repo';
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 

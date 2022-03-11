@@ -1,12 +1,8 @@
 import { EventEmitter } from 'events';
 
+import { HeadRepo, Network, PowBlock, PowBlockRepo, PowTxRepo } from '@meterio/scan-db';
 import * as Logger from 'bunyan';
 
-import { Network } from '../const';
-import { PowBlock } from '../model/powBlock.interface';
-import HeadRepo from '../repo/head.repo';
-import PowBlockRepo from '../repo/powBlock.repo';
-import PowTxRepo from '../repo/powTx.repo';
 import { Pow } from '../utils/pow-rpc';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';

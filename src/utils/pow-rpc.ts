@@ -1,12 +1,10 @@
 import '@meterio/flex';
 
-import BigNumber from 'bignumber.js';
+import { BigNumber, Network, PowBlock, PowTx } from '@meterio/scan-db';
 import Client from 'bitcoin-core';
 import LRU from 'lru-cache';
 
-import { GetPowConfig, Network } from '../const';
-import { PowBlock } from '../model/powBlock.interface';
-import { PowTx } from '../model/powTx.interface';
+import { GetPowConfig } from '../const';
 
 var bitcoin = require('bitcoinjs-lib');
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
+import { Network } from '@meterio/scan-db';
 // other imports
 import mongoose from 'mongoose';
 
 import { PosCMD } from '../cmd/pos.cmd';
-import { Network } from '../const';
 import { Pos, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 

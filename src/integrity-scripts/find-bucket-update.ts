@@ -2,10 +2,9 @@
 require('../utils/validateEnv');
 
 import { ScriptEngine } from '@meterio/devkit';
-import BigNumber from 'bignumber.js';
+import { BigNumber, TxRepo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import TxRepo from '../repo/tx.repo';
 import { fromWei } from '../utils';
 import { getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';

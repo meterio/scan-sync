@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
+import { Network, TxRepo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Network } from '../const';
-import TxRepo from '../repo/tx.repo';
 import { Pos, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 

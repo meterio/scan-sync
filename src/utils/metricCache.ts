@@ -1,5 +1,6 @@
-import { MetricName, MetricType } from '../const';
-import MetricRepo from '../repo/metric.repo';
+import { MetricRepo, MetricType } from '@meterio/scan-db';
+
+import { MetricName } from '../const';
 
 export const METRIC_DEFS = [
   { key: MetricName.DIFFICULTY, type: MetricType.BIGNUM, default: '1' },

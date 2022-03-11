@@ -7,11 +7,10 @@ require('../utils/validateEnv');
  */
 import * as path from 'path';
 
-import BigNumber from 'bignumber.js';
+import { BigNumber } from '@meterio/scan-db';
+import { AccountRepo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Token } from '../const';
-import AccountRepo from '../repo/account.repo';
 import { getNetworkFromCli } from '../utils';
 import { Pos, fromWei, saveCSV } from '../utils';
 import { connectDB } from '../utils/db';

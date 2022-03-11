@@ -1,8 +1,9 @@
 require('../utils/validateEnv');
 
+import { Network } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { GetPosConfig, Network } from '../const';
+import { GetPosConfig } from '../const';
 import { Net } from '../utils';
 import { Balance } from './types/balance';
 

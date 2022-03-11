@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import BigNumber from 'bignumber.js';
+import { BigNumber, Token, TokenProfileRepo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Token, prototype, totalSupply } from '../const';
-import TokenProfileRepo from '../repo/tokenProfile.repo';
+import { prototype, totalSupply } from '../const';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
@@ -34,11 +33,6 @@ const adjustTotalSupply = async () => {
     if (!p.totalSupply.isEqualTo(amount)) {
       console.log(`Update total supply for token ${p.symbol} from ${p.totalSupply.toFixed(0)} to ${amount}`);
       p.totalSupply = new BigNumber(amount);
-      updated = true;
-    }
-    if (!p.circulation.isEqualTo(amount)) {
-      console.log(`Update circulation for token ${p.symbol} from ${p.circulation.toFixed(0)} to ${amount}`);
-      p.circulation = new BigNumber(amount);
       updated = true;
     }
     if (updated) {

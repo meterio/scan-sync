@@ -1,5 +1,6 @@
+import { Network } from '@meterio/scan-db';
+
 import { ExecutorAddress, ExtensionAddress, ParamsAddress, PrototypeAddress } from './address';
-import { Network } from './network';
 
 const uint8ToAddress = (input: number) => '0x' + Buffer.alloc(1).fill(input).toString('hex').padStart(40, '0');
 

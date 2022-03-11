@@ -1,23 +1,27 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
+import {} from '../const';
+
+import {
+  AccountRepo,
+  AuctionRepo,
+  AuctionSummaryRepo,
+  BidRepo,
+  BlockRepo,
+  BoundRepo,
+  BucketRepo,
+  CommitteeRepo,
+  EpochRewardRepo,
+  EpochRewardSummaryRepo,
+  HeadRepo,
+  MovementRepo,
+  Network,
+  TxRepo,
+  UnboundRepo,
+} from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Network } from '../const';
-import AccountRepo from '../repo/account.repo';
-import AuctionRepo from '../repo/auction.repo';
-import AuctionSummaryRepo from '../repo/auctionSummary.repo';
-import BidRepo from '../repo/bid.repo';
-import BlockRepo from '../repo/block.repo';
-import BoundRepo from '../repo/bound.repo';
-import BucketRepo from '../repo/bucket.repo';
-import CommitteeRepo from '../repo/committee.repo';
-import EpochRewardRepo from '../repo/epochReward.repo';
-import EpochRewardSummaryRepo from '../repo/epochRewardSummary.repo';
-import HeadRepo from '../repo/head.repo';
-import MovementRepo from '../repo/movement.repo';
-import TxRepo from '../repo/tx.repo';
-import UnboundRepo from '../repo/unbound.repo';
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
@@ -25,7 +29,7 @@ const revertHeight = 4200000;
 
 const revertToHeight = async () => {
   const net = getNetworkFromCli();
-  if (!net) {
+  if (net === undefined) {
     process.exit(-1);
   }
 

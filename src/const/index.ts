@@ -1,7 +1,6 @@
-import { Network } from './network';
+import { Network } from '@meterio/scan-db';
 export * from './address';
 export * from './genesis';
-export * from './network';
 export * from './token';
 export * from './abi';
 export * from './model';
@@ -21,6 +20,18 @@ const MAINNET_POW_RPC_HOST = 'c03.meter.io';
 const MAINNET_POW_RPC_PORT = 8332;
 const MAINNET_POW_RPC_USER = 'testuser';
 const MAINNET_POW_RPC_PWD = 'testpass';
+
+export const getNetwork = (network: string) => {
+  switch (network.toLowerCase()) {
+    case 'devnet':
+      return Network.DevNet;
+    case 'testnet':
+      return Network.TestNet;
+    case 'mainnet':
+      return Network.MainNet;
+  }
+  return Network.TestNet;
+};
 
 export const GetPowConfig = (network: Network) => {
   if (network === Network.MainNet) {

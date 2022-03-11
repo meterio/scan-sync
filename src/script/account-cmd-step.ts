@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
+import {} from '../const';
+
+import { BlockRepo, Network } from '@meterio/scan-db';
 // other imports
 import mongoose from 'mongoose';
 
 import { AccountCMD } from '../cmd/account.cmd';
-import { Network } from '../const';
-import BlockRepo from '../repo/block.repo';
 import { connectDB } from '../utils/db';
 import { getNetworkFromCli } from '../utils/utils';
 

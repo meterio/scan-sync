@@ -1,20 +1,24 @@
 import { EventEmitter } from 'events';
 
+import {
+  AccountRepo,
+  AlertRepo,
+  BlockRepo,
+  Bucket,
+  BucketRepo,
+  HeadRepo,
+  MetricRepo,
+  Network,
+  Validator,
+  ValidatorRepo,
+  ValidatorStatus,
+} from '@meterio/scan-db';
+import { BigNumber } from '@meterio/scan-db';
 import axios from 'axios';
-import BigNumber from 'bignumber.js';
 import Logger from 'bunyan';
 
-import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, Network, ParamsAddress, ValidatorStatus } from '../const';
+import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, ParamsAddress } from '../const';
 import { KeyTransactionFeeAddress } from '../const/key';
-import { Bucket } from '../model/bucket.interface';
-import { Validator } from '../model/validator.interface';
-import AccountRepo from '../repo/account.repo';
-import AlertRepo from '../repo/alert.repo';
-import BlockRepo from '../repo/block.repo';
-import BucketRepo from '../repo/bucket.repo';
-import HeadRepo from '../repo/head.repo';
-import MetricRepo from '../repo/metric.repo';
-import ValidatorRepo from '../repo/validator.repo';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { MetricCache } from '../utils/metricCache';
 import { postToSlackChannel } from '../utils/slack';

@@ -1,17 +1,45 @@
 import { EventEmitter } from 'events';
 
 import { abi } from '@meterio/devkit';
-import BigNumber from 'bignumber.js';
+import {
+  Block,
+  BlockConcise,
+  BlockRepo,
+  BlockType,
+  Bound,
+  BoundRepo,
+  Clause,
+  Committee,
+  CommitteeMember,
+  CommitteeRepo,
+  Erc20TxDigest,
+  Erc20TxDigestRepo,
+  Head,
+  HeadRepo,
+  Movement,
+  MovementRepo,
+  Network,
+  PosEvent,
+  PosTransfer,
+  Token,
+  TokenProfile,
+  TokenProfileRepo,
+  Tx,
+  TxDigest,
+  TxDigestRepo,
+  TxOutput,
+  TxRepo,
+  Unbound,
+  UnboundRepo,
+} from '@meterio/scan-db';
+import { BigNumber } from '@meterio/scan-db';
 import * as Logger from 'bunyan';
 import { sha1 } from 'object-hash';
 
 import {
-  BlockType,
   BoundEvent,
   GetPosConfig,
-  Network,
   PrototypeAddress,
-  Token,
   TokenBasic,
   TransferEvent,
   UnboundEvent,
@@ -22,28 +50,6 @@ import {
   prototype,
   symbolABIFunc,
 } from '../const';
-import { CommitteeMember } from '../model/block.interface';
-import { Block } from '../model/block.interface';
-import { BlockConcise } from '../model/blockConcise.interface';
-import { Bound } from '../model/bound.interface';
-import { Committee } from '../model/committee.interface';
-import { Erc20TxDigest } from '../model/erc20TxDigest.interface';
-import { Head } from '../model/head.interface';
-import { Movement } from '../model/movement.interface';
-import { TokenProfile } from '../model/tokenProfile.interface';
-import { Clause, PosEvent, PosTransfer, Transfer, Tx, TxOutput } from '../model/tx.interface';
-import { TxDigest } from '../model/txDigest.interface';
-import { Unbound } from '../model/unbound.interface';
-import BlockRepo from '../repo/block.repo';
-import BoundRepo from '../repo/bound.repo';
-import CommitteeRepo from '../repo/committee.repo';
-import Erc20TxDigestRepo from '../repo/erc20TxDigest.repo';
-import HeadRepo from '../repo/head.repo';
-import MovementRepo from '../repo/movement.repo';
-import TokenProfileRepo from '../repo/tokenProfile.repo';
-import TxRepo from '../repo/tx.repo';
-import TxDigestRepo from '../repo/txDigest.repo';
-import UnboundRepo from '../repo/unbound.repo';
 import { isHex } from '../utils/hex';
 import { Pos } from '../utils/pos-rest';
 import { InterruptedError, sleep } from '../utils/utils';

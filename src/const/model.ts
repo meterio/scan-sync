@@ -1,20 +1,3 @@
-export enum Token {
-  MTR = 0,
-  MTRG,
-  ERC20,
-}
-
-export enum BlockType {
-  MBlock,
-  KBlock,
-}
-
-export enum MetricType {
-  NUM = 0,
-  BIGNUM,
-  STRING,
-}
-
 export enum MetricName {
   DIFFICULTY = 'difficulty',
   HASHRATE = 'networkhashps',
@@ -54,11 +37,3 @@ export enum MetricName {
   MTRG_STAKED_LOCKED = 'mtrg_staked_locked',
   TX_FEE_BENEFICIARY = 'tx_fee_beneficiary',
 }
-
-export enum ValidatorStatus {
-  CANDIDATE = 0,
-  DELEGATE,
-  JAILED,
-}
-
-export const enumKeys = (es: any) => Object.values(es).filter((x) => typeof x === 'string');

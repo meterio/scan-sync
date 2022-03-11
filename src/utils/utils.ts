@@ -1,6 +1,6 @@
-import BigNumber from 'bignumber.js';
+import { BigNumber, Network } from '@meterio/scan-db';
 
-import { Network, UNIT_WEI } from '../const';
+import { UNIT_WEI } from '../const';
 
 export const MAX_BLOCK_PROPOSERS = 101;
 export const BLOCK_INTERVAL = 10;

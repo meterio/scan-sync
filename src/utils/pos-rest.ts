@@ -1,9 +1,9 @@
 import '@meterio/flex';
 
-import { number } from 'bitcoinjs-lib/types/script';
+import { Network } from '@meterio/scan-db';
 import LRU from 'lru-cache';
 
-import { GetPosConfig, Network } from '../const';
+import { GetPosConfig } from '../const';
 import { Net } from './net';
 import { blockIDtoNum, isBytes32 } from './utils';
 
@@ -219,10 +219,10 @@ export class Pos {
   private net: Net;
   private get headerValidator() {
     return (headers: Record<string, string>) => {
-      const xGeneID = headers['x-genesis-id'];
-      if (xGeneID && xGeneID !== this.genesisID) {
-        throw new Error(`responded 'x-genesis-id' not match`);
-      }
+      // const xGeneID = headers['x-genesis-id'];
+      // if (xGeneID && xGeneID !== this.genesisID) {
+      //   throw new Error(`responded 'x-genesis-id' not match`);
+      // }
     };
   }
 

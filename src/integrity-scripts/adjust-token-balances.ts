@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
+import {} from '../const';
+
 import { abi } from '@meterio/devkit';
-import { blake2b256 } from '@meterio/devkit/dist/cry';
-import BigNumber from 'bignumber.js';
+import { BigNumber, HeadRepo, Token, TokenBalanceRepo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Token } from '../const';
-import HeadRepo from '../repo/head.repo';
-import TokenBalanceRepo from '../repo/tokenBalance.repo';
 import { Pos, checkNetworkWithDB, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 

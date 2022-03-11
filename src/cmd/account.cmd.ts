@@ -1,26 +1,21 @@
-import BigNumber from 'bignumber.js';
-import * as Logger from 'bunyan';
-
 import {
-  MetricName,
+  Block,
+  BlockConcise,
+  BoundRepo,
+  MetricRepo,
+  Movement,
+  MovementRepo,
   Network,
   Token,
-  ZeroAddress,
-  balanceOf,
-  getPreAllocAccount,
-  prototype,
-  totalSupply,
-} from '../const';
-import { Block } from '../model/block.interface';
-import { BlockConcise } from '../model/blockConcise.interface';
-import { Movement } from '../model/movement.interface';
-import { Tx } from '../model/tx.interface';
-import BoundRepo from '../repo/bound.repo';
-import MetricRepo from '../repo/metric.repo';
-import MovementRepo from '../repo/movement.repo';
-import TokenBalanceRepo from '../repo/tokenBalance.repo';
-import TokenProfileRepo from '../repo/tokenProfile.repo';
-import UnboundRepo from '../repo/unbound.repo';
+  TokenBalanceRepo,
+  TokenProfileRepo,
+  Tx,
+  UnboundRepo,
+} from '@meterio/scan-db';
+import { BigNumber } from '@meterio/scan-db';
+import * as Logger from 'bunyan';
+
+import { MetricName, ZeroAddress, balanceOf, getPreAllocAccount, prototype, totalSupply } from '../const';
 import { fromWei } from '../utils/utils';
 import { TxBlockReviewer } from './blockReviewer';
 import { AccountDeltaMap, ContractInfo, TokenDeltaMap } from './types';

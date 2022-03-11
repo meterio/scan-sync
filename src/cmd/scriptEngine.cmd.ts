@@ -1,23 +1,27 @@
 import * as devkit from '@meterio/devkit';
-import BigNumber from 'bignumber.js';
+import {
+  AuctionDist,
+  AuctionRepo,
+  AuctionSummaryRepo,
+  AuctionTx,
+  Bid,
+  BidRepo,
+  Block,
+  EpochReward,
+  EpochRewardRepo,
+  EpochRewardSummary,
+  EpochRewardSummaryRepo,
+  Known,
+  KnownRepo,
+  Network,
+  RewardInfo,
+  Token,
+  Tx,
+  ValidatorRewardRepo,
+} from '@meterio/scan-db';
+import { BigNumber } from '@meterio/scan-db';
 import * as Logger from 'bunyan';
 
-import { Network, Token } from '../const';
-import { AuctionDist, AuctionTx } from '../model/auctionSummary.interface';
-import { Bid } from '../model/bid.interface';
-import { Block } from '../model/block.interface';
-import { EpochReward } from '../model/epochReward.interface';
-import { EpochRewardSummary } from '../model/epochRewardSummary.interface';
-import { Known } from '../model/known.interface';
-import { Tx } from '../model/tx.interface';
-import { RewardInfo } from '../model/validatorReward.interface';
-import AuctionRepo from '../repo/auction.repo';
-import AuctionSummaryRepo from '../repo/auctionSummary.repo';
-import BidRepo from '../repo/bid.repo';
-import EpochRewardRepo from '../repo/epochReward.repo';
-import EpochRewardSummaryRepo from '../repo/epochRewardSummary.repo';
-import KnownRepo from '../repo/known.repo';
-import ValidatorRewardRepo from '../repo/validatorReward.repo';
 import { TxBlockReviewer } from './blockReviewer';
 
 export class ScriptEngineCMD extends TxBlockReviewer {

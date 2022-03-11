@@ -1,17 +1,17 @@
-import {} from '../utils/utils';
-
 import { EventEmitter } from 'events';
 
+import {
+  AccountRepo,
+  Block,
+  BlockRepo,
+  CommitteeRepo,
+  HeadRepo,
+  MovementRepo,
+  Network,
+  TxRepo,
+} from '@meterio/scan-db';
 import * as Logger from 'bunyan';
 
-import { Network } from '../const';
-import { Block } from '../model/block.interface';
-import AccountRepo from '../repo/account.repo';
-import BlockRepo from '../repo/block.repo';
-import CommitteeRepo from '../repo/committee.repo';
-import HeadRepo from '../repo/head.repo';
-import MovementRepo from '../repo/movement.repo';
-import TxRepo from '../repo/tx.repo';
 import { InterruptedError, Pos, sleep } from '../utils';
 import { CMD } from './cmd';
 

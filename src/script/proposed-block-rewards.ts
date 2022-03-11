@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import BigNumber from 'bignumber.js';
+import { BigNumber, Network } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { BoundEvent, GetPosConfig, Network, UnboundEvent } from '../const';
+import { BoundEvent, GetPosConfig, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
 import { Balance } from './types/balance';
 

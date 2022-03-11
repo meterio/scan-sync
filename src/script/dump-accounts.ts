@@ -3,10 +3,9 @@ require('../utils/validateEnv');
 
 import * as path from 'path';
 
+import { AccountRepo, Network } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import { Network } from '../const';
-import AccountRepo from '../repo/account.repo';
 import { checkNetworkWithDB, getNetworkFromCli, saveCSV } from '../utils';
 import { connectDB } from '../utils/db';
 

@@ -1,6 +1,4 @@
-import BigNumber from 'bignumber.js';
-
-import { Token } from '../const';
+import { BigNumber, Token } from '@meterio/scan-db';
 
 export interface AccountDelta {
   mtr: BigNumber;

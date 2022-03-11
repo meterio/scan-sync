@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import BigNumber from 'bignumber.js';
+import { BigNumber } from '@meterio/scan-db';
+import { BidRepo, EpochRewardRepo } from '@meterio/scan-db';
 import mongoose from 'mongoose';
 
-import BidRepo from '../repo/bid.repo';
-import EpochRewardRepo from '../repo/epochReward.repo';
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 import { connectDB } from '../utils/db';
 
