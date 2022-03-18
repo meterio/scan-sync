@@ -53,12 +53,12 @@ export const GetPowConfig = (network: Network) => {
 };
 
 export const GetPosConfig = (network: Network) => {
-  if (network === Network.MainNet) {
+  if (network === Network.MainNet || network === Network.MainNetStandBy) {
     return {
       url: MAINNET_PROVIDER_URL,
     };
   }
-  if (network === Network.TestNet) {
+  if (network === Network.TestNet || network === Network.TestNetStandBy) {
     return {
       url: TESTNET_PROVIDER_URL,
     };
