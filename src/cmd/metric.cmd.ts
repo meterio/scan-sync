@@ -7,18 +7,15 @@ import {
   Bucket,
   BucketRepo,
   HeadRepo,
-  MetricRepo,
   Network,
   Validator,
   ValidatorRepo,
   ValidatorStatus,
 } from '@meterio/scan-db/dist';
 import { BigNumber } from '@meterio/scan-db/dist';
-import axios from 'axios';
 import Logger from 'bunyan';
 
-import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName, ParamsAddress } from '../const';
-import { KeyTransactionFeeAddress } from '../const/key';
+import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName } from '../const';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { MetricCache } from '../utils/metricCache';
 import { postToSlackChannel } from '../utils/slack';
@@ -42,7 +39,6 @@ export class MetricCMD extends CMD {
   private ev = new EventEmitter();
   private name = 'metric';
   private logger = Logger.createLogger({ name: this.name });
-  private metricRepo = new MetricRepo();
   private pos: Pos;
   private pow: Pow;
   private network: Network;
@@ -82,21 +78,6 @@ export class MetricCMD extends CMD {
       this.logger.info('shutting down......');
       this.ev.on('closed', resolve);
     });
-  }
-
-  private async updateTransactionFeeBeneficiary(index: number, interval: number) {
-    if (index % interval === 0) {
-      console.log('update transaction-fee-beneficiary');
-      const h = await this.headRepo.findByKey('account');
-      const txFeeAddr = await this.pos.getStorage(ParamsAddress, KeyTransactionFeeAddress, h.num.toString());
-      console.log('Tx Fee Addr:', txFeeAddr);
-      if (!!txFeeAddr && txFeeAddr.value) {
-        const addrVal = txFeeAddr.value;
-        const n = 40;
-        const sysBeneficiary = '0x' + addrVal.substring(addrVal.length - n);
-        await this.cache.update(MetricName.TX_FEE_BENEFICIARY, sysBeneficiary);
-      }
-    }
   }
 
   private async updatePowInfo(index: number, interval: number) {
@@ -274,15 +255,13 @@ export class MetricCMD extends CMD {
   private async updateAuctionInfo(index: number, interval: number) {
     if (index % interval === 0) {
       console.log('update auction info');
-      let sUpdated = false,
-        pUpdated = false;
       const present = await this.pos.getPresentAuction();
       const summaries = await this.pos.getAuctionSummaries();
       if (!!present) {
-        pUpdated = await this.cache.update(MetricName.PRESENT_AUCTION, JSON.stringify(present));
+        await this.cache.update(MetricName.PRESENT_AUCTION, JSON.stringify(present));
       }
       if (!!summaries) {
-        sUpdated = await this.cache.update(MetricName.AUCTION_SUMMARIES, JSON.stringify(summaries));
+        await this.cache.update(MetricName.AUCTION_SUMMARIES, JSON.stringify(summaries));
       }
     }
   }
@@ -292,58 +271,36 @@ export class MetricCMD extends CMD {
       console.log('update invalid nodes');
       try {
         let invalidNodes = [];
-        const res = await axios.get(`http://monitor.meter.io:9090/api/v1/query?query=best_height`);
-        let job = '';
-        switch (this.network) {
-          case Network.MainNet:
-            job = 'mainnet_metrics';
-            break;
-          case Network.TestNet:
-            job = 'shoal_metrics';
-            break;
-          default:
-            console.log('incorrect network setting for network status update');
-            return;
-        }
-        let bests = res.data.data.result
-          .filter((r) => r.metric.job === job)
-          .map((r) => ({ ip: r.metric.instance, name: r.metric.name, height: r.value[1] }));
-        const headHeight = Number(this.cache.get(MetricName.POS_BEST));
         const validators = await this.validatorRepo.findAll();
-        let visited = {};
         for (const v of validators) {
-          let found = false;
-          if (visited[v.ipAddress]) {
+          let probe: Pos.ProbeInfo;
+          try {
+            probe = await this.pos.probe(v.ipAddress);
+          } catch (e) {
+            console.log(e);
+            console.log(`could not probe ${v.ipAddress}`);
+            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'could not probe' });
             continue;
           }
-          visited[v.ipAddress] = true;
-          for (const b of bests) {
-            if (v.ipAddress === b.ip) {
-              found = true;
-              if (Math.abs(headHeight - b.height) > 3) {
-                // too far away from current height
-                invalidNodes.push({
-                  name: v.name,
-                  ip: v.ipAddress,
-                  reason: 'fall behind',
-                });
-              }
-            }
+          console.log(`got probe for ${v.ipAddress}`);
+          if (!(probe.isCommitteeMember && probe.isPacemakerRunning)) {
+            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'in committee without pacemaker running' });
+            continue;
           }
-          if (!found) {
-            invalidNodes.push({
-              name: v.name,
-              ip: v.ipAddress,
-              reason: 'not monitored',
-            });
+          if (!probe.pubkeyValid) {
+            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'invalid pubkey' });
+            continue;
+          }
+          const headHeight = Number(this.cache.get(MetricName.POS_BEST));
+          if (headHeight - probe.bestBlock.number > 3) {
+            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'fall behind' });
           }
         }
-
         console.log('update invalid nodes');
         await this.cache.update(MetricName.INVALID_NODES, JSON.stringify(invalidNodes));
         await this.cache.update(MetricName.INVALID_NODES_COUNT, `${invalidNodes.length}`);
       } catch (e) {
-        console.log('could not query pos height');
+        console.log('could not query pos height: ', e);
       }
     }
   }
@@ -604,16 +561,13 @@ export class MetricCMD extends CMD {
         // update pos best, difficulty && hps
         await this.updatePowInfo(index, every10m);
 
-        // update transaction-fee-beneficiary
-        await this.updateTransactionFeeBeneficiary(index, every1m);
-
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);
 
         // check network, if halt for 2 mins, send alert
         await this.alertIfNetworkHalt(index, every1m);
 
-        // update bitcoin info every 5seconds
+        // update bitcoin info every 5 minutes
         await this.updateBitcoinInfo(index, every5m);
 
         // update price/change every 10 minutes

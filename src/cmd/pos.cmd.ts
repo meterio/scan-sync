@@ -50,14 +50,15 @@ import {
   getERC20Token,
   prototype,
   getAccountName,
+  ParamsAddress,
 } from '../const';
-import { isHex } from '../utils/hex';
-import { Pos, fromWei } from '../utils';
+import { Pos, fromWei, isHex } from '../utils';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 import { newIterator, LogItem } from '../utils/log-traverser';
 import { AccountCache, TokenBalanceCache } from './types';
 import { MetricName, getPreAllocAccount } from '../const';
+import { KeyTransactionFeeAddress } from '../const/key';
 
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
@@ -110,6 +111,7 @@ export class PosCMD extends CMD {
   private contractsCache: Contract[] = [];
   private accountCache: AccountCache;
   private tokenBalanceCache = new TokenBalanceCache();
+  private beneficiaryCache = ZeroAddress;
 
   constructor(net: Network) {
     super();
@@ -148,6 +150,7 @@ export class PosCMD extends CMD {
     this.accountCache.clean();
     this.tokenBalanceCache.clean();
     this.rebasingsCache = [];
+    this.beneficiaryCache = ZeroAddress;
   }
 
   private async getBlockFromREST(num: number) {
@@ -162,8 +165,8 @@ export class PosCMD extends CMD {
     return b;
   }
 
-  private async fixAccount(acct: Account & { save() }, blockNum: number) {
-    const chainAcc = await this.pos.getAccount(acct.address, blockNum.toString());
+  private async fixAccount(acct: Account & { save() }, blockHash: string) {
+    const chainAcc = await this.pos.getAccount(acct.address, blockHash);
     const balance = new BigNumber(chainAcc.balance);
     const energy = new BigNumber(chainAcc.energy);
     const boundedBalance = new BigNumber(chainAcc.boundbalance);
@@ -201,8 +204,8 @@ export class PosCMD extends CMD {
     }
   }
 
-  public async fixTokenBalance(bal: TokenBalance & { save() }, blockNum: number) {
-    const chainBal = await this.pos.getERC20BalanceOf(bal.address, bal.tokenAddress, blockNum.toString());
+  private async fixTokenBalance(bal: TokenBalance & { save() }, blockHash: string) {
+    const chainBal = await this.pos.getERC20BalanceOf(bal.address, bal.tokenAddress, blockHash);
     const preBal = bal.balance;
     if (!preBal.isEqualTo(chainBal)) {
       bal.balance = new BigNumber(chainBal);
@@ -212,7 +215,23 @@ export class PosCMD extends CMD {
     }
   }
 
-  public async cleanUpIncompleteData(blockNum: number) {
+  private async updateTxFeeBeneficiary(head: Head) {
+    const txFeeAddr = await this.pos.getStorage(ParamsAddress, KeyTransactionFeeAddress, head.hash);
+    if (!!txFeeAddr && txFeeAddr.value) {
+      const addrVal = txFeeAddr.value;
+      const n = 40;
+      const newBeneficiary = '0x' + addrVal.substring(addrVal.length - n);
+      if (newBeneficiary !== this.beneficiaryCache) {
+        console.log('Beneficiary updated to :', newBeneficiary);
+        this.beneficiaryCache = newBeneficiary;
+        await this.metricRepo.update(MetricName.TX_FEE_BENEFICIARY, newBeneficiary);
+      }
+    }
+  }
+
+  public async cleanUpIncompleteData(head: Head) {
+    const blockNum = head.num;
+    const blockHash = head.hash;
     // delete invalid/incomplete blocks
     const block = await this.blockRepo.deleteAfter(blockNum);
     const tx = await this.txRepo.deleteAfter(blockNum);
@@ -224,11 +243,11 @@ export class PosCMD extends CMD {
     const contract = await this.contractRepo.deleteAfter(blockNum);
     const accts = await this.accountRepo.findLastUpdateAfter(blockNum);
     for (const acct of accts) {
-      await this.fixAccount(acct, blockNum);
+      await this.fixAccount(acct, blockHash);
     }
     const bals = await this.tokenBalanceRepo.findLastUpdateAfter(blockNum);
     for (const bal of bals) {
-      await this.fixTokenBalance(bal, blockNum);
+      await this.fixTokenBalance(bal, blockHash);
     }
     this.logger.info(
       {
@@ -252,7 +271,7 @@ export class PosCMD extends CMD {
 
     let head = await this.headRepo.findByKey(this.name);
     if (head) {
-      await this.cleanUpIncompleteData(head.num);
+      await this.cleanUpIncompleteData(head);
     }
 
     for (;;) {
@@ -266,6 +285,8 @@ export class PosCMD extends CMD {
 
         if (headNum === -1) {
           await this.processGenesis();
+        } else {
+          await this.updateTxFeeBeneficiary(head);
         }
 
         const bestNum = await this.web3.eth.getBlockNumber();
@@ -905,11 +926,6 @@ export class PosCMD extends CMD {
   async processBlock(blk: Pos.ExpandedBlock): Promise<void> {
     // this.logger.info({ number: blk.number }, 'start to process block');
     const blockConcise: BlockConcise = { ...blk, hash: blk.id, timestamp: blk.timestamp };
-    const txFeeBeneficiary = await this.metricRepo.findByKey(MetricName.TX_FEE_BENEFICIARY);
-    let sysBeneficiary = '0x';
-    if (txFeeBeneficiary) {
-      sysBeneficiary = txFeeBeneficiary.value;
-    }
 
     let score = 0;
     let gasChanged = 0;
@@ -937,10 +953,10 @@ export class PosCMD extends CMD {
     }
 
     // add block reward beneficiary account
-    if (sysBeneficiary === ZeroAddress || sysBeneficiary === '0x') {
+    if (this.beneficiaryCache === ZeroAddress || this.beneficiaryCache === '0x') {
       this.accountCache.plus(blk.beneficiary, Token.MTR, actualReward, blockConcise);
     } else {
-      this.accountCache.plus(sysBeneficiary, Token.MTR, actualReward, blockConcise);
+      this.accountCache.plus(this.beneficiaryCache, Token.MTR, actualReward, blockConcise);
     }
 
     let powBlocks: Flex.Meter.PowBlock[] = [];
