@@ -226,6 +226,36 @@ export namespace Pos {
     powBlocks: Flex.Meter.PowBlock[];
     nonce: number;
   };
+
+  export type ProbeQC = {
+    qcHeight: number;
+    qcRound: number;
+    epochID: number;
+  };
+  export type ProbeBlock = {
+    number: number;
+    id: string;
+    parentID: string;
+    blockType: string;
+    qc: ProbeQC;
+    timestamp: number;
+    txCount: number;
+    lastKBlockHeight: number;
+    hasCommitteeInfo: Boolean;
+    nonce: number;
+  };
+  export type ProbeInfo = {
+    name: string;
+    pubkey: string;
+    pubkeyValid: Boolean;
+    version: string;
+    bestBlock: ProbeBlock;
+    bestQC: ProbeQC;
+    qcHigh: ProbeQC;
+    bestQCCandidate: ProbeQC;
+    isCommitteeMember: Boolean;
+    isPacemakerRunning: Boolean;
+  };
 }
 
 export class Pos {
@@ -510,5 +540,10 @@ export class Pos {
     } catch (e) {
       console.log('Error happened during fetch ERC20 balanceOf');
     }
+  }
+
+  public async probe(ipAddress: string): Promise<Pos.ProbeInfo> {
+    const net = new Net(`http://${ipAddress}:8670`);
+    return net.http('GET', 'probe', {});
   }
 }

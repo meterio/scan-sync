@@ -15,7 +15,7 @@ export const printUsage = (msg = '') => {
   error(`${msg ? msg + '\n\n' : ''}Usage: node index.js [Network][Task][...Args]
   --------
   Network:    [main|test]
-  Task:       [pos|pow|account|metric|scriptengine]`);
+  Task:       [pos|pow|metric|scriptengine]`);
   process.exit(-1);
 };
 
