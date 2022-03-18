@@ -52,6 +52,10 @@ export class ScriptEngineCMD extends TxBlockReviewer {
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       const clause = tx.clauses[clauseIndex];
 
+      if (!clause) {
+        console.log('clause is EMPTY: ', tx.hash, ', txIndex=', txIndex, ', clauseIndex=', clauseIndex);
+        continue;
+      }
       if (!se.IsScriptEngineData(clause.data)) {
         continue;
       }
