@@ -1,4 +1,4 @@
-import { Network } from '@meterio/scan-db';
+import { Network } from '@meterio/scan-db/dist';
 export * from './address';
 export * from './genesis';
 export * from './token';

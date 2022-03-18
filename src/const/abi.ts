@@ -7,16 +7,6 @@ const $MasterABI: abi.Event.Definition = {
   name: '$Master',
   type: 'event',
 };
-const TransferABI: abi.Event.Definition = {
-  anonymous: false,
-  inputs: [
-    { indexed: true, name: '_from', type: 'address' },
-    { indexed: true, name: '_to', type: 'address' },
-    { indexed: false, name: '_value', type: 'uint256' },
-  ],
-  name: 'Transfer',
-  type: 'event',
-};
 
 const methodMasterABI: abi.Function.Definition = {
   constant: true,
@@ -28,52 +18,6 @@ const methodMasterABI: abi.Function.Definition = {
   type: 'function',
 };
 
-// ERC20 methods
-const nameABI: abi.Function.Definition = {
-  constant: true,
-  inputs: [],
-  name: 'name',
-  outputs: [{ name: '', type: 'string' }],
-  payable: false,
-  stateMutability: 'view',
-  type: 'function',
-};
-const symbolABI: abi.Function.Definition = {
-  constant: true,
-  inputs: [],
-  name: 'symbol',
-  outputs: [{ name: '', type: 'string' }],
-  payable: false,
-  stateMutability: 'view',
-  type: 'function',
-};
-const decimalsABI: abi.Function.Definition = {
-  constant: true,
-  inputs: [],
-  name: 'decimals',
-  outputs: [{ name: '', type: 'uint8' }],
-  payable: false,
-  stateMutability: 'view',
-  type: 'function',
-};
-const BalanceOfABI: abi.Function.Definition = {
-  constant: true,
-  inputs: [{ name: '_owner', type: 'address' }],
-  name: 'balanceOf',
-  outputs: [{ name: 'balance', type: 'uint256' }],
-  payable: false,
-  stateMutability: 'view',
-  type: 'function',
-};
-const totalSupplyABI: abi.Function.Definition = {
-  constant: true,
-  inputs: [],
-  name: 'totalSupply',
-  outputs: [{ name: 'supply', type: 'uint256' }],
-  payable: false,
-  stateMutability: 'view',
-  type: 'function',
-};
 const firstABI: abi.Function.Definition = {
   constant: true,
   inputs: [],
@@ -174,13 +118,6 @@ const UnboundABI: abi.Event.Definition = {
   name: 'Unbound',
   type: 'event',
 };
-
-export const TransferEvent = new abi.Event(TransferABI);
-export const balanceOf = new abi.Function(BalanceOfABI);
-export const totalSupply = new abi.Function(totalSupplyABI);
-export const nameABIFunc = new abi.Function(nameABI);
-export const decimalsABIFunc = new abi.Function(decimalsABI);
-export const symbolABIFunc = new abi.Function(symbolABI);
 
 export const BoundEvent = new abi.Event(BoundABI);
 export const UnboundEvent = new abi.Event(UnboundABI);
