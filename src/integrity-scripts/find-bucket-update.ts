@@ -2,12 +2,10 @@
 require('../utils/validateEnv');
 
 import { ScriptEngine } from '@meterio/devkit';
-import { BigNumber, TxRepo } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { BigNumber, TxRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { fromWei } from '../utils';
 import { getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const blockNum = 9470000;
 const findBucketUpdate = async () => {
@@ -68,7 +66,7 @@ const findBucketUpdate = async () => {
 (async () => {
   try {
     await findBucketUpdate();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

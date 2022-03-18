@@ -19,11 +19,11 @@ import {
   Network,
   TxRepo,
   UnboundRepo,
-} from '@meterio/scan-db';
-import mongoose from 'mongoose';
+  connectDB,
+  disconnectDB,
+} from '@meterio/scan-db/dist';
 
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const revertHeight = 4200000;
 
@@ -119,7 +119,7 @@ const revertToHeight = async () => {
 (async () => {
   try {
     await revertToHeight();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

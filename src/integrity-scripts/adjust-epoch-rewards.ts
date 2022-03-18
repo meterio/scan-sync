@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { BigNumber } from '@meterio/scan-db';
-import { BidRepo, EpochRewardRepo } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { BidRepo, BigNumber, EpochRewardRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const adjustEpochRewards = async () => {
   const net = getNetworkFromCli();
@@ -75,7 +72,7 @@ const adjustEpochRewards = async () => {
 (async () => {
   try {
     await adjustEpochRewards();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

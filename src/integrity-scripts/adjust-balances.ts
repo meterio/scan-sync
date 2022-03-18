@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { AccountRepo, BigNumber, HeadRepo, Network, Token } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { AccountRepo, BigNumber, HeadRepo, Network, Token, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { PrototypeAddress, ZeroAddress, prototype } from '../const';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const testnetRevision = '250000';
 
@@ -106,7 +104,7 @@ const adjustBalance = async () => {
 (async () => {
   try {
     await adjustBalance();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

@@ -2,13 +2,18 @@
 require('../utils/validateEnv');
 
 import { ScriptEngine } from '@meterio/devkit';
-import { BlockRepo, EpochRewardRepo, EpochRewardSummaryRepo, TxRepo } from '@meterio/scan-db';
-import { BigNumber } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import {
+  BigNumber,
+  BlockRepo,
+  EpochRewardRepo,
+  EpochRewardSummaryRepo,
+  TxRepo,
+  connectDB,
+  disconnectDB,
+} from '@meterio/scan-db/dist';
 
 import { StakingModuleAddress } from '../const';
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const adjustEpochRewardSummary = async () => {
   const net = getNetworkFromCli();
@@ -94,7 +99,7 @@ const adjustEpochRewardSummary = async () => {
 (async () => {
   try {
     await adjustEpochRewardSummary();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

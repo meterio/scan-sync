@@ -2,12 +2,10 @@
 require('../utils/validateEnv');
 
 import { ScriptEngine } from '@meterio/devkit';
-import { BigNumber, TxRepo } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { BigNumber, TxRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { fromWei } from '../utils';
 import { getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const origin = '0x1ce46b7bf47e144e3aa0203e5de1395e85fce087';
 
@@ -74,7 +72,7 @@ const listBuckets = async () => {
 (async () => {
   try {
     await listBuckets();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);
