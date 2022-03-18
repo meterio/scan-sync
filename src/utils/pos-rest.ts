@@ -1,7 +1,8 @@
 import '@meterio/flex';
 
-import { Network } from '@meterio/scan-db';
+import { Network, Token } from '@meterio/scan-db/dist';
 import LRU from 'lru-cache';
+import { ERC165, ERC721, ERC1155, ERC721Metadata, ERC20 } from '@meterio/devkit';
 
 import { GetPosConfig } from '../const';
 import { Net } from './net';
@@ -14,12 +15,25 @@ export namespace Pos {
   export type Block<T extends 'expanded' | 'regular'> = T extends 'expanded'
     ? ExpandedBlock
     : Required<Flex.Meter.Block>;
+  export interface CallTracerOutput {
+    type: string;
+    from: string;
+    to: string;
+    value: string;
+    gas?: string;
+    gasUsed?: string;
+    output?: string;
+    input?: string;
+    error?: string;
+    calls?: CallTracerOutput[];
+  }
   export type Transaction = Flex.Meter.Transaction;
   export type Receipt = Flex.Meter.Receipt;
   export type Account = Flex.Meter.Account;
   export type Code = Flex.Meter.Code;
   export type Storage = Flex.Meter.Storage;
-  export type Event = Flex.Meter.Event;
+  export type Event = Flex.Meter.Event & { overallIndex?: number };
+  export type Transfer = Flex.Meter.Transfer & { overallIndex?: number };
   export type VMOutput = Flex.Meter.VMOutput;
 
   export type Candidate = {
@@ -229,8 +243,9 @@ export class Pos {
   // default genesis ID to mainnet
   constructor(readonly genesisID = Network.MainNet) {
     const posConfig = GetPosConfig(genesisID);
+    console.log(posConfig.url);
     this.net = new Net(posConfig.url);
-    this.cache = new LRU<string, any>(1024 * 4);
+    this.cache = new LRU<string, any>({ max: 1024 * 4 });
   }
 
   public async getBalanceOnRevision(revision: string | number, address: string) {
@@ -380,6 +395,7 @@ export class Pos {
   }
 
   public explain(arg: Flex.Driver.ExplainArg, revision: string) {
+    console.log(arg);
     return this.httpPost<Pos.VMOutput[]>('accounts/*', arg, { revision });
   }
 
@@ -396,5 +412,103 @@ export class Pos {
       query,
       validateResponseHeader: this.headerValidator,
     });
+  }
+
+  public traceClause(blockID: string, txIndex: number, clauseIndex = 0) {
+    return this.httpPost<Pos.CallTracerOutput>('debug/tracers', {
+      name: 'call',
+      target: `${blockID}/${txIndex}/${clauseIndex}`,
+    });
+  }
+
+  public async fetchERC721AndERC1155Data(address, blockHash) {
+    try {
+      const outputs = await this.explain(
+        {
+          clauses: [
+            {
+              to: address,
+              value: '0x0',
+              data: ERC165.supportsInterface.encode(ERC721.interfaceID),
+              token: Token.MTR,
+            },
+            {
+              to: address,
+              value: '0x0',
+              data: ERC165.supportsInterface.encode(ERC721Metadata.interfaceID),
+              token: Token.MTR,
+            },
+            {
+              to: address,
+              value: '0x0',
+              data: ERC165.supportsInterface.encode(ERC1155.interfaceID),
+              token: Token.MTR,
+            },
+            { to: address, value: '0x0', data: ERC20.name.encode(), token: Token.MTR },
+            { to: address, value: '0x0', data: ERC20.symbol.encode(), token: Token.MTR },
+          ],
+        },
+        blockHash
+      );
+
+      const valid = (i) => !!outputs[i] && !outputs[i].reverted && outputs[i].data !== '0x';
+
+      const supports721 = valid(0) ? ERC165.supportsInterface.decode(outputs[0].data)['0'] : false;
+      const supports721meta = valid(1) ? ERC165.supportsInterface.decode(outputs[1].data)['0'] : false;
+      const supports1155 = valid(2) ? ERC165.supportsInterface.decode(outputs[2].data)['0'] : false;
+
+      const name = valid(3) ? ERC20.name.decode(outputs[3].data)['0'] : '';
+      const symbol = valid(4) ? ERC20.symbol.decode(outputs[4].data)['0'] : '';
+      return {
+        supports1155,
+        supports721meta,
+        supports721,
+        name,
+        symbol,
+      };
+    } catch (e) {
+      console.log('ERROR happened during fetching ERC721/1155 data:', e);
+    }
+  }
+
+  public async fetchERC20Data(address: string, blockHash: string) {
+    try {
+      const outputs = await this.explain(
+        {
+          clauses: [
+            { to: address, value: '0x0', data: ERC20.totalSupply.encode(), token: Token.MTR },
+            { to: address, value: '0x0', data: ERC20.name.encode(), token: Token.MTR },
+            { to: address, value: '0x0', data: ERC20.symbol.encode(), token: Token.MTR },
+            { to: address, value: '0x0', data: ERC20.decimals.encode(), token: Token.MTR },
+          ],
+        },
+        blockHash
+      );
+
+      const valid = (i) => !!outputs[i] && !outputs[i].reverted && outputs[i].data !== '0x';
+      const totalSupply = valid(0) ? ERC20.symbol.decode(outputs[0].data)['0'] : 0;
+      const name = valid(1) ? ERC20.name.decode(outputs[1].data)['0'] : '';
+      const symbol = valid(2) ? ERC20.symbol.decode(outputs[2].data)['0'] : '';
+      const decimals = valid(3) ? ERC20.symbol.decode(outputs[3].data)['0'] : 0;
+      return { totalSupply, name, symbol, decimals };
+    } catch (e) {
+      console.log('ERROR happened during fetching ERC20 data:', e);
+    }
+  }
+
+  public async getERC20BalanceOf(address: string, tokenAddress: string, blockHash: string) {
+    try {
+      const outputs = await this.explain(
+        {
+          clauses: [{ to: tokenAddress, value: '0x0', data: ERC20.balanceOf.encode(address), token: Token.MTR }],
+        },
+        blockHash
+      );
+      const valid = (i) => !!outputs[i] && !outputs[i].reverted && outputs[i].data !== '0x';
+      const bal = valid(0) ? ERC20.balanceOf.decode(outputs[0].data)['0'] : 0;
+      return bal;
+    } catch (e) {
+      console.log('Error happened during fetch ERC20 balanceOf');
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { BigNumber, Network } from '@meterio/scan-db';
+import { BigNumber, Network } from '@meterio/scan-db/dist';
 
 import { UNIT_WEI } from '../const';
 

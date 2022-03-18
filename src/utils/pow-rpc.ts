@@ -1,6 +1,6 @@
 import '@meterio/flex';
 
-import { BigNumber, Network, PowBlock, PowTx } from '@meterio/scan-db';
+import { BigNumber, Network, PowBlock, PowTx } from '@meterio/scan-db/dist';
 import Client from 'bitcoin-core';
 import LRU from 'lru-cache';
 
@@ -33,7 +33,7 @@ export class Pow {
     const powConfig = GetPowConfig(network);
     const client = new Client(powConfig);
     this.btc = client;
-    this.cache = new LRU<string, any>(1024 * 4);
+    this.cache = new LRU<string, any>({ max: 1024 * 4 });
   }
 
   public async getBlock(height: number): Promise<PowBlock | null> {

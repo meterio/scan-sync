@@ -1,4 +1,4 @@
-import { MetricRepo, MetricType } from '@meterio/scan-db';
+import { MetricRepo, MetricType } from '@meterio/scan-db/dist';
 
 import { MetricName } from '../const';
 
