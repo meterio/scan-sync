@@ -14,6 +14,7 @@ import * as Logger from 'bunyan';
 
 import { InterruptedError, Pos, sleep } from '../utils';
 import { CMD } from './cmd';
+import { time } from 'console';
 
 const FASTFORWARD_INTERVAL = 500;
 const NORMAL_INTERVAL = 2000;
@@ -50,6 +51,13 @@ export abstract class TxBlockReviewer extends CMD {
     if (!head || head.num === 0) {
       await this.processGenesis();
       const genesis = await this.blockRepo.findByNumber(0);
+      if (!genesis) {
+        console.log('GENESIS NOT FOUND');
+        console.log('will take a nap and quit');
+        await sleep(5000);
+        console.log('quit now');
+        process.exit(-1);
+      }
       if (!head) {
         await this.headRepo.create(this.name, 0, genesis.hash);
       } else {

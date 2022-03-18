@@ -34,7 +34,7 @@ export const getNetwork = (network: string) => {
 };
 
 export const GetPowConfig = (network: Network) => {
-  if (network === Network.MainNet) {
+  if (network === Network.MainNet || network === Network.MainNetStandBy) {
     return {
       username: MAINNET_POW_RPC_USER,
       password: MAINNET_POW_RPC_PWD,
@@ -42,7 +42,7 @@ export const GetPowConfig = (network: Network) => {
       port: MAINNET_POW_RPC_PORT,
     };
   }
-  if (network === Network.TestNet) {
+  if (network === Network.TestNet || network === Network.TestNetStandBy) {
     return {
       username: TESTNET_POW_RPC_USER,
       password: TESTNET_POW_RPC_PWD,
