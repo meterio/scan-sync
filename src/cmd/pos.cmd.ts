@@ -56,17 +56,17 @@ import { Pos, fromWei, isHex } from '../utils';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 import { newIterator, LogItem } from '../utils/log-traverser';
-import { AccountCache, TokenBalanceCache } from './types';
+import { AccountCache, TokenBalanceCache } from '../types';
 import { MetricName, getPreAllocAccount } from '../const';
 import { KeyTransactionFeeAddress } from '../const/key';
 
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
 
-const FASTFORWARD_SAMPLING_INTERVAL = 300;
-const SAMPLING_INTERVAL = 2000;
-const PRELOAD_WINDOW = 10;
-const LOOP_WINDOW = 50;
+const FASTFORWARD_INTERVAL = 300; // 0.3 second gap between each loop
+const NORMAL_INTERVAL = 2000; // 2 seconds gap between each loop
+const PRELOAD_WINDOW = 50;
+const LOOP_WINDOW = 200;
 
 const revertReasonSelector = '0x' + cry.keccak256('Error(string)').toString('hex').slice(0, 8);
 const panicErrorSelector = '0x' + cry.keccak256('Panic(uint256)').toString('hex').slice(0, 8);
@@ -320,9 +320,9 @@ export class PosCMD extends CMD {
           // fastforward mode, save blocks/txs with bulk insert
           await this.saveCacheToDB();
           await this.cleanCache();
-          await sleep(FASTFORWARD_SAMPLING_INTERVAL);
+          await sleep(FASTFORWARD_INTERVAL);
         } else {
-          await sleep(SAMPLING_INTERVAL);
+          await sleep(NORMAL_INTERVAL);
         }
       } catch (e) {
         if (!(e instanceof InterruptedError)) {

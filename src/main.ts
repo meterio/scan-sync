@@ -27,6 +27,12 @@ switch (process.argv[2]) {
   case 'dev':
     net = Network.DevNet;
     break;
+  case 'main-standby':
+    net = Network.MainNetStandBy;
+    break;
+  case 'test-standby':
+    net = Network.TestNetStandBy;
+    break;
   default:
     printUsage('invalid network');
 }

@@ -7,8 +7,8 @@ import { Pow } from '../utils/pow-rpc';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 
-const FASTFORWARD_SAMPLING_INTERVAL = 500;
-const SAMPLING_INTERVAL = 5000;
+const FASTFORWARD_INTERVAL = 500;
+const NORMAL_INTERVAL = 5000;
 const PRELOAD_WINDOW = 5;
 const LOOP_WINDOW = 100;
 
@@ -76,9 +76,9 @@ export class PowCMD extends CMD {
           throw new InterruptedError();
         }
         if (fastforward) {
-          await sleep(FASTFORWARD_SAMPLING_INTERVAL);
+          await sleep(FASTFORWARD_INTERVAL);
         } else {
-          await sleep(SAMPLING_INTERVAL);
+          await sleep(NORMAL_INTERVAL);
         }
 
         let head = await this.headRepo.findByKey(this.name);

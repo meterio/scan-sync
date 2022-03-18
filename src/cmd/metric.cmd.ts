@@ -17,7 +17,7 @@ import Logger from 'bunyan';
 
 import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName } from '../const';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
-import { MetricCache } from '../utils/metricCache';
+import { MetricCache } from '../types';
 import { postToSlackChannel } from '../utils/slack';
 import { CMD } from './cmd';
 

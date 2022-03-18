@@ -14,7 +14,7 @@ const error = (message: string) => {
 export const printUsage = (msg = '') => {
   error(`${msg ? msg + '\n\n' : ''}Usage: node index.js [Network][Task][...Args]
   --------
-  Network:    [main|test]
+  Network:    [main|test|main-standby|test-standby]
   Task:       [pos|pow|metric|scriptengine]`);
   process.exit(-1);
 };

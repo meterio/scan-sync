@@ -33,7 +33,7 @@
   "dependencies": {
     "@meterio/devkit": "^1.5.1",
     "@meterio/flex": "^0.5.8",
-    "@meterio/scan-db": "^0.1.0",
+    "@meterio/scan-db": "^0.1.1",
     "axios": "^0.26.1",
     "bignumber.js": "^9.0.2",
     "bitcoin-core": "^3.0.0",
