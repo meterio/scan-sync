@@ -3,11 +3,9 @@ require('../utils/validateEnv');
 
 import * as path from 'path';
 
-import { AccountRepo, Network } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { AccountRepo, Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { checkNetworkWithDB, getNetworkFromCli, saveCSV } from '../utils';
-import { connectDB } from '../utils/db';
 
 const net = getNetworkFromCli();
 if (!net) {
@@ -33,13 +31,13 @@ const dumpAccounts = async (net: Network) => {
 
   saveCSV(accts, ['address', 'mtr', 'mtrg'], path.join(__dirname, '..', '..', 'accounts.csv'));
   console.log('all done');
-  await mongoose.disconnect();
+  await disconnectDB();
 };
 
 (async () => {
   try {
     await dumpAccounts(net);
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

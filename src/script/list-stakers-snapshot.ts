@@ -7,13 +7,10 @@ require('../utils/validateEnv');
  */
 import * as path from 'path';
 
-import { BigNumber } from '@meterio/scan-db';
-import { BoundRepo, UnboundRepo } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { BigNumber, BoundRepo, UnboundRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { getNetworkFromCli } from '../utils';
 import { Pos, saveCSV } from '../utils';
-import { connectDB } from '../utils/db';
 
 const tippingBlockNum = 14063032;
 
@@ -87,7 +84,7 @@ const listStakersSnapshot = async () => {
 (async () => {
   try {
     await listStakersSnapshot();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { Network } from '@meterio/scan-db';
-// other imports
-import mongoose from 'mongoose';
+import { Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { PosCMD } from '../cmd/pos.cmd';
 import { Pos, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
+
+// other imports
 
 const net = getNetworkFromCli();
 if (!net) {
@@ -30,7 +29,7 @@ const processOneBlock = async (net: Network, blockNum: number) => {
       process.stdout.write(`Got signal: ${s}, terminating...\n`);
       if (!shutdown) {
         shutdown = true;
-        await mongoose.disconnect();
+        await disconnectDB();
         await cmd.stop();
         process.exit(0);
       }
@@ -46,7 +45,7 @@ const processOneBlock = async (net: Network, blockNum: number) => {
   // const blockQueue = new BlockQueue('block');
   try {
     await processOneBlock(net, blockNum);
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`process error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { BigNumber, Network } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { BigNumber, Network, disconnectDB } from '@meterio/scan-db/dist';
 
 import { BoundEvent, GetPosConfig, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
@@ -253,7 +252,7 @@ const processAccount = async () => {
 (async () => {
   try {
     await processAccount();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log('error happened: ', e);
   }

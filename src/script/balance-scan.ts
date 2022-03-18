@@ -1,7 +1,6 @@
 require('../utils/validateEnv');
 
-import { Network } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { Network, disconnectDB } from '@meterio/scan-db/dist';
 
 import { GetPosConfig } from '../const';
 import { Net } from '../utils';
@@ -46,7 +45,7 @@ const processAccount = async () => {
 (async () => {
   try {
     await processAccount();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log('error happened: ', e);
   }

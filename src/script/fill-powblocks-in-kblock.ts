@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { BlockRepo, Network, PowInfo } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { BlockRepo, Network, PowInfo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { Pos, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const net = getNetworkFromCli();
 if (!net) {
@@ -40,13 +38,13 @@ const fillPowblocksInKBlock = async (net: Network) => {
     }
     kblks = await blockRepo.findKBlocksWithoutPowBlocks();
   }
-  await mongoose.disconnect();
+  await disconnectDB();
 };
 
 (async () => {
   try {
     await fillPowblocksInKBlock(net);
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

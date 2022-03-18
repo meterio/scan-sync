@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { Network, TxRepo } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { Network, TxRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { Pos, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const net = getNetworkFromCli();
 if (!net) {
@@ -43,13 +41,13 @@ const fillTokenInTxOutput = async (net: Network) => {
       console.log(`! updated tx`);
     }
   }
-  await mongoose.disconnect();
+  await disconnectDB();
 };
 
 (async () => {
   try {
     await fillTokenInTxOutput(net);
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

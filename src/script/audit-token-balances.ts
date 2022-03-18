@@ -2,11 +2,9 @@
 require('../utils/validateEnv');
 
 import { abi } from '@meterio/devkit';
-import { BigNumber, HeadRepo, Token, TokenBalanceRepo } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { BigNumber, HeadRepo, Token, TokenBalanceRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { Pos, checkNetworkWithDB, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const balanceOfABI: abi.Function.Definition = {
   inputs: [{ name: 'account', type: 'address' }],
@@ -38,7 +36,7 @@ const auditTokenBalances = async () => {
   const balanceOfFunc = new abi.Function(balanceOfABI);
   let n = 1;
   for (const bal of balances) {
-    const { address, tokenAddress, symbol, balance } = bal;
+    const { address, tokenAddress, balance } = bal;
     try {
       const outputs = await pos.explain(
         {
@@ -50,7 +48,7 @@ const auditTokenBalances = async () => {
       const chainBal = new BigNumber(decoded[0]);
       if (!chainBal.isEqualTo(balance)) {
         console.log(`found NON-matching balance: chain ${chainBal} db:${balance}`);
-        console.log(`tokenAddr: ${tokenAddress}, addr: ${address}, symbol: ${symbol}`);
+        console.log(`tokenAddr: ${tokenAddress}, addr: ${address} `);
       }
       n++;
       if (n % 500 == 0) {
@@ -65,7 +63,7 @@ const auditTokenBalances = async () => {
 (async () => {
   try {
     await auditTokenBalances();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);

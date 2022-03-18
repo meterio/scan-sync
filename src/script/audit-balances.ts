@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { AccountRepo, BigNumber, HeadRepo, Network, Token } from '@meterio/scan-db';
-import mongoose from 'mongoose';
+import { AccountRepo, BigNumber, HeadRepo, Network,  connectDB, disconnectDB } from '@meterio/scan-db';
 
-import { PrototypeAddress, ZeroAddress, prototype } from '../const';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
-import { connectDB } from '../utils/db';
 
 const adjustBalance = async () => {
   const net = getNetworkFromCli();
@@ -35,28 +32,7 @@ const adjustBalance = async () => {
   console.log(`start checking ${accounts.length} accounts...`);
   let n = 1;
   for (const acc of accounts) {
-    let chainAcc: Flex.Meter.Account;
-    let chainCode: Flex.Meter.Code;
-    let chainMaster: string | null = null;
-    try {
-      chainAcc = await pos.getAccount(acc.address, revision);
-      chainCode = await pos.getCode(acc.address, revision);
-      // Get master
-      let ret = await pos.explain(
-        {
-          clauses: [
-            { to: PrototypeAddress, value: '0x0', data: prototype.master.encode(acc.address), token: Token.MTR },
-          ],
-        },
-        revision
-      );
-      let decoded = prototype.master.decode(ret[0].data);
-      if (decoded['0'] !== ZeroAddress) {
-        chainMaster = decoded['0'];
-      }
-    } catch {
-      continue;
-    }
+    const chainAcc = await pos.getAccount(acc.address, revision);
 
     const balance = new BigNumber(chainAcc.balance);
     const energy = new BigNumber(chainAcc.energy);
@@ -97,7 +73,7 @@ const adjustBalance = async () => {
 (async () => {
   try {
     await adjustBalance();
-    await mongoose.disconnect();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);
