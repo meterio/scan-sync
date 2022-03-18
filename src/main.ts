@@ -2,19 +2,16 @@
 require('./utils/usage');
 require('./utils/validateEnv');
 
-import { Network } from '@meterio/scan-db';
+import { Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 // other imports
 import * as Logger from 'bunyan';
-import mongoose from 'mongoose';
 
 import * as pkg from '../package.json';
-import { AccountCMD } from './cmd/account.cmd';
 import { CMD } from './cmd/cmd';
 import { MetricCMD } from './cmd/metric.cmd';
 import { PosCMD } from './cmd/pos.cmd';
 import { PowCMD } from './cmd/pow.cmd';
 import { ScriptEngineCMD } from './cmd/scriptEngine.cmd';
-import { connectDB } from './utils/db';
 import { printUsage } from './utils/usage';
 
 const log = Logger.createLogger({ name: 'main' });
@@ -42,9 +39,6 @@ switch (process.argv[3]) {
   case 'pow':
     cmd = new PowCMD(net);
     break;
-  case 'account':
-    cmd = new AccountCMD(net);
-    break;
   case 'metric':
     cmd = new MetricCMD(net);
     break;
@@ -65,7 +59,7 @@ switch (process.argv[3]) {
       process.stdout.write(`Got signal: ${s}, terminating...\n`);
       if (!shutdown) {
         shutdown = true;
-        await mongoose.disconnect();
+        await disconnectDB();
         await cmd.stop();
         process.exit(0);
       }
