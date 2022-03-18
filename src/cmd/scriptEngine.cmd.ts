@@ -18,8 +18,8 @@ import {
   Token,
   Tx,
   ValidatorRewardRepo,
-} from '@meterio/scan-db';
-import { BigNumber } from '@meterio/scan-db';
+} from '@meterio/scan-db/dist';
+import { BigNumber } from '@meterio/scan-db/dist';
 import * as Logger from 'bunyan';
 
 import { TxBlockReviewer } from './blockReviewer';

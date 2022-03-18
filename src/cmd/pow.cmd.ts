@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import { HeadRepo, Network, PowBlock, PowBlockRepo, PowTxRepo } from '@meterio/scan-db';
+import { HeadRepo, Network, PowBlock, PowBlockRepo, PowTxRepo } from '@meterio/scan-db/dist';
 import * as Logger from 'bunyan';
 
 import { Pow } from '../utils/pow-rpc';

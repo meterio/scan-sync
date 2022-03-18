@@ -9,7 +9,7 @@ import {
   MovementRepo,
   Network,
   TxRepo,
-} from '@meterio/scan-db';
+} from '@meterio/scan-db/dist';
 import * as Logger from 'bunyan';
 
 import { InterruptedError, Pos, sleep } from '../utils';

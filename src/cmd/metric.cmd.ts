@@ -12,8 +12,8 @@ import {
   Validator,
   ValidatorRepo,
   ValidatorStatus,
-} from '@meterio/scan-db';
-import { BigNumber } from '@meterio/scan-db';
+} from '@meterio/scan-db/dist';
+import { BigNumber } from '@meterio/scan-db/dist';
 import axios from 'axios';
 import Logger from 'bunyan';
 
@@ -178,15 +178,19 @@ export class MetricCMD extends CMD {
   private async alertIfNetworkHalt(index: number, interval: number) {
     if (index % interval === 0) {
       console.log('check if network halted');
+      const bestBlock = await this.pos.getBlock('best', 'regular');
       const recentBlks = await this.blockRepo.findRecent();
       if (recentBlks && recentBlks.length > 0) {
         const head = recentBlks[0];
+        if (head.number !== bestBlock.number) {
+          return;
+        }
         console.log('head: ', head.number);
         const now = Math.floor(Date.now() / 1000);
         console.log('now', now);
-        console.log(head.createdAt);
-        console.log(now - head.createdAt);
-        if (now - head.createdAt > 120) {
+        console.log(head.timestamp);
+        console.log(now - head.timestamp);
+        if (now - head.timestamp > 120) {
           // alert
           let network = '';
           switch (this.network) {

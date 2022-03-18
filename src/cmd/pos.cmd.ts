@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import { abi } from '@meterio/devkit';
+import { abi, cry, ERC20, ERC1155 } from '@meterio/devkit';
 import {
   Block,
   BlockConcise,
@@ -12,18 +12,12 @@ import {
   Committee,
   CommitteeMember,
   CommitteeRepo,
-  Erc20TxDigest,
-  Erc20TxDigestRepo,
   Head,
   HeadRepo,
   Movement,
   MovementRepo,
   Network,
-  PosEvent,
-  PosTransfer,
   Token,
-  TokenProfile,
-  TokenProfileRepo,
   Tx,
   TxDigest,
   TxDigestRepo,
@@ -31,29 +25,39 @@ import {
   TxRepo,
   Unbound,
   UnboundRepo,
-} from '@meterio/scan-db';
-import { BigNumber } from '@meterio/scan-db';
+  VMError,
+  TraceOutput,
+  TokenBalance,
+  NFTTransfer,
+  Contract,
+  ContractType,
+  ContractRepo,
+  TokenBalanceRepo,
+  MetricRepo,
+  AccountRepo,
+  Account,
+} from '@meterio/scan-db/dist';
+import { BigNumber } from '@meterio/scan-db/dist';
 import * as Logger from 'bunyan';
 import { sha1 } from 'object-hash';
 
 import {
   BoundEvent,
   GetPosConfig,
-  PrototypeAddress,
   TokenBasic,
-  TransferEvent,
   UnboundEvent,
   ZeroAddress,
-  decimalsABIFunc,
   getERC20Token,
-  nameABIFunc,
   prototype,
-  symbolABIFunc,
+  getAccountName,
 } from '../const';
 import { isHex } from '../utils/hex';
-import { Pos } from '../utils/pos-rest';
+import { Pos, fromWei } from '../utils';
 import { InterruptedError, sleep } from '../utils/utils';
 import { CMD } from './cmd';
+import { newIterator, LogItem } from '../utils/log-traverser';
+import { AccountCache, TokenBalanceCache } from './types';
+import { MetricName, getPreAllocAccount } from '../const';
 
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
@@ -62,6 +66,9 @@ const FASTFORWARD_SAMPLING_INTERVAL = 300;
 const SAMPLING_INTERVAL = 2000;
 const PRELOAD_WINDOW = 10;
 const LOOP_WINDOW = 50;
+
+const revertReasonSelector = '0x' + cry.keccak256('Error(string)').toString('hex').slice(0, 8);
+const panicErrorSelector = '0x' + cry.keccak256('Panic(uint256)').toString('hex').slice(0, 8);
 
 export class PosCMD extends CMD {
   private shutdown = false;
@@ -76,11 +83,14 @@ export class PosCMD extends CMD {
   private headRepo = new HeadRepo();
   private committeeRepo = new CommitteeRepo();
   private txDigestRepo = new TxDigestRepo();
-  private erc20TxDigestRepo = new Erc20TxDigestRepo();
-  private tokenProfileRepo = new TokenProfileRepo();
+  private movementRepo = new MovementRepo();
   private boundRepo = new BoundRepo();
   private unboundRepo = new UnboundRepo();
-  private movementRepo = new MovementRepo();
+  private contractRepo = new ContractRepo();
+  private accountRepo = new AccountRepo();
+  private tokenBalanceRepo = new TokenBalanceRepo();
+
+  private metricRepo = new MetricRepo(); // readonly
 
   private pos: Pos;
   private network: Network;
@@ -89,14 +99,17 @@ export class PosCMD extends CMD {
   private mtrgSysToken: TokenBasic;
 
   // cache
-  private txsCache: Tx[] = [];
   private blocksCache: Block[] = [];
-  private tokenProfilesCache: TokenProfile[] = [];
+  private txsCache: Tx[] = [];
+  private committeesCache: Committee[] = [];
   private txDigestsCache: TxDigest[] = [];
-  private erc20TxDigestsCache: Erc20TxDigest[] = [];
   private movementsCache: Movement[] = [];
   private boundsCache: Bound[] = [];
   private unboundsCache: Unbound[] = [];
+  private rebasingsCache: string[] = [];
+  private contractsCache: Contract[] = [];
+  private accountCache: AccountCache;
+  private tokenBalanceCache = new TokenBalanceCache();
 
   constructor(net: Network) {
     super();
@@ -107,6 +120,7 @@ export class PosCMD extends CMD {
     this.mtrgSysToken = getERC20Token(this.network, Token.MTRG);
     const posConfig = GetPosConfig(net);
     this.web3 = meterify(new Web3(), posConfig.url);
+    this.accountCache = new AccountCache(this.network);
     this.cleanCache();
   }
 
@@ -118,23 +132,22 @@ export class PosCMD extends CMD {
 
   public stop() {
     this.shutdown = true;
-
-    return new Promise((resolve) => {
-      this.logger.info('shutting down......');
-      this.ev.on('closed', resolve);
-    });
   }
 
   private cleanCache() {
     this.blocksCache = [];
     this.txsCache = [];
-    this.tokenProfilesCache = [];
-    this.txDigestsCache = [];
-    this.erc20TxDigestsCache = [];
+    this.committeesCache = [];
 
+    this.txDigestsCache = [];
     this.movementsCache = [];
     this.boundsCache = [];
     this.unboundsCache = [];
+
+    this.contractsCache = [];
+    this.accountCache.clean();
+    this.tokenBalanceCache.clean();
+    this.rebasingsCache = [];
   }
 
   private async getBlockFromREST(num: number) {
@@ -149,64 +162,125 @@ export class PosCMD extends CMD {
     return b;
   }
 
+  private async fixAccount(acct: Account & { save() }, blockNum: number) {
+    const chainAcc = await this.pos.getAccount(acct.address, blockNum.toString());
+    const balance = new BigNumber(chainAcc.balance);
+    const energy = new BigNumber(chainAcc.energy);
+    const boundedBalance = new BigNumber(chainAcc.boundbalance);
+    const boundedEnergy = new BigNumber(chainAcc.boundenergy);
+    if (
+      acct.mtrgBalance.toFixed() !== balance.toFixed() ||
+      acct.mtrBalance.toFixed() !== energy.toFixed() ||
+      acct.mtrgBounded.toFixed() !== boundedBalance.toFixed() ||
+      acct.mtrBounded.toFixed() !== boundedEnergy.toFixed()
+    ) {
+      const preMTR = acct.mtrBalance;
+      const preMTRG = acct.mtrgBalance;
+      const preBoundedMTR = acct.mtrBounded;
+      const preBoundedMTRG = acct.mtrgBounded;
+      acct.mtrBalance = energy;
+      acct.mtrgBalance = balance;
+      acct.mtrBounded = boundedEnergy;
+      acct.mtrgBounded = boundedBalance;
+
+      await acct.save();
+
+      console.log(`Fixed Account ${acct.address}:`);
+      if (!preMTR.isEqualTo(energy)) {
+        console.log(`  MTR: ${fromWei(preMTR)} -> ${fromWei(energy)} `);
+      }
+      if (!preMTRG.isEqualTo(balance)) {
+        console.log(`  MTRG: ${fromWei(preMTRG)} -> ${fromWei(balance)}`);
+      }
+      if (!preBoundedMTR.isEqualTo(boundedEnergy)) {
+        console.log(`  Bounded MTR: ${fromWei(preBoundedMTR)} -> ${fromWei(boundedEnergy)}`);
+      }
+      if (!preBoundedMTRG.isEqualTo(boundedBalance)) {
+        console.log(`  Bounded MTRG: ${fromWei(preBoundedMTRG)} -> ${fromWei(boundedBalance)}`);
+      }
+    }
+  }
+
+  public async fixTokenBalance(bal: TokenBalance & { save() }, blockNum: number) {
+    const chainBal = await this.pos.getERC20BalanceOf(bal.address, bal.tokenAddress, blockNum.toString());
+    const preBal = bal.balance;
+    if (!preBal.isEqualTo(chainBal)) {
+      bal.balance = new BigNumber(chainBal);
+      console.log(`Fixed balance on ${bal.address} for token ${bal.tokenAddress}:`);
+      console.log(`  Balance: ${preBal.toFixed()} -> ${bal.balance.toFixed()}`);
+      await bal.save();
+    }
+  }
+
   public async cleanUpIncompleteData(blockNum: number) {
     // delete invalid/incomplete blocks
-    const futureBlocks = await this.blockRepo.findFutureBlocks(blockNum);
-    for (const blk of futureBlocks) {
-      for (const txHash of blk.txHashs) {
-        await this.txRepo.delete(txHash);
-        this.logger.info({ txHash }, 'deleted tx in blocks higher than head');
-      }
-      await this.boundRepo.deleteAfter(blockNum);
-      await this.unboundRepo.deleteAfter(blockNum);
-      await this.erc20TxDigestRepo.deleteAfter(blockNum);
-      await this.txDigestRepo.deleteAfter(blockNum);
-      await this.tokenProfileRepo.deleteAfter(blockNum);
-
-      await this.blockRepo.delete(blk.hash);
-      this.logger.info({ number: blk.number, hash: blk.hash }, 'deleted block higher than head ');
+    const block = await this.blockRepo.deleteAfter(blockNum);
+    const tx = await this.txRepo.deleteAfter(blockNum);
+    const committee = await this.committeeRepo.deleteAfter(blockNum);
+    const bound = await this.boundRepo.deleteAfter(blockNum);
+    const unbound = await this.unboundRepo.deleteAfter(blockNum);
+    const txDigest = await this.txDigestRepo.deleteAfter(blockNum);
+    const movement = await this.movementRepo.deleteAfter(blockNum);
+    const contract = await this.contractRepo.deleteAfter(blockNum);
+    const accts = await this.accountRepo.findLastUpdateAfter(blockNum);
+    for (const acct of accts) {
+      await this.fixAccount(acct, blockNum);
     }
+    const bals = await this.tokenBalanceRepo.findLastUpdateAfter(blockNum);
+    for (const bal of bals) {
+      await this.fixTokenBalance(bal, blockNum);
+    }
+    this.logger.info(
+      {
+        block,
+        tx,
+        committee,
+        bound,
+        unbound,
+        txDigest,
+        movement,
+        contract,
+        accounts: accts.length,
+        tokenBalance: bals.length,
+      },
+      'deleted block higher than head '
+    );
   }
 
   public async loop() {
     let fastforward = true;
+
+    let head = await this.headRepo.findByKey(this.name);
+    if (head) {
+      await this.cleanUpIncompleteData(head.num);
+    }
+
     for (;;) {
       try {
         if (this.shutdown) {
           throw new InterruptedError();
         }
-        if (fastforward) {
-          await sleep(FASTFORWARD_SAMPLING_INTERVAL);
-        } else {
-          await sleep(SAMPLING_INTERVAL);
-        }
 
         let head = await this.headRepo.findByKey(this.name);
         let headNum = !!head ? head.num : -1;
 
-        await this.cleanUpIncompleteData(headNum);
-
-        const bestNum = await this.web3.eth.getBlockNumber();
-        let tgtNum = headNum + LOOP_WINDOW;
-        if (tgtNum > bestNum) {
-          fastforward = false;
-          tgtNum = bestNum;
-        } else {
-          fastforward = true;
+        if (headNum === -1) {
+          await this.processGenesis();
         }
 
-        if (tgtNum <= headNum) {
+        const bestNum = await this.web3.eth.getBlockNumber();
+        let endNum = headNum + LOOP_WINDOW > bestNum ? bestNum : headNum + LOOP_WINDOW;
+        fastforward = endNum < bestNum;
+
+        if (endNum <= headNum) {
           continue;
         }
         this.logger.info(
-          { best: bestNum, head: headNum },
-          `start import PoS block from number ${headNum + 1} to ${tgtNum}`
+          { best: bestNum, head: headNum, mode: fastforward ? 'fast-forward' : 'normal' },
+          `start import PoS block from number ${headNum + 1} to ${endNum}`
         );
         // begin import round from headNum+1 to tgtNum
-        for (let num = headNum + 1; num <= tgtNum; num++) {
-          if (this.shutdown) {
-            throw new InterruptedError();
-          }
+        for (let num = headNum + 1; num <= endNum; num++) {
           // fetch block from RESTful API
           const blk = await this.getBlockFromREST(num);
 
@@ -225,15 +299,16 @@ export class PosCMD extends CMD {
           // fastforward mode, save blocks/txs with bulk insert
           await this.saveCacheToDB();
           await this.cleanCache();
+          await sleep(FASTFORWARD_SAMPLING_INTERVAL);
+        } else {
+          await sleep(SAMPLING_INTERVAL);
         }
       } catch (e) {
         if (!(e instanceof InterruptedError)) {
           this.logger.error(this.name + 'loop: ' + (e as Error).stack);
         } else {
-          if (this.shutdown) {
-            this.ev.emit('closed');
-            break;
-          }
+          console.log('quit loop');
+          break;
         }
       }
     }
@@ -253,23 +328,23 @@ export class PosCMD extends CMD {
         this.logger.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
       }
     }
-    if (this.tokenProfilesCache.length > 0) {
-      await this.tokenProfileRepo.bulkInsert(...this.tokenProfilesCache);
-      this.logger.info(`saved ${this.tokenProfilesCache.length} token profiles`);
-    }
     if (this.txsCache.length > 0) {
       await this.txRepo.bulkInsert(...this.txsCache);
       this.logger.info(`saved ${this.txsCache.length} txs`);
     }
+    if (this.committeesCache.length > 0) {
+      await this.committeeRepo.bulkInsert(...this.committeesCache);
+      this.logger.info(`saved ${this.committeesCache.length} committees`);
+    }
+
     if (this.txDigestsCache.length > 0) {
       await this.txDigestRepo.bulkInsert(...this.txDigestsCache);
       this.logger.info(`saved ${this.txDigestsCache.length} tx digests`);
     }
-    if (this.erc20TxDigestsCache.length > 0) {
-      await this.erc20TxDigestRepo.bulkInsert(...this.erc20TxDigestsCache);
-      this.logger.info(`saved ${this.erc20TxDigestsCache.length} erc20 tx digests`);
+    if (this.movementsCache.length > 0) {
+      await this.movementRepo.bulkInsert(...this.movementsCache);
+      this.logger.info(`saved ${this.movementsCache.length} movements`);
     }
-
     if (this.boundsCache.length > 0) {
       await this.boundRepo.bulkInsert(...this.boundsCache);
       this.logger.info(`saved ${this.boundsCache.length} bounds`);
@@ -278,10 +353,14 @@ export class PosCMD extends CMD {
       await this.unboundRepo.bulkInsert(...this.unboundsCache);
       this.logger.info(`saved ${this.unboundsCache.length} unbounds`);
     }
-    if (this.movementsCache.length > 0) {
-      await this.movementRepo.bulkInsert(...this.movementsCache);
-      this.logger.info(`saved ${this.movementsCache.length} movements`);
+
+    if (this.contractsCache.length > 0) {
+      await this.contractRepo.bulkInsert(...this.contractsCache);
+      this.logger.info(`saved ${this.contractsCache.length} contracts`);
     }
+    await this.accountCache.saveToDB();
+    await this.tokenBalanceCache.saveToDB();
+    await this.handleRebasing();
   }
 
   async updateHead(num, hash): Promise<Head> {
@@ -298,60 +377,50 @@ export class PosCMD extends CMD {
     }
   }
 
-  async getTokenProfile(tokenAddress: string) {
-    const profile = await this.tokenProfileRepo.findByAddress(tokenAddress);
-    if (profile) return profile;
-    for (const p of this.tokenProfilesCache) {
-      if (p.address.toLowerCase() === tokenAddress) {
-        return p;
+  async handleContractCreation(evt: Flex.Meter.Event, txHash: string, blockConcise: BlockConcise) {
+    if (!evt.topics || evt.topics[0] !== prototype.$Master.signature) {
+      return;
+    }
+
+    const codeRes = await this.pos.getCode(evt.address, blockConcise.hash);
+    let code: string | undefined = undefined;
+    if (codeRes && codeRes.code !== '0x') {
+      code = codeRes.code;
+    }
+    const decoded = prototype.$Master.decode(evt.data, evt.topics);
+    const master = decoded.newMaster;
+
+    let c: Contract = {
+      type: ContractType.Unknown,
+      name: '',
+      symbol: '',
+      decimals: 0,
+      address: evt.address,
+      officialSite: '',
+      totalSupply: new BigNumber(0),
+      holdersCount: new BigNumber(0),
+      transfersCount: new BigNumber(0),
+      creationTxHash: txHash,
+      master,
+      code,
+      verified: false,
+      firstSeen: blockConcise,
+    };
+    const e721_1155 = await this.pos.fetchERC721AndERC1155Data(evt.address, blockConcise.hash);
+    if (e721_1155 && (e721_1155.supports721 || e721_1155.supports1155)) {
+      c.type = e721_1155.supports721 ? ContractType.ERC721 : ContractType.ERC1155;
+      c.name = e721_1155.name;
+      c.symbol = e721_1155.symbol;
+    } else {
+      const erc20 = await this.pos.fetchERC20Data(evt.address, blockConcise.hash);
+      if (erc20 && !!erc20.symbol && !!erc20.decimals) {
+        c.type = ContractType.ERC20;
+        c.name = erc20.name;
+        c.symbol = erc20.symbol;
+        c.decimals = erc20.decimals;
       }
     }
-  }
-
-  async handleContractCreation(evt: Flex.Meter.Event, txHash: string, blockConcise: BlockConcise) {
-    // FIXME: think about contract-only address, maybe need to create account for it?
-    const decoded = prototype.$Master.decode(evt.data, evt.topics);
-
-    try {
-      const outputs = await this.pos.explain(
-        {
-          clauses: [
-            { to: evt.address, value: '0x0', data: nameABIFunc.encode(), token: Token.MTR },
-            { to: evt.address, value: '0x0', data: symbolABIFunc.encode(), token: Token.MTR },
-            { to: evt.address, value: '0x0', data: decimalsABIFunc.encode(), token: Token.MTR },
-            { to: PrototypeAddress, value: '0x0', data: prototype.master.encode(evt.address), token: Token.MTR },
-            // { to: e.address, value: '0x0', data: totalSupply.encode(), token: Token.MTR },
-          ],
-        },
-        blockConcise.hash
-      );
-      const nameDecoded = nameABIFunc.decode(outputs[0].data);
-      const symbolDecoded = symbolABIFunc.decode(outputs[1].data);
-      const decimalsDecoded = decimalsABIFunc.decode(outputs[2].data);
-      // const totalSupplyDecoded = totalSupply.decode(outputs[3].data);
-      const masterDecoded = prototype.master.decode(outputs[3].data);
-      const name = nameDecoded['0'];
-      const symbol = symbolDecoded['0'];
-      const decimals = decimalsDecoded['0'];
-      const master = masterDecoded['0'];
-      // const totalSupplyVal = totalSupplyDecoded['0'];
-      this.tokenProfilesCache.push({
-        name,
-        symbol,
-        decimals,
-        address: evt.address,
-        officialSite: '',
-        totalSupply: new BigNumber(0),
-        holdersCount: new BigNumber(0),
-        transfersCount: new BigNumber(0),
-        creationTxHash: txHash,
-        master: decoded.newMaster,
-        firstSeen: blockConcise,
-      });
-    } catch (e) {
-      console.log('contract created does not comply with ERC20 interface');
-      console.log(e);
-    }
+    this.contractsCache.push(c);
   }
 
   handleBound(
@@ -361,6 +430,9 @@ export class PosCMD extends CMD {
     logIndex: number,
     blockConcise: BlockConcise
   ) {
+    if (!evt.topics || evt.topics[0] != BoundEvent.signature) {
+      return;
+    }
     const decoded = BoundEvent.decode(evt.data, evt.topics);
     const owner = decoded.owner.toLowerCase();
     this.boundsCache.push({
@@ -381,9 +453,12 @@ export class PosCMD extends CMD {
     logIndex: number,
     blockConcise: BlockConcise
   ) {
-    const decoded = BoundEvent.decode(evt.data, evt.topics);
+    if (!evt.topics || evt.topics[0] !== BoundEvent.signature) {
+      return;
+    }
+    const decoded = UnboundEvent.decode(evt.data, evt.topics);
     const owner = decoded.owner.toLowerCase();
-    this.boundsCache.push({
+    this.unboundsCache.push({
       owner,
       amount: new BigNumber(decoded.amount),
       token: decoded.token == 1 ? Token.MTRG : Token.MTR,
@@ -394,81 +469,176 @@ export class PosCMD extends CMD {
     });
   }
 
-  async processTx(
-    blk: Pos.ExpandedBlock,
+  async updateMovements(
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
-    txIndex: number
+    blockConcise: BlockConcise
   ): Promise<void> {
-    let clauses: Clause[] = [];
-    let outputs: TxOutput[] = [];
+    if (tx.reverted) {
+      return;
+    }
 
-    let txDigestMap: { [key: string]: TxDigest } = {}; // key: sha1(from,to) -> val: txDigest object
-    let erc20DigestMap: { [key: string]: Erc20TxDigest } = {}; // key: sha1(from,to,tokenAddress) -> val: erc20Digest object
-
-    const blockConcise = { number: blk.number, hash: blk.id, timestamp: blk.timestamp };
-    // prepare events and outputs
     for (const [clauseIndex, o] of tx.outputs.entries()) {
-      let events: PosEvent[] = [];
-      let transfers: PosTransfer[] = [];
+      // ----------------------------------
+      // Handle transfers
+      // ----------------------------------
+      for (const [logIndex, tr] of o.transfers.entries()) {
+        const token = new BigNumber(tr.token).isEqualTo(1) ? Token.MTRG : Token.MTR;
+        this.movementsCache.push({
+          from: tr.sender.toLowerCase(),
+          to: tr.recipient.toLowerCase(),
+          token,
+          tokenAddress: '',
+          nftTransfers: [],
+          amount: new BigNumber(tr.amount),
+          txHash: tx.id,
+          block: blockConcise,
+          clauseIndex,
+          logIndex,
+        });
+        this.accountCache.minus(tr.sender, token, tr.amount, blockConcise);
+        this.accountCache.plus(tr.recipient, token, tr.amount, blockConcise);
+      } // End of handling transfers
 
       // ----------------------------------
       // Handle events
       // ----------------------------------
+
       for (const [logIndex, evt] of o.events.entries()) {
-        events.push({ ...evt });
-
-        // ### Handle contract creation
-        if (evt.topics[0] === prototype.$Master.signature) {
-          await this.handleContractCreation(evt, tx.id, blockConcise);
-        }
-
-        // ### Handle staking bound event
-        if (evt.topics[0] === BoundEvent.signature) {
-          this.handleBound(evt, tx.id, clauseIndex, logIndex, blockConcise);
-        }
-
-        // ### Handle staking unbound event
-        if (evt.topics[0] === UnboundEvent.signature) {
-          this.handleUnbound(evt, tx.id, clauseIndex, logIndex, blockConcise);
-        }
-
-        // ### Handle ERC20 transfer event
-        if (evt.topics && evt.topics[0] === TransferEvent.signature) {
+        // ### Handle ERC20/ERC721 transfer event (they have the same signature)
+        if (evt.topics && evt.topics[0] === ERC20.Transfer.signature) {
           let decoded: abi.Decoded;
           try {
-            decoded = TransferEvent.decode(evt.data, evt.topics);
+            decoded = ERC20.Transfer.decode(evt.data, evt.topics);
           } catch (e) {
             console.log('error decoding transfer event');
             continue;
           }
 
+          const from = decoded._from.toLowerCase();
+          const to = decoded._to.toLowerCase();
+          const amount = new BigNumber(decoded._value);
           // ### Handle movement
-          let movement = {
-            from: decoded._from.toLowerCase(),
-            to: decoded._to.toLowerCase(),
+          let movement: Movement = {
+            from,
+            to,
             token: Token.ERC20,
-            amount: new BigNumber(decoded._value),
-            tokenAddress: '',
+            amount,
+            tokenAddress: evt.address,
+            nftTransfers: [],
             txHash: tx.id,
             block: blockConcise,
             clauseIndex,
             logIndex,
-            isSysContract: false,
           };
           if (evt.address.toLowerCase() === this.mtrSysToken.address) {
             // MTR: convert system contract event into system transfer
             movement.token = Token.MTR;
-            movement.isSysContract = true;
+            this.accountCache.minus(from, Token.MTR, amount, blockConcise);
+            this.accountCache.plus(to, Token.MTR, amount, blockConcise);
           } else if (evt.address.toLowerCase() === this.mtrgSysToken.address) {
             // MTRG: convert system contract event into system transfer
             movement.token = Token.MTRG;
-            movement.isSysContract = true;
+            this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
+            this.accountCache.plus(to, Token.MTRG, amount, blockConcise);
           } else {
-            // ERC20: other erc20 transfer
-            movement.token = Token.ERC20;
-            movement.tokenAddress = evt.address.toLowerCase();
+            const contract = await this.contractRepo.findByAddress(evt.address);
+            if (contract && contract.type === ContractType.ERC721) {
+              movement.token = Token.ERC721;
+              movement.amount = new BigNumber(0);
+              const nftTransfers = [{ tokenId: decoded._value, value: 1 }];
+              movement.nftTransfers.push(...nftTransfers);
+
+              this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+              this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+            } else {
+              // regular ERC20 transfer
+              this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
+              this.tokenBalanceCache.plus(to, evt.address, amount, blockConcise);
+            }
           }
           this.movementsCache.push(movement);
+        }
+
+        if (evt.topics && evt.topics[0] === ERC1155.TransferSingle.signature) {
+          let decoded: abi.Decoded;
+          try {
+            decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
+          } catch (e) {
+            console.log('error decoding transfer event');
+            continue;
+          }
+          const from = decoded._from.toLowerCase();
+          const to = decoded._to.toLowerCase();
+          const nftTransfers = [{ tokenId: decoded._id, value: decoded._value }];
+          const movement: Movement = {
+            from,
+            to,
+            token: Token.ERC20,
+            amount: new BigNumber(0),
+            tokenAddress: evt.address,
+            nftTransfers,
+            txHash: tx.id,
+            block: blockConcise,
+            clauseIndex,
+            logIndex,
+          };
+          this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+          this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+          this.movementsCache.push(movement);
+        }
+
+        if (evt.topics && evt.topics[0] === ERC1155.TransferBatch.signature) {
+          let decoded: abi.Decoded;
+          try {
+            decoded = ERC1155.TransferBatch.decode(evt.data, evt.topics);
+          } catch (e) {
+            console.log('error decoding transfer event');
+            continue;
+          }
+          let nftTransfers: NFTTransfer[] = [];
+          for (const [i, id] of decoded._ids) {
+            nftTransfers.push({ tokenId: id, value: decoded._values[i] });
+          }
+          const from = decoded._from.toLowerCase();
+          const to = decoded._to.toLowerCase();
+          const movement: Movement = {
+            from,
+            to,
+            token: Token.ERC20,
+            amount: new BigNumber(0),
+            tokenAddress: evt.address,
+            nftTransfers,
+            txHash: tx.id,
+            block: blockConcise,
+            clauseIndex,
+            logIndex,
+          };
+          this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+          this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+
+          this.movementsCache.push(movement);
+        }
+      } // End of handling events
+    }
+  }
+
+  protected updateTxDigests(
+    tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
+    blockConcise: BlockConcise
+  ) {
+    let txDigestMap: { [key: string]: TxDigest } = {}; // key: sha1(from,to) -> val: txDigest object
+    // prepare events and outputs
+    for (const [clauseIndex, o] of tx.outputs.entries()) {
+      for (const [logIndex, evt] of o.events.entries()) {
+        // ### Handle ERC20/ERC721 transfer event (they have the same signature)
+        if (evt.topics && evt.topics[0] === ERC20.Transfer.signature) {
+          let decoded: abi.Decoded;
+          try {
+            decoded = ERC20.Transfer.decode(evt.data, evt.topics);
+          } catch (e) {
+            console.log('error decoding transfer event');
+            continue;
+          }
 
           const base = {
             block: blockConcise,
@@ -501,29 +671,6 @@ export class PosCMD extends CMD {
               txDigestMap[key].mtrg = txDigestMap[key].mtrg.plus(amount);
               txDigestMap[key].clauseIndexs.push(clauseIndex);
             }
-          } else {
-            // ### Handle ERC20 transfer event
-            const key = sha1({ from: base.from, to: base.to, tokenAddress: evt.address });
-            // set default value
-            if (!(key in erc20DigestMap)) {
-              erc20DigestMap[key] = {
-                ...base,
-                tokenAddress: evt.address,
-                value: new BigNumber(0),
-                name: '',
-                symbol: '',
-                decimals: 18,
-              };
-            }
-            erc20DigestMap[key].value = erc20DigestMap[key].value.plus(amount);
-            const profile = await this.getTokenProfile(evt.address);
-            if (profile) {
-              erc20DigestMap[key].name = profile.name;
-              erc20DigestMap[key].symbol = profile.symbol;
-              erc20DigestMap[key].decimals = profile.decimals;
-            }
-
-            this.logger.info('unrecognized token');
           }
         }
       } // End of handling events
@@ -532,21 +679,6 @@ export class PosCMD extends CMD {
       // Handle transfers
       // ----------------------------------
       for (const [logIndex, tr] of o.transfers.entries()) {
-        transfers.push({ ...tr });
-
-        this.movementsCache.push({
-          from: tr.sender.toLowerCase(),
-          to: tr.recipient.toLowerCase(),
-          token: new BigNumber(tr.token).isEqualTo(1) ? Token.MTRG : Token.MTR,
-          tokenAddress: '',
-          amount: new BigNumber(tr.amount),
-          txHash: tx.id,
-          block: blockConcise,
-          clauseIndex,
-          logIndex,
-          isSysContract: false,
-        });
-
         const key = sha1({ from: tr.sender, to: tr.recipient });
         if (!(key in txDigestMap)) {
           txDigestMap[key] = {
@@ -571,8 +703,174 @@ export class PosCMD extends CMD {
           txDigestMap[key].mtrg = txDigestMap[key].mtrg.plus(tr.amount);
         }
       } // End of handling transfers
+    }
+    for (const key in txDigestMap) {
+      this.txDigestsCache.push(txDigestMap[key]);
+    }
+  }
 
-      outputs.push({ contractAddress: o.contractAddress, events, transfers });
+  async getVMError(
+    tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
+    blockConcise: BlockConcise,
+    txIndex: number
+  ) {
+    let vmError: VMError | null = null;
+    let traces: TraceOutput[] = [];
+    for (const [clauseIndex, _] of tx.clauses.entries()) {
+      const tracer = await this.pos.traceClause(blockConcise.hash, txIndex, clauseIndex);
+      traces.push({ json: JSON.stringify(tracer), clauseIndex });
+      if (tracer.error) {
+        vmError = {
+          error: tracer.error,
+          clauseIndex,
+          reason: null,
+        };
+        if (vmError.error === 'execution reverted' && tracer.output) {
+          if (tracer.output.indexOf(revertReasonSelector) === 0) {
+            try {
+              const decoded = abi.decodeParameter('string', '0x' + tracer.output.slice(10));
+              if (decoded) {
+                vmError.reason = decoded;
+              }
+            } catch {
+              this.logger.error(`decode Error(string) failed for tx: ${tx.id} at clause ${clauseIndex}`);
+            }
+          } else if (tracer.output.indexOf(panicErrorSelector) === 0) {
+            try {
+              const decoded = abi.decodeParameter('uint256', '0x' + tracer.output.slice(10));
+              if (decoded) {
+                vmError.reason = decoded;
+              }
+            } catch {
+              this.logger.error(`decode Panic(uint256) failed for tx: ${tx.id} at clause ${clauseIndex}`);
+            }
+          } else {
+            this.logger.error(`unknown revert data format for tx: ${tx.id} at clause ${clauseIndex}`);
+          }
+        }
+        break;
+      }
+    }
+    return { vmError, traces };
+  }
+
+  async getTxOutputs(
+    tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
+    blockConcise: BlockConcise,
+    txIndex: number
+  ) {
+    let outputs: TxOutput[] = [];
+    let traces: TraceOutput[] = [];
+    for (const [clauseIndex, o] of tx.outputs.entries()) {
+      const output: TxOutput = {
+        contractAddress: o.contractAddress,
+        events: [],
+        transfers: [],
+      };
+      if (o.events.length && o.transfers.length) {
+        const tracer = await this.pos.traceClause(blockConcise.hash, txIndex, clauseIndex);
+        traces.push({ json: JSON.stringify(tracer), clauseIndex });
+        try {
+          let logIndex = 0;
+          for (const item of newIterator(tracer, o.events, o.transfers)) {
+            if (item.type === 'event') {
+              output.events.push({
+                ...(item as LogItem<'event'>).data,
+                overallIndex: logIndex++,
+              });
+            } else {
+              output.transfers.push({
+                ...(item as LogItem<'transfer'>).data,
+                overallIndex: logIndex++,
+              });
+            }
+          }
+        } catch (e) {
+          this.logger.error(`failed to re-organize logs(${tx.id}),err: ${(e as Error).toString()}`);
+          let logIndex = 0;
+          output.transfers = [];
+          output.events = [];
+          for (const t of o.transfers) {
+            output.transfers.push({
+              ...t,
+              overallIndex: logIndex++,
+            });
+          }
+          for (const e of o.events) {
+            output.events.push({
+              ...e,
+              overallIndex: logIndex++,
+            });
+          }
+        }
+      } else if (o.events.length) {
+        for (let i = 0; i < o.events.length; i++) {
+          output.events.push({
+            ...o.events[i],
+            overallIndex: i,
+          });
+        }
+      } else {
+        for (let i = 0; i < o.transfers.length; i++) {
+          output.transfers.push({
+            ...o.transfers[i],
+            overallIndex: i,
+          });
+        }
+      }
+      outputs.push(output);
+    }
+    return { outputs, traces };
+  }
+
+  async processTx(
+    blk: Pos.ExpandedBlock,
+    tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
+    txIndex: number
+  ): Promise<void> {
+    let clauses: Clause[] = [];
+
+    const blockConcise = { number: blk.number, hash: blk.id, timestamp: blk.timestamp };
+
+    // update movement
+    await this.updateMovements(tx, blockConcise);
+
+    this.updateTxDigests(tx, blockConcise);
+
+    // prepare events and outputs
+    for (const [clauseIndex, o] of tx.outputs.entries()) {
+      // ----------------------------------
+      // Handle events
+      // ----------------------------------
+      for (const [logIndex, evt] of o.events.entries()) {
+        // rebasing events (by AMPL)
+        if (evt.topics[0] === '0x72725a3b1e5bd622d6bcd1339bb31279c351abe8f541ac7fd320f24e1b1641f2') {
+          this.rebasingsCache.push(evt.address);
+        }
+
+        // ### Handle contract creation
+        await this.handleContractCreation(evt, tx.id, blockConcise);
+
+        // ### Handle staking bound event
+        this.handleBound(evt, tx.id, clauseIndex, logIndex, blockConcise);
+
+        // ### Handle staking unbound event
+        this.handleUnbound(evt, tx.id, clauseIndex, logIndex, blockConcise);
+      } // End of handling events
+    }
+
+    let traces: TraceOutput[] = [];
+    let outputs: TxOutput[] = [];
+    let vmError: VMError | null = null;
+
+    if (tx.reverted) {
+      const e = await this.getVMError(tx, blockConcise, txIndex);
+      vmError = e.vmError;
+      traces = e.traces;
+    } else {
+      const o = await this.getTxOutputs(tx, blockConcise, txIndex);
+      outputs = o.outputs;
+      traces = o.traces;
     }
 
     const txModel: Tx = {
@@ -588,6 +886,7 @@ export class PosCMD extends CMD {
       dependsOn: tx.dependsOn,
       origin: tx.origin.toLowerCase(),
       clauses: clauses.map((c) => ({ ...c, to: c.to ? c.to.toLowerCase() : ZeroAddress })),
+      traces,
       clauseCount: tx.clauses.length,
       size: tx.size,
       gasUsed: tx.gasUsed,
@@ -595,22 +894,28 @@ export class PosCMD extends CMD {
       paid: new BigNumber(tx.paid),
       reward: new BigNumber(tx.reward),
       reverted: tx.reverted,
-      outputs: outputs,
+      outputs,
+      vmError,
     };
 
     this.txsCache.push(txModel);
-    this.txDigestsCache.push(...Object.values(txDigestMap));
-    this.erc20TxDigestsCache.push(...Object.values(erc20DigestMap));
     this.logger.info({ hash: txModel.hash }, 'processed tx');
   }
 
   async processBlock(blk: Pos.ExpandedBlock): Promise<void> {
-    this.logger.info({ number: blk.number }, 'start to process block');
+    // this.logger.info({ number: blk.number }, 'start to process block');
+    const blockConcise: BlockConcise = { ...blk, hash: blk.id, timestamp: blk.timestamp };
+    const txFeeBeneficiary = await this.metricRepo.findByKey(MetricName.TX_FEE_BENEFICIARY);
+    let sysBeneficiary = '0x';
+    if (txFeeBeneficiary) {
+      sysBeneficiary = txFeeBeneficiary.value;
+    }
+
     let score = 0;
     let gasChanged = 0;
     let reward = new BigNumber(0);
     let actualReward = new BigNumber(0);
-    let txCount = blk.transactions.length;
+    const txCount = blk.transactions.length;
     if (blk.number > 0) {
       const prevBlk = await this.pos.getBlock(blk.parentID, 'regular');
       score = blk.totalScore - prevBlk.totalScore;
@@ -618,26 +923,26 @@ export class PosCMD extends CMD {
     }
 
     let txHashs: string[] = [];
-    let committee: CommitteeMember[] = [];
-    let index = 0;
-    for (const tx of blk.transactions) {
-      await this.processTx(blk, tx, index);
+    let members: CommitteeMember[] = [];
+    for (const [txIndex, tx] of blk.transactions.entries()) {
+      await this.processTx(blk, tx, txIndex);
       txHashs.push(tx.id);
-      index++;
       reward = reward.plus(tx.reward);
       if (tx.origin !== ZeroAddress) {
         actualReward = actualReward.plus(tx.reward);
       }
+
+      // substract fee from gas payer
+      this.accountCache.minus(tx.gasPayer, Token.MTR, tx.paid, blockConcise);
     }
-    for (const m of blk.committee) {
-      if (isHex(m.pubKey)) {
-        const buf = Buffer.from(m.pubKey, 'hex');
-        const base64PK = buf.toString('base64');
-        committee.push({ ...m, pubKey: base64PK });
-      } else {
-        committee.push({ ...m });
-      }
+
+    // add block reward beneficiary account
+    if (sysBeneficiary === ZeroAddress || sysBeneficiary === '0x') {
+      this.accountCache.plus(blk.beneficiary, Token.MTR, actualReward, blockConcise);
+    } else {
+      this.accountCache.plus(sysBeneficiary, Token.MTR, actualReward, blockConcise);
     }
+
     let powBlocks: Flex.Meter.PowBlock[] = [];
     if (blk.powBlocks) {
       for (const pb of blk.powBlocks) {
@@ -653,14 +958,17 @@ export class PosCMD extends CMD {
     }
 
     // update committee repo
-    const blockConcise = { ...blk, hash: blk.id } as BlockConcise;
-    if (!!blk.committee && blk.committee.length > 0) {
-      let members: CommitteeMember[] = [];
-      for (const cm of blk.committee) {
-        const member = cm as CommitteeMember;
-        members.push(member);
+    for (const m of blk.committee) {
+      if (isHex(m.pubKey)) {
+        const buf = Buffer.from(m.pubKey, 'hex');
+        const base64PK = buf.toString('base64');
+        members.push({ ...m, pubKey: base64PK });
+      } else {
+        members.push({ ...m });
       }
-      const committee: Committee = {
+    }
+    if (members.length > 0) {
+      let committee: Committee = {
         epoch: blk.qc.epochID + 1,
         kblockHeight: blk.lastKBlockHeight,
         startBlock: blockConcise,
@@ -671,10 +979,14 @@ export class PosCMD extends CMD {
 
       if (blk.qc.epochID > 0) {
         const prevEndBlock = await this.getBlockFromREST(blk.lastKBlockHeight);
-        const endBlock = { hash: prevEndBlock.id, ...prevEndBlock } as BlockConcise;
-        await this.committeeRepo.updateEndBlock(prevEndBlock.qc.epochID, endBlock);
-        console.log(`update epoch ${prevEndBlock.qc.epochID}  with endBlock: [${endBlock.number}]`, endBlock.hash);
+        const endBlock: BlockConcise = {
+          hash: prevEndBlock.id,
+          timestamp: prevEndBlock.timestamp,
+          number: prevEndBlock.number,
+        };
+        committee.endBlock = endBlock;
       }
+      this.committeesCache.push(committee);
     }
 
     let epoch = 0;
@@ -695,12 +1007,146 @@ export class PosCMD extends CMD {
       blockType: blk.isKBlock ? BlockType.KBlock : BlockType.MBlock,
 
       epoch,
-      committee,
+      committee: members,
       nonce: String(blk.nonce),
       qc: { ...blk.qc },
       powBlocks,
     };
     this.logger.info({ number: blk.number, txCount: blk.transactions.length }, 'processed PoS block');
     this.blocksCache.push(block);
+  }
+
+  private async handleRebasing() {
+    for (const tokenAddr of this.rebasingsCache) {
+      console.log(`Handling rebasing events on ${tokenAddr}`);
+      const bals = await this.tokenBalanceRepo.findByTokenAddress(tokenAddr);
+      for (const bal of bals) {
+        const res = await this.pos.explain(
+          {
+            clauses: [{ to: tokenAddr, value: '0x0', token: Token.MTR, data: ERC20.balanceOf.encode(bal.address) }],
+          },
+          'best'
+        );
+        const decoded = ERC20.balanceOf.decode(res[0].data);
+        const chainBal = decoded['0'];
+        if (!bal.balance.isEqualTo(chainBal)) {
+          console.log(`Update  ${bal.tokenAddress} with balance ${chainBal}, originally was ${bal.balance.toFixed(0)}`);
+          bal.balance = new BigNumber(chainBal);
+          await bal.save();
+        }
+      }
+    }
+  }
+
+  protected async processGenesis() {
+    const genesis = await this.pos.getBlock(0, 'regular');
+    this.logger.info({ number: genesis.number, hash: genesis.id }, 'process genesis');
+
+    for (const addr of getPreAllocAccount(this.network)) {
+      const chainAcc = await this.pos.getAccount(addr, genesis.id);
+
+      const blockConcise = { number: genesis.number, hash: genesis.id, timestamp: genesis.timestamp };
+      const name = getAccountName(this.network, addr.toLowerCase());
+      let acct = await this.accountRepo.create(name, addr.toLowerCase(), blockConcise);
+      acct.mtrgBalance = new BigNumber(chainAcc.balance);
+      acct.mtrBalance = new BigNumber(chainAcc.energy);
+
+      if (chainAcc.hasCode) {
+        const chainCode = await this.pos.getCode(addr, genesis.id);
+        await this.contractRepo.create(
+          ContractType.Unknown,
+          addr,
+          '',
+          '',
+          '',
+          new BigNumber(0),
+          '0x',
+          chainCode.code,
+          '0x',
+          blockConcise,
+          0
+        );
+      }
+      this.logger.info(
+        { accountName: acct.name, address: addr, MTR: acct.mtrBalance.toFixed(), MTRG: acct.mtrgBalance.toFixed() },
+        `saving genesis account`
+      );
+      await acct.save();
+    }
+  }
+
+  printCache() {
+    for (const item of this.blocksCache) {
+      console.log('----------------------------------------');
+      console.log('BLOCK');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+
+    for (const item of this.txsCache) {
+      console.log('----------------------------------------');
+      console.log('TX');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+
+    for (const item of this.movementsCache) {
+      console.log('----------------------------------------');
+      console.log('MOVEMENT');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+    for (const item of this.txDigestsCache) {
+      console.log('----------------------------------------');
+      console.log('TX DIGEST');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+    for (const item of this.boundsCache) {
+      console.log('----------------------------------------');
+      console.log('BOUND');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+    for (const item of this.unboundsCache) {
+      console.log('----------------------------------------');
+      console.log('UNBOUND');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+    for (const item of this.rebasingsCache) {
+      console.log('----------------------------------------');
+      console.log('REBASING');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+    for (const item of this.contractsCache) {
+      console.log('----------------------------------------');
+      console.log('CONTRACT');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+    for (const item of this.accountCache.list()) {
+      console.log('----------------------------------------');
+      console.log('ACCOUT');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
+    for (const item of this.tokenBalanceCache.list()) {
+      console.log('----------------------------------------');
+      console.log('TOKEN BALNCE');
+      console.log('----------------------------------------');
+      console.log(item);
+      console.log('----------------------------------------\n');
+    }
   }
 }
