@@ -906,7 +906,12 @@ export class PosCMD extends CMD {
       nonce: tx.nonce,
       dependsOn: tx.dependsOn,
       origin: tx.origin.toLowerCase(),
-      clauses: clauses.map((c) => ({ ...c, to: c.to ? c.to.toLowerCase() : ZeroAddress })),
+      clauses: tx.clauses.map((c) => ({
+        to: c.to ? c.to.toLowerCase() : ZeroAddress,
+        value: new BigNumber(c.value),
+        token: c.token == 0 ? Token.MTR : Token.MTRG,
+        data: c.data,
+      })),
       traces,
       clauseCount: tx.clauses.length,
       size: tx.size,

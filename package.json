@@ -1,6 +1,6 @@
 {
   "name": "@meterio/scan-sync",
-  "version": "0.4.4",
+  "version": "0.4.7",
   "description": "Collect blocks/txs/metrics from meter network",
   "license": "MIT",
   "readmeFilename": "README.md",
@@ -31,7 +31,7 @@
     "typescript": "^4.6.2"
   },
   "dependencies": {
-    "@meterio/devkit": "^1.5.1",
+    "@meterio/devkit": "^1.5.5",
     "@meterio/flex": "^0.5.8",
     "@meterio/scan-db": "^0.1.1",
     "axios": "^0.26.1",
