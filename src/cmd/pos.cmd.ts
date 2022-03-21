@@ -535,9 +535,9 @@ export class PosCMD extends CMD {
             continue;
           }
 
-          const from = decoded._from.toLowerCase();
-          const to = decoded._to.toLowerCase();
-          const amount = new BigNumber(decoded._value);
+          const from = decoded.from.toLowerCase();
+          const to = decoded.to.toLowerCase();
+          const amount = new BigNumber(decoded.value);
           // ### Handle movement
           let movement: Movement = {
             from,
@@ -566,7 +566,7 @@ export class PosCMD extends CMD {
             if (contract && contract.type === ContractType.ERC721) {
               movement.token = Token.ERC721;
               movement.amount = new BigNumber(0);
-              const nftTransfers = [{ tokenId: decoded._value, value: 1 }];
+              const nftTransfers = [{ tokenId: Number(decoded.value), value: 1 }];
               movement.nftTransfers.push(...nftTransfers);
 
               this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
@@ -588,9 +588,9 @@ export class PosCMD extends CMD {
             console.log('error decoding transfer event');
             continue;
           }
-          const from = decoded._from.toLowerCase();
-          const to = decoded._to.toLowerCase();
-          const nftTransfers = [{ tokenId: decoded._id, value: decoded._value }];
+          const from = decoded.from.toLowerCase();
+          const to = decoded.to.toLowerCase();
+          const nftTransfers = [{ tokenId: Number(decoded.id), value: Number(decoded.value) }];
           const movement: Movement = {
             from,
             to,
@@ -617,11 +617,11 @@ export class PosCMD extends CMD {
             continue;
           }
           let nftTransfers: NFTTransfer[] = [];
-          for (const [i, id] of decoded._ids) {
-            nftTransfers.push({ tokenId: id, value: decoded._values[i] });
+          for (const [i, id] of decoded.ids) {
+            nftTransfers.push({ tokenId: Number(id), value: Number(decoded.values[i]) });
           }
-          const from = decoded._from.toLowerCase();
-          const to = decoded._to.toLowerCase();
+          const from = decoded.from.toLowerCase();
+          const to = decoded.to.toLowerCase();
           const movement: Movement = {
             from,
             to,
@@ -665,10 +665,10 @@ export class PosCMD extends CMD {
             block: blockConcise,
             txHash: tx.id,
             fee: new BigNumber(tx.paid),
-            from: decoded._from.toLowerCase(),
-            to: decoded._to.toLowerCase(),
+            from: decoded.from.toLowerCase(),
+            to: decoded.to.toLowerCase(),
           };
-          const amount = new BigNumber(decoded._value);
+          const amount = new BigNumber(decoded.value);
           const isMTRSysContract = evt.address.toLowerCase() === this.mtrSysToken.address;
           const isMTRGSysContract = evt.address.toLowerCase() === this.mtrgSysToken.address;
 
