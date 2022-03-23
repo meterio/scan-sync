@@ -341,55 +341,56 @@ export class Pos {
       });
     });
   }
-  public getTransaction(id: string, head?: string) {
+
+  public async getTransaction(id: string, head?: string) {
     return this.httpGet<Pos.Transaction>(`transactions/${id}`, head ? { head } : {});
   }
   // Staking related
-  public getReceipt(id: string, head?: string) {
+  public async getReceipt(id: string, head?: string) {
     return this.httpGet<Pos.Receipt>(`transactions/${id}/receipt`, head ? { head } : {});
   }
-  public getCandidates() {
+  public async getCandidates() {
     return this.httpGet<Pos.Candidate[]>(`staking/candidates`);
   }
-  public getStakeholders() {
+  public async getStakeholders() {
     return this.httpGet<Pos.Stakeholder[]>(`staking/stakeholders`);
   }
-  public getDelegates() {
+  public async getDelegates() {
     return this.httpGet<Pos.Delegate[]>(`staking/delegates`);
   }
-  public getBuckets() {
+  public async getBuckets() {
     return this.httpGet<Pos.Bucket[]>(`staking/buckets`);
   }
-  public getValidatorRewards() {
+  public async getValidatorRewards() {
     return this.httpGet<Pos.ValidatorReward[]>(`staking/validator-rewards`);
   }
-  public getLastValidatorReward(revision: string | number) {
+  public async getLastValidatorReward(revision: string | number) {
     return this.httpGet<Pos.ValidatorReward>(`staking/last/rewards?revision=${revision}`);
   }
   // Slashing related
-  public getValidatorStats() {
+  public async getValidatorStats() {
     return this.httpGet<Pos.ValidatorStat[]>(`slashing/statistics`);
   }
-  public getJailed() {
+  public async getJailed() {
     return this.httpGet<Pos.Jailed[]>(`slashing/injail`);
   }
 
   // Epoch related
-  public getEpochInfo(epoch: number) {
+  public async getEpochInfo(epoch: number) {
     return this.httpGet<any>(`blocks/epoch/${epoch}`);
   }
 
   // Auction related
-  public getAuctionSummaries() {
+  public async getAuctionSummaries() {
     return this.httpGet<Pos.AuctionSummary[]>(`auction/summaries`);
   }
-  public getLastAuctionSummary(revision: number | string) {
+  public async getLastAuctionSummary(revision: number | string) {
     return this.httpGet<Pos.AuctionSummary>(`auction/last/summary?revision=${revision}`);
   }
-  public getPresentAuction() {
+  public async getPresentAuction() {
     return this.httpGet<Pos.Auction>(`auction/present`);
   }
-  public getPresentAuctionByRevision(revision: number) {
+  public async getPresentAuctionByRevision(revision: number) {
     return this.httpGet<Pos.Auction>(`auction/present?revision=${revision}`);
   }
 
@@ -410,26 +411,26 @@ export class Pos {
 
     return get();
   }
-  public getCode(addr: string, revision?: string) {
+  public async getCode(addr: string, revision?: string) {
     return this.httpGet<Pos.Code>(`accounts/${addr}/code`, revision ? { revision } : {});
   }
-  public getStorage(addr: string, key: string, revision?: string) {
+
+  public async getStorage(addr: string, key: string, revision?: string) {
     return this.httpGet<Pos.Storage>(`accounts/${addr}/storage/${key}`, revision ? { revision } : {});
   }
-  public getCurCoef() {
+  public async getCurCoef() {
     return this.httpGet<String>(`node/coef`);
   }
 
-  public filterEventLogs(arg: Flex.Driver.FilterEventLogsArg) {
+  public async filterEventLogs(arg: Flex.Driver.FilterEventLogsArg) {
     return this.httpPost<Pos.Event[]>('logs/event', arg);
   }
 
-  public explain(arg: Flex.Driver.ExplainArg, revision: string) {
-    console.log(arg);
+  public async explain(arg: Flex.Driver.ExplainArg, revision: string) {
     return this.httpPost<Pos.VMOutput[]>('accounts/*', arg, { revision });
   }
 
-  public httpPost<T>(path: string, body: object, query?: Record<string, string>): Promise<T> {
+  public async httpPost<T>(path: string, body: object, query?: Record<string, string>): Promise<T> {
     return this.net.http('POST', path, {
       query,
       body,
@@ -437,18 +438,19 @@ export class Pos {
     });
   }
 
-  protected httpGet<T>(path: string, query?: Record<string, any>): Promise<T> {
+  protected async httpGet<T>(path: string, query?: Record<string, any>): Promise<T> {
     return this.net.http('GET', path, {
       query,
       validateResponseHeader: this.headerValidator,
     });
   }
 
-  public traceClause(blockID: string, txIndex: number, clauseIndex = 0) {
-    return this.httpPost<Pos.CallTracerOutput>('debug/tracers', {
+  public async traceClause(blockID: string, txHash: string, clauseIndex = 0) {
+    const result = await this.httpPost<Pos.CallTracerOutput>('debug/tracers', {
       name: 'call',
-      target: `${blockID}/${txIndex}/${clauseIndex}`,
+      target: `${blockID}/${txHash}/${clauseIndex}`,
     });
+    return result;
   }
 
   public async fetchERC721AndERC1155Data(address, blockHash) {

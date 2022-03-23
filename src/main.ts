@@ -51,6 +51,10 @@ switch (process.argv[3]) {
   case 'scriptengine':
     cmd = new ScriptEngineCMD(net);
     break;
+  case 'version':
+    console.log('version: ', pkg.version);
+    process.exit(0);
+
   default:
     printUsage('invalid cmd name');
 }

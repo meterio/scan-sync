@@ -738,38 +738,46 @@ export class PosCMD extends CMD {
     let vmError: VMError | null = null;
     let traces: TraceOutput[] = [];
     for (const [clauseIndex, _] of tx.clauses.entries()) {
-      const tracer = await this.pos.traceClause(blockConcise.hash, txIndex, clauseIndex);
-      traces.push({ json: JSON.stringify(tracer), clauseIndex });
-      if (tracer.error) {
+      try {
+        const tracer = await this.pos.traceClause(blockConcise.hash, tx.id, clauseIndex);
+        traces.push({ json: JSON.stringify(tracer), clauseIndex });
+        if (tracer.error) {
+          vmError = {
+            error: tracer.error,
+            clauseIndex,
+            reason: null,
+          };
+          if (vmError.error === 'execution reverted' && tracer.output) {
+            if (tracer.output.indexOf(revertReasonSelector) === 0) {
+              try {
+                const decoded = abi.decodeParameter('string', '0x' + tracer.output.slice(10));
+                if (decoded) {
+                  vmError.reason = decoded;
+                }
+              } catch {
+                this.logger.error(`decode Error(string) failed for tx: ${tx.id} at clause ${clauseIndex}`);
+              }
+            } else if (tracer.output.indexOf(panicErrorSelector) === 0) {
+              try {
+                const decoded = abi.decodeParameter('uint256', '0x' + tracer.output.slice(10));
+                if (decoded) {
+                  vmError.reason = decoded;
+                }
+              } catch {
+                this.logger.error(`decode Panic(uint256) failed for tx: ${tx.id} at clause ${clauseIndex}`);
+              }
+            } else {
+              this.logger.error(`unknown revert data format for tx: ${tx.id} at clause ${clauseIndex}`);
+            }
+          }
+          break;
+        }
+      } catch (e) {
         vmError = {
-          error: tracer.error,
+          error: 'could not get tracing error',
           clauseIndex,
           reason: null,
         };
-        if (vmError.error === 'execution reverted' && tracer.output) {
-          if (tracer.output.indexOf(revertReasonSelector) === 0) {
-            try {
-              const decoded = abi.decodeParameter('string', '0x' + tracer.output.slice(10));
-              if (decoded) {
-                vmError.reason = decoded;
-              }
-            } catch {
-              this.logger.error(`decode Error(string) failed for tx: ${tx.id} at clause ${clauseIndex}`);
-            }
-          } else if (tracer.output.indexOf(panicErrorSelector) === 0) {
-            try {
-              const decoded = abi.decodeParameter('uint256', '0x' + tracer.output.slice(10));
-              if (decoded) {
-                vmError.reason = decoded;
-              }
-            } catch {
-              this.logger.error(`decode Panic(uint256) failed for tx: ${tx.id} at clause ${clauseIndex}`);
-            }
-          } else {
-            this.logger.error(`unknown revert data format for tx: ${tx.id} at clause ${clauseIndex}`);
-          }
-        }
-        break;
       }
     }
     return { vmError, traces };
@@ -789,9 +797,9 @@ export class PosCMD extends CMD {
         transfers: [],
       };
       if (o.events.length && o.transfers.length) {
-        const tracer = await this.pos.traceClause(blockConcise.hash, txIndex, clauseIndex);
-        traces.push({ json: JSON.stringify(tracer), clauseIndex });
         try {
+          const tracer = await this.pos.traceClause(blockConcise.hash, tx.id, clauseIndex);
+          traces.push({ json: JSON.stringify(tracer), clauseIndex });
           let logIndex = 0;
           for (const item of newIterator(tracer, o.events, o.transfers)) {
             if (item.type === 'event') {
