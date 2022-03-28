@@ -57,6 +57,9 @@ export class TokenBalanceCache {
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
     console.log(`Token ${tokenAddr} on ${addrStr} minus: ${this.bals[key].balance} - ${formattedAmount} `);
     this.bals[key].balance = this.bals[key].balance.minus(formattedAmount);
+    if (this.bals[key].balance.isLessThan(0)) {
+      throw new Error(`Got negative balance: ${this.bals[key].balance}`);
+    }
     console.log(`Got => ${this.bals[key].balance}`);
   }
 
@@ -69,13 +72,13 @@ export class TokenBalanceCache {
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
     console.log(`Token ${tokenAddr} on ${addrStr} plus: ${this.bals[key].balance} + ${formattedAmount} `);
     this.bals[key].balance = this.bals[key].balance.plus(formattedAmount);
+    if (this.bals[key].balance.isLessThan(0)) {
+      throw new Error(`Got negative balance: ${this.bals[key].balance}`);
+    }
     console.log(`Got => ${this.bals[key].balance}`);
   }
 
   public async plusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
-    if (addrStr === ZeroAddress) {
-      return;
-    }
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
     console.log(`NFT ${tokenAddr} on ${addrStr} plus: ${this.bals[key].nftBalances} + ${nftDeltas} `);
@@ -85,6 +88,9 @@ export class TokenBalanceCache {
   }
 
   public async minusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
+    if (addrStr === ZeroAddress) {
+      return;
+    }
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
     console.log(`NFT ${tokenAddr} on ${addrStr} minus: ${this.bals[key].nftBalances} - ${nftDeltas} `);

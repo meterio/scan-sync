@@ -1,6 +1,6 @@
 {
   "name": "@meterio/scan-sync",
-  "version": "0.4.17",
+  "version": "0.4.19",
   "description": "Collect blocks/txs/metrics from meter network",
   "license": "MIT",
   "readmeFilename": "README.md",

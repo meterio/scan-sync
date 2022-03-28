@@ -305,6 +305,11 @@ export class PosCMD extends CMD {
           // fetch block from RESTful API
           const blk = await this.getBlockFromREST(num);
 
+          if (!blk) {
+            console.log('block is empty');
+            await sleep(FASTFORWARD_INTERVAL);
+            continue;
+          }
           // process block
           await this.processBlock(blk);
 
@@ -516,8 +521,8 @@ export class PosCMD extends CMD {
           clauseIndex,
           logIndex,
         });
-        this.accountCache.minus(tr.sender, token, tr.amount, blockConcise);
-        this.accountCache.plus(tr.recipient, token, tr.amount, blockConcise);
+        await this.accountCache.minus(tr.sender, token, tr.amount, blockConcise);
+        await this.accountCache.plus(tr.recipient, token, tr.amount, blockConcise);
       } // End of handling transfers
 
       // ----------------------------------
@@ -554,13 +559,13 @@ export class PosCMD extends CMD {
           if (evt.address.toLowerCase() === this.mtrSysToken.address) {
             // MTR: convert system contract event into system transfer
             movement.token = Token.MTR;
-            this.accountCache.minus(from, Token.MTR, amount, blockConcise);
-            this.accountCache.plus(to, Token.MTR, amount, blockConcise);
+            await this.accountCache.minus(from, Token.MTR, amount, blockConcise);
+            await this.accountCache.plus(to, Token.MTR, amount, blockConcise);
           } else if (evt.address.toLowerCase() === this.mtrgSysToken.address) {
             // MTRG: convert system contract event into system transfer
             movement.token = Token.MTRG;
-            this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
-            this.accountCache.plus(to, Token.MTRG, amount, blockConcise);
+            await this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
+            await this.accountCache.plus(to, Token.MTRG, amount, blockConcise);
           } else {
             const contract = await this.contractRepo.findByAddress(evt.address);
             if (contract && contract.type === ContractType.ERC721) {
@@ -569,12 +574,12 @@ export class PosCMD extends CMD {
               const nftTransfers = [{ tokenId: Number(decoded.value), value: 1 }];
               movement.nftTransfers.push(...nftTransfers);
 
-              this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-              this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+              await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+              await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
             } else {
               // regular ERC20 transfer
-              this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
-              this.tokenBalanceCache.plus(to, evt.address, amount, blockConcise);
+              await this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
+              await this.tokenBalanceCache.plus(to, evt.address, amount, blockConcise);
             }
           }
           this.movementsCache.push(movement);
@@ -603,8 +608,8 @@ export class PosCMD extends CMD {
             clauseIndex,
             logIndex,
           };
-          this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-          this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+          await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+          await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
           this.movementsCache.push(movement);
         }
 
@@ -634,8 +639,8 @@ export class PosCMD extends CMD {
             clauseIndex,
             logIndex,
           };
-          this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-          this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+          await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+          await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
 
           this.movementsCache.push(movement);
         }
@@ -962,14 +967,14 @@ export class PosCMD extends CMD {
       }
 
       // substract fee from gas payer
-      this.accountCache.minus(tx.gasPayer, Token.MTR, tx.paid, blockConcise);
+      await this.accountCache.minus(tx.gasPayer, Token.MTR, tx.paid, blockConcise);
     }
 
     // add block reward beneficiary account
     if (this.beneficiaryCache === ZeroAddress || this.beneficiaryCache === '0x') {
-      this.accountCache.plus(blk.beneficiary, Token.MTR, actualReward, blockConcise);
+      await this.accountCache.plus(blk.beneficiary, Token.MTR, actualReward, blockConcise);
     } else {
-      this.accountCache.plus(this.beneficiaryCache, Token.MTR, actualReward, blockConcise);
+      await this.accountCache.plus(this.beneficiaryCache, Token.MTR, actualReward, blockConcise);
     }
 
     let powBlocks: Flex.Meter.PowBlock[] = [];

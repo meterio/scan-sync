@@ -11,7 +11,7 @@ import { getNetworkFromCli } from '../utils/utils';
 
 const net = getNetworkFromCli();
 console.log(Network[net]);
-const blockNum = 9470906;
+const blockNum = 22280145;
 
 const processOneBlock = async (net: Network, blockNum: number) => {
   await connectDB(net);

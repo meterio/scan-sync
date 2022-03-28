@@ -24,11 +24,17 @@ export class AccountCache {
     if (token === Token.MTR) {
       console.log(`Account ${addr} minus MTR: ${this.accts[addr].mtrBalance} - ${formattedAmount} `);
       this.accts[addr].mtrBalance = this.accts[addr].mtrBalance.minus(formattedAmount);
+      if (this.accts[addr].mtrBalance.isLessThan(0)) {
+        throw new Error(`Got negative balance: ${this.accts[addr].mtrBalance}`);
+      }
       console.log(`Got => ${this.accts[addr].mtrBalance}`);
     }
     if (token === Token.MTRG) {
       console.log(`Account ${addr} minus MTRG: ${this.accts[addr].mtrgBalance} - ${formattedAmount} `);
       this.accts[addr].mtrgBalance = this.accts[addr].mtrgBalance.minus(formattedAmount);
+      if (this.accts[addr].mtrgBalance.isLessThan(0)) {
+        throw new Error(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+      }
       console.log(`Got => ${this.accts[addr].mtrgBalance}`);
     }
   }
@@ -55,11 +61,17 @@ export class AccountCache {
     if (token === Token.MTR) {
       console.log(`Account ${addr} plus MTR: ${this.accts[addr].mtrBalance} + ${formattedAmount} `);
       this.accts[addr].mtrBalance = this.accts[addr].mtrBalance.plus(formattedAmount);
+      if (this.accts[addr].mtrBalance.isLessThan(0)) {
+        throw new Error(`Got negative balance: ${this.accts[addr].mtrBalance}`);
+      }
       console.log(`Got => ${this.accts[addr].mtrBalance}`);
     }
     if (token === Token.MTRG) {
       console.log(`Account ${addr} plus MTRG: ${this.accts[addr].mtrgBalance} + ${formattedAmount} `);
       this.accts[addr].mtrgBalance = this.accts[addr].mtrgBalance.plus(formattedAmount);
+      if (this.accts[addr].mtrgBalance.isLessThan(0)) {
+        throw new Error(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+      }
       console.log(`Got => ${this.accts[addr].mtrgBalance}`);
     }
   }
@@ -76,6 +88,9 @@ export class AccountCache {
       console.log(`Account ${addr} bound MTRG: ${this.accts[addr].mtrgBalance} - ${formattedAmount} `);
       this.accts[addr].mtrgBalance = this.accts[addr].mtrgBalance.minus(formattedAmount);
       this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.plus(formattedAmount);
+      if (this.accts[addr].mtrgBalance.isLessThan(0)) {
+        console.log(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+      }
       console.log(`Got => Balance: ${this.accts[addr].mtrgBalance}, Bounded: ${this.accts[addr].mtrgBounded}`);
     }
   }
