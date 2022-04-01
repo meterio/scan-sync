@@ -518,10 +518,10 @@ export class Pos {
       );
 
       const valid = (i) => !!outputs[i] && !outputs[i].reverted && outputs[i].data !== '0x';
-      const totalSupply = valid(0) ? ERC20.symbol.decode(outputs[0].data)['0'] : 0;
+      const totalSupply = valid(0) ? ERC20.totalSupply.decode(outputs[0].data)['0'] : 0;
       const name = valid(1) ? ERC20.name.decode(outputs[1].data)['0'] : '';
       const symbol = valid(2) ? ERC20.symbol.decode(outputs[2].data)['0'] : '';
-      const decimals = valid(3) ? ERC20.symbol.decode(outputs[3].data)['0'] : 0;
+      const decimals = valid(3) ? ERC20.decimals.decode(outputs[3].data)['0'] : 0;
       return { totalSupply, name, symbol, decimals };
     } catch (e) {
       console.log('ERROR happened during fetching ERC20 data:', e);

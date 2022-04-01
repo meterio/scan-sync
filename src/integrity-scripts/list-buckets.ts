@@ -44,7 +44,7 @@ const listBuckets = async () => {
           console.log('-'.repeat(40));
         }
         if (body.opCode === ScriptEngine.StakingOpCode.BucketUpdate) {
-          const bucketID = '0x' + body.bucketID.toString('hex');
+          const bucketID = body.bucketID;
           if (bucketID in buckets) {
             buckets[bucketID] = buckets[bucketID].plus(body.amount);
           }
@@ -53,7 +53,7 @@ const listBuckets = async () => {
           console.log('-'.repeat(40));
         }
         if (body.opCode === ScriptEngine.StakingOpCode.Unbound) {
-          const bucketID = '0x' + body.bucketID.toString('hex');
+          const bucketID = body.bucketID;
           console.log(`[${bucketID}] unbound bucket`);
           console.log(`on tx ${tx.hash}`);
           console.log('-'.repeat(40));

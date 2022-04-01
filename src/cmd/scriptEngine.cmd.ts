@@ -239,7 +239,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           const items = pk.split(':::');
           const ecdsaPK = items[0];
           const blsPK = items[1];
-          const address = '0x' + body.candidateAddr.toString('hex').toLowerCase();
+          const address = '0x' + body.candidateAddr.toLowerCase();
 
           const exist = await this.knownRepo.exist(ecdsaPK);
           if (!exist) {
@@ -261,7 +261,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               updated = true;
             }
             if (body.candidateAddr.toString() != '') {
-              known.address = '0x' + body.candidateAddr.toString('hex').toLowerCase();
+              known.address = '0x' + body.candidateAddr.toLowerCase();
               updated = true;
             }
             if (body.candidateIP.toString() != '') {

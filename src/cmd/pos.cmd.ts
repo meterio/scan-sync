@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 
 import { abi, cry, ERC20, ERC1155 } from '@meterio/devkit';
+import { ScriptEngine } from '@meterio/devkit';
 import {
   Block,
   BlockConcise,
@@ -652,7 +653,46 @@ export class PosCMD extends CMD {
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
     blockConcise: BlockConcise
   ) {
-    let txDigestMap: { [key: string]: TxDigest } = {}; // key: sha1(from,to) -> val: txDigest object
+    let transferDigestMap: { [key: string]: TxDigest } = {}; // key: sha1(from,to) -> val: txDigest object
+    let callDigests: TxDigest[] = [];
+    //
+    for (const [clauseIndex, clause] of tx.clauses.entries()) {
+      // skip handling of clause if it's a sys contract call
+      if (clause.to === this.mtrSysToken.address || clause.to === this.mtrgSysToken.address) {
+        continue;
+      }
+
+      // save call digests with data
+      if (clause.data && clause.data.length > 10) {
+        console.log('tx: ', tx.id);
+        console.log('data');
+        const isSE = ScriptEngine.IsScriptEngineData(clause.data);
+        console.log('isSE: ', isSE);
+        const token = clause.token;
+        let signature = '';
+        if (isSE) {
+          const decoded = ScriptEngine.decodeScriptData(clause.data);
+          console.log('decoded: ', decoded);
+          signature = decoded.action;
+        } else {
+          signature = clause.data.substring(0, 10);
+        }
+        callDigests.push({
+          block: blockConcise,
+          txHash: tx.id,
+          fee: new BigNumber(tx.paid),
+          from: tx.origin,
+          to: clause.to,
+          mtr: token === Token.MTR ? new BigNumber(clause.value) : new BigNumber(0),
+          mtrg: token === Token.MTRG ? new BigNumber(clause.value) : new BigNumber(0),
+          method: signature,
+          reverted: tx.reverted,
+          clauseIndexs: [clauseIndex],
+          seq: 0,
+        });
+      }
+    }
+
     // prepare events and outputs
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       for (const [logIndex, evt] of o.events.entries()) {
@@ -672,6 +712,7 @@ export class PosCMD extends CMD {
             fee: new BigNumber(tx.paid),
             from: decoded.from.toLowerCase(),
             to: decoded.to.toLowerCase(),
+            reverted: tx.reverted,
           };
           const amount = new BigNumber(decoded.value);
           const isMTRSysContract = evt.address.toLowerCase() === this.mtrSysToken.address;
@@ -681,21 +722,22 @@ export class PosCMD extends CMD {
             // ### Handle sys contract transfer events
             const key = sha1({ from: base.from, to: base.to });
             // set default value
-            if (!(key in txDigestMap)) {
-              txDigestMap[key] = {
+            if (!(key in transferDigestMap)) {
+              transferDigestMap[key] = {
                 ...base,
                 mtr: new BigNumber(0),
                 mtrg: new BigNumber(0),
+                method: 'Transfer',
                 clauseIndexs: [],
                 seq: 0, // later will sort and give it's actual value
               };
             }
             if (isMTRSysContract) {
-              txDigestMap[key].mtr = txDigestMap[key].mtr.plus(amount);
-              txDigestMap[key].clauseIndexs.push(clauseIndex);
+              transferDigestMap[key].mtr = transferDigestMap[key].mtr.plus(amount);
+              transferDigestMap[key].clauseIndexs.push(clauseIndex);
             } else {
-              txDigestMap[key].mtrg = txDigestMap[key].mtrg.plus(amount);
-              txDigestMap[key].clauseIndexs.push(clauseIndex);
+              transferDigestMap[key].mtrg = transferDigestMap[key].mtrg.plus(amount);
+              transferDigestMap[key].clauseIndexs.push(clauseIndex);
             }
           }
         }
@@ -706,8 +748,8 @@ export class PosCMD extends CMD {
       // ----------------------------------
       for (const [logIndex, tr] of o.transfers.entries()) {
         const key = sha1({ from: tr.sender, to: tr.recipient });
-        if (!(key in txDigestMap)) {
-          txDigestMap[key] = {
+        if (!(key in transferDigestMap)) {
+          transferDigestMap[key] = {
             block: blockConcise,
             txHash: tx.id,
             fee: new BigNumber(tx.paid),
@@ -715,23 +757,28 @@ export class PosCMD extends CMD {
             to: tr.recipient,
             mtr: new BigNumber(0),
             mtrg: new BigNumber(0),
+            method: 'Transfer',
+            reverted: tx.reverted,
             clauseIndexs: [],
             seq: 0,
           };
         }
-        txDigestMap[key].clauseIndexs.push(clauseIndex);
+        transferDigestMap[key].clauseIndexs.push(clauseIndex);
 
         // update total transfer
         if (tr.token == 0) {
-          txDigestMap[key].mtr = txDigestMap[key].mtr.plus(tr.amount);
+          transferDigestMap[key].mtr = transferDigestMap[key].mtr.plus(tr.amount);
         }
         if (tr.token == 1) {
-          txDigestMap[key].mtrg = txDigestMap[key].mtrg.plus(tr.amount);
+          transferDigestMap[key].mtrg = transferDigestMap[key].mtrg.plus(tr.amount);
         }
       } // End of handling transfers
     }
-    for (const key in txDigestMap) {
-      this.txDigestsCache.push(txDigestMap[key]);
+    for (const d of callDigests) {
+      this.txDigestsCache.push(d);
+    }
+    for (const key in transferDigestMap) {
+      this.txDigestsCache.push(transferDigestMap[key]);
     }
   }
 
@@ -862,8 +909,6 @@ export class PosCMD extends CMD {
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
     txIndex: number
   ): Promise<void> {
-    let clauses: Clause[] = [];
-
     const blockConcise = { number: blk.number, hash: blk.id, timestamp: blk.timestamp };
 
     // update movement
@@ -1008,7 +1053,7 @@ export class PosCMD extends CMD {
         startBlock: blockConcise,
         members,
       };
-      await this.committeeRepo.create(committee);
+      // await this.committeesCache.push(committee);
       console.log(`update committee for epoch ${blk.qc.epochID}`);
 
       if (blk.qc.epochID > 0) {
@@ -1020,7 +1065,7 @@ export class PosCMD extends CMD {
         };
         committee.endBlock = endBlock;
       }
-      this.committeesCache.push(committee);
+      await this.committeesCache.push(committee);
     }
 
     let epoch = 0;

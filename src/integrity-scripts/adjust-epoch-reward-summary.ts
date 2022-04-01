@@ -10,6 +10,7 @@ import {
   TxRepo,
   connectDB,
   disconnectDB,
+  RewardInfo,
 } from '@meterio/scan-db/dist';
 
 import { StakingModuleAddress } from '../const';
@@ -56,10 +57,11 @@ const adjustEpochRewardSummary = async () => {
           if (scriptData.header.modId === ScriptEngine.ModuleID.Staking) {
             const body = ScriptEngine.decodeStakingBody(scriptData.payload);
             if (body.opCode === ScriptEngine.StakingOpCode.Governing) {
-              const extras = ScriptEngine.decodeStakingGoverningExtra(body.extra);
-              for (const ex of extras) {
-                transferTotal = transferTotal.plus(ex.amount);
-                transferCount++;
+              if (body.extra instanceof Array) {
+                for (const ex of body.extra) {
+                  transferTotal = transferTotal.plus(ex.amount);
+                  transferCount++;
+                }
               }
             }
           }

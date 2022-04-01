@@ -38,7 +38,7 @@ const findBucketUpdate = async () => {
           block: tx.block.number,
           txHash: tx.hash,
           from: tx.origin,
-          bucketID: '0x' + body.bucketID.toString('hex'),
+          bucketID: body.bucketID,
         });
         total = total.plus(body.amount);
         console.log(

@@ -41,6 +41,9 @@ export class AccountCache {
 
   private async setDefault(addrStr: string, blockConcise: BlockConcise) {
     const address = addrStr.toLowerCase();
+    if (this.accts[address]) {
+      return;
+    }
     const acctInDB = await this.repo.findByAddress(address);
     if (!acctInDB) {
       const name = getAccountName(this.network, address);

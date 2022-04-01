@@ -38,8 +38,11 @@ export class TokenBalanceCache {
   }
 
   private async setDefault(addrStr: string, tokenAddr: string, blockConcise: BlockConcise) {
-    const balInDB = await this.tokenBalanceRepo.findByAddress(addrStr, tokenAddr);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
+    if (this.bals[key]) {
+      return;
+    }
+    const balInDB = await this.tokenBalanceRepo.findByAddress(addrStr, tokenAddr);
     if (!balInDB) {
       const newBal = await this.tokenBalanceRepo.create(addrStr, tokenAddr, blockConcise);
       this.bals[key] = newBal;
