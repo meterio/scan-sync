@@ -9,14 +9,14 @@ export const RECENT_WINDOW = 5;
 export const UNIT_SHANNON = 1e9;
 export const UNIT_WEI = 1e18;
 
-const TESTNET_PROVIDER_URL = 'http://warringstakes.meter.io';
-const TESTNET_POW_RPC_HOST = 's03.meter.io';
+const TESTNET_PROVIDER_URL = process.env.TESTNET_RESTFUL_ENDPOINT;
+const TESTNET_POW_RPC_HOST = process.env.TESTNET_POW_RPC_HOST;
 const TESTNET_POW_RPC_PORT = 8332;
 const TESTNET_POW_RPC_USER = 'testuser';
 const TESTNET_POW_RPC_PWD = 'testpass';
 
-const MAINNET_PROVIDER_URL = 'http://rpc-trace.meter.io:8669';
-const MAINNET_POW_RPC_HOST = 'c03.meter.io';
+const MAINNET_PROVIDER_URL = process.env.MAINNET_RESTFUL_ENDPOINT;
+const MAINNET_POW_RPC_HOST = process.env.MAINNET_POW_RPC_HOST;
 const MAINNET_POW_RPC_PORT = 8332;
 const MAINNET_POW_RPC_USER = 'testuser';
 const MAINNET_POW_RPC_PWD = 'testpass';

@@ -312,7 +312,14 @@ export class PosCMD extends CMD {
             continue;
           }
           // process block
-          await this.processBlock(blk);
+          try {
+            await this.processBlock(blk);
+          } catch (e) {
+            console.log(`Error happened during block processing for:`, blk.number);
+            console.log(e);
+            await sleep(NORMAL_INTERVAL);
+            continue;
+          }
 
           if (!fastforward) {
             // step over mode
@@ -342,19 +349,6 @@ export class PosCMD extends CMD {
   }
 
   async saveCacheToDB() {
-    if (this.blocksCache.length > 0) {
-      const first = this.blocksCache[0];
-      const last = this.blocksCache[this.blocksCache.length - 1];
-      await this.blockRepo.bulkInsert(...this.blocksCache);
-      // update head
-      await this.updateHead(last.number, last.hash);
-
-      if (first.number === last.number) {
-        this.logger.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
-      } else {
-        this.logger.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
-      }
-    }
     if (this.txsCache.length > 0) {
       await this.txRepo.bulkInsert(...this.txsCache);
       this.logger.info(`saved ${this.txsCache.length} txs`);
@@ -387,6 +381,19 @@ export class PosCMD extends CMD {
     }
     await this.accountCache.saveToDB();
     await this.tokenBalanceCache.saveToDB();
+    if (this.blocksCache.length > 0) {
+      const first = this.blocksCache[0];
+      const last = this.blocksCache[this.blocksCache.length - 1];
+      await this.blockRepo.bulkInsert(...this.blocksCache);
+      // update head
+      await this.updateHead(last.number, last.hash);
+
+      if (first.number === last.number) {
+        this.logger.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
+      } else {
+        this.logger.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
+      }
+    }
     await this.handleRebasing();
   }
 
@@ -665,7 +672,7 @@ export class PosCMD extends CMD {
       // save call digests with data
       if (clause.data && clause.data.length > 10) {
         console.log('tx: ', tx.id);
-        console.log('data');
+        console.log('data', clause.data);
         const isSE = ScriptEngine.IsScriptEngineData(clause.data);
         console.log('isSE: ', isSE);
         const token = clause.token;
@@ -677,19 +684,21 @@ export class PosCMD extends CMD {
         } else {
           signature = clause.data.substring(0, 10);
         }
-        callDigests.push({
-          block: blockConcise,
-          txHash: tx.id,
-          fee: new BigNumber(tx.paid),
-          from: tx.origin,
-          to: clause.to,
-          mtr: token === Token.MTR ? new BigNumber(clause.value) : new BigNumber(0),
-          mtrg: token === Token.MTRG ? new BigNumber(clause.value) : new BigNumber(0),
-          method: signature,
-          reverted: tx.reverted,
-          clauseIndexs: [clauseIndex],
-          seq: 0,
-        });
+        if (signature != '0x00000000') {
+          callDigests.push({
+            block: blockConcise,
+            txHash: tx.id,
+            fee: new BigNumber(tx.paid),
+            from: tx.origin,
+            to: clause.to,
+            mtr: token === Token.MTR ? new BigNumber(clause.value) : new BigNumber(0),
+            mtrg: token === Token.MTRG ? new BigNumber(clause.value) : new BigNumber(0),
+            method: signature,
+            reverted: tx.reverted,
+            clauseIndexs: [clauseIndex],
+            seq: 0,
+          });
+        }
       }
     }
 
