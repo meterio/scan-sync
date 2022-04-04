@@ -66,8 +66,8 @@ const meterify = require('meterify').meterify;
 
 const FASTFORWARD_INTERVAL = 300; // 0.3 second gap between each loop
 const NORMAL_INTERVAL = 2000; // 2 seconds gap between each loop
-const PRELOAD_WINDOW = 50;
-const LOOP_WINDOW = 200;
+const PRELOAD_WINDOW = 100;
+const LOOP_WINDOW = 500;
 
 const revertReasonSelector = '0x' + cry.keccak256('Error(string)').toString('hex').slice(0, 8);
 const panicErrorSelector = '0x' + cry.keccak256('Panic(uint256)').toString('hex').slice(0, 8);
@@ -675,6 +675,7 @@ export class PosCMD extends CMD {
         console.log('data', clause.data);
         const isSE = ScriptEngine.IsScriptEngineData(clause.data);
         console.log('isSE: ', isSE);
+        console.log('clause.to: ', clause.to);
         const token = clause.token;
         let signature = '';
         if (isSE) {
@@ -690,7 +691,7 @@ export class PosCMD extends CMD {
             txHash: tx.id,
             fee: new BigNumber(tx.paid),
             from: tx.origin,
-            to: clause.to,
+            to: clause.to || ZeroAddress,
             mtr: token === Token.MTR ? new BigNumber(clause.value) : new BigNumber(0),
             mtrg: token === Token.MTRG ? new BigNumber(clause.value) : new BigNumber(0),
             method: signature,
@@ -1062,7 +1063,7 @@ export class PosCMD extends CMD {
         startBlock: blockConcise,
         members,
       };
-      // await this.committeesCache.push(committee);
+      await this.committeesCache.push(committee);
       console.log(`update committee for epoch ${blk.qc.epochID}`);
 
       if (blk.qc.epochID > 0) {
@@ -1072,9 +1073,8 @@ export class PosCMD extends CMD {
           timestamp: prevEndBlock.timestamp,
           number: prevEndBlock.number,
         };
-        committee.endBlock = endBlock;
+        await this.updateCommitteeEndBlock(blk.qc.epochID, endBlock);
       }
-      await this.committeesCache.push(committee);
     }
 
     let epoch = 0;
@@ -1102,6 +1102,17 @@ export class PosCMD extends CMD {
     };
     this.logger.info({ number: blk.number, txCount: blk.transactions.length }, 'processed PoS block');
     this.blocksCache.push(block);
+  }
+
+  private async updateCommitteeEndBlock(epoch: number, endBlock: BlockConcise) {
+    for (const c of this.committeesCache) {
+      if (c.epoch === epoch) {
+        c.endBlock = endBlock;
+        return;
+      }
+    }
+
+    await this.committeeRepo.updateEndBlock(epoch, endBlock);
   }
 
   private async handleRebasing() {
