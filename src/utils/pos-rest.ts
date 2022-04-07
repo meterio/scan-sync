@@ -508,20 +508,21 @@ export class Pos {
       const outputs = await this.explain(
         {
           clauses: [
-            { to: address, value: '0x0', data: ERC20.totalSupply.encode(), token: Token.MTR },
             { to: address, value: '0x0', data: ERC20.name.encode(), token: Token.MTR },
             { to: address, value: '0x0', data: ERC20.symbol.encode(), token: Token.MTR },
             { to: address, value: '0x0', data: ERC20.decimals.encode(), token: Token.MTR },
+            { to: address, value: '0x0', data: ERC20.totalSupply.encode(), token: Token.MTR },
           ],
         },
         blockHash
       );
+      console.log(outputs)
 
       const valid = (i) => !!outputs[i] && !outputs[i].reverted && outputs[i].data !== '0x';
-      const totalSupply = valid(0) ? ERC20.totalSupply.decode(outputs[0].data)['0'] : 0;
-      const name = valid(1) ? ERC20.name.decode(outputs[1].data)['0'] : '';
-      const symbol = valid(2) ? ERC20.symbol.decode(outputs[2].data)['0'] : '';
-      const decimals = valid(3) ? ERC20.decimals.decode(outputs[3].data)['0'] : 0;
+      const name = valid(0) ? ERC20.name.decode(outputs[0].data)['0'] : '';
+      const symbol = valid(1) ? ERC20.symbol.decode(outputs[1].data)['0'] : '';
+      const decimals = valid(2) ? ERC20.decimals.decode(outputs[2].data)['0'] : 0;
+      const totalSupply = valid(3) ? ERC20.totalSupply.decode(outputs[3].data)['0'] : 0;
       return { totalSupply, name, symbol, decimals };
     } catch (e) {
       console.log('ERROR happened during fetching ERC20 data:', e);

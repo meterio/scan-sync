@@ -663,6 +663,7 @@ export class PosCMD extends CMD {
     let transferDigestMap: { [key: string]: TxDigest } = {}; // key: sha1(from,to) -> val: txDigest object
     let callDigests: TxDigest[] = [];
     //
+    let visitedClause = {};
     for (const [clauseIndex, clause] of tx.clauses.entries()) {
       // skip handling of clause if it's a sys contract call
       if (clause.to === this.mtrSysToken.address || clause.to === this.mtrgSysToken.address) {
@@ -685,6 +686,12 @@ export class PosCMD extends CMD {
         } else {
           signature = clause.data.substring(0, 10);
         }
+        const key = sha1({ num: blockConcise.number, hash: tx.id, from: tx.origin, to: clause.to || ZeroAddress });
+        if (key in visitedClause) {
+          console.log('Skip clause for duplicate data: ', clause);
+          continue;
+        }
+        visitedClause[key] = true;
         if (signature != '0x00000000') {
           callDigests.push({
             block: blockConcise,
@@ -788,7 +795,8 @@ export class PosCMD extends CMD {
       this.txDigestsCache.push(d);
     }
     for (const key in transferDigestMap) {
-      this.txDigestsCache.push(transferDigestMap[key]);
+      const d = transferDigestMap[key];
+      this.txDigestsCache.push(d);
     }
   }
 
