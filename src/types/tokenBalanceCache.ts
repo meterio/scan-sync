@@ -64,6 +64,7 @@ export class TokenBalanceCache {
       throw new Error(`Got negative balance: ${this.bals[key].balance}`);
     }
     console.log(`Got => ${this.bals[key].balance}`);
+    this.bals[key].lastUpdate = blockConcise;
   }
 
   public async plus(addrStr: string, tokenAddr: string, amount: string | BigNumber, blockConcise: BlockConcise) {
@@ -79,6 +80,7 @@ export class TokenBalanceCache {
       throw new Error(`Got negative balance: ${this.bals[key].balance}`);
     }
     console.log(`Got => ${this.bals[key].balance}`);
+    this.bals[key].lastUpdate = blockConcise;
   }
 
   public async plusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
@@ -88,6 +90,7 @@ export class TokenBalanceCache {
     const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas);
     this.bals[key].nftBalances = newNFTBalances;
     console.log(`Got => ${this.bals[key].nftBalances}`);
+    this.bals[key].lastUpdate = blockConcise;
   }
 
   public async minusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
@@ -100,6 +103,7 @@ export class TokenBalanceCache {
     const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas, false);
     this.bals[key].nftBalances = newNFTBalances;
     console.log(`Got => ${this.bals[key].nftBalances}`);
+    this.bals[key].lastUpdate = blockConcise;
   }
 
   public async saveToDB() {

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import { abi, cry, ERC20, ERC1155 } from '@meterio/devkit';
+import { abi, cry, ERC20, ERC1155, ERC721 } from '@meterio/devkit';
 import { ScriptEngine } from '@meterio/devkit';
 import {
   Block,
@@ -538,7 +538,7 @@ export class PosCMD extends CMD {
       // ----------------------------------
 
       for (const [logIndex, evt] of o.events.entries()) {
-        // ### Handle ERC20/ERC721 transfer event (they have the same signature)
+        // ### Handle ERC20 Transfer event (they have the same signature)
         if (evt.topics && evt.topics[0] === ERC20.Transfer.signature) {
           let decoded: abi.Decoded;
           try {
@@ -551,7 +551,6 @@ export class PosCMD extends CMD {
           const from = decoded.from.toLowerCase();
           const to = decoded.to.toLowerCase();
           const amount = new BigNumber(decoded.value);
-          // ### Handle movement
           let movement: Movement = {
             from,
             to,
@@ -575,21 +574,51 @@ export class PosCMD extends CMD {
             await this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
             await this.accountCache.plus(to, Token.MTRG, amount, blockConcise);
           } else {
-            const contract = await this.contractRepo.findByAddress(evt.address);
-            if (contract && contract.type === ContractType.ERC721) {
-              movement.token = Token.ERC721;
-              movement.amount = new BigNumber(0);
-              const nftTransfers = [{ tokenId: Number(decoded.value), value: 1 }];
-              movement.nftTransfers.push(...nftTransfers);
-
-              await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-              await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
-            } else {
-              // regular ERC20 transfer
-              await this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
-              await this.tokenBalanceCache.plus(to, evt.address, amount, blockConcise);
-            }
+            // regular ERC20 transfer
+            await this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
+            await this.tokenBalanceCache.plus(to, evt.address, amount, blockConcise);
           }
+          this.movementsCache.push(movement);
+        }
+
+        if (evt.topics && evt.topics[0] === ERC721.Transfer.signature) {
+          let decoded: abi.Decoded;
+          try {
+            decoded = ERC721.Transfer.decode(evt.data, evt.topics);
+          } catch (e) {
+            console.log('error decoding transfer event');
+            continue;
+          }
+
+          const from = decoded.from.toLowerCase();
+          const to = decoded.to.toLowerCase();
+          const tokenId = new BigNumber(decoded.value).toNumber();
+          const nftTransfers = [{ tokenId, value: 1 }];
+          // ### Handle movement
+          let movement: Movement = {
+            from,
+            to,
+            amount: new BigNumber(0),
+            token: Token.ERC721,
+            tokenAddress: evt.address,
+            nftTransfers,
+            txHash: tx.id,
+            block: blockConcise,
+            clauseIndex,
+            logIndex,
+          };
+
+          const contract = await this.contractRepo.findByAddress(evt.address);
+          if (contract && contract.type === ContractType.ERC721) {
+            await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+            await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+          } else {
+            console.log('[Warning] Found ERC721 transfer event, but ERC721 contract is not tracked!!');
+            console.log('contract address: ', evt.address);
+            console.log('event: ', evt);
+            console.log('tx hash: ', tx.id);
+          }
+
           this.movementsCache.push(movement);
         }
 
@@ -791,11 +820,22 @@ export class PosCMD extends CMD {
         }
       } // End of handling transfers
     }
+    let ids = {};
     for (const d of callDigests) {
+      const id = sha1({ num: d.block.number, hash: d.txHash, from: d.from, to: d.to });
+      if (id in ids) {
+        continue;
+      }
+      ids[id] = true;
       this.txDigestsCache.push(d);
     }
     for (const key in transferDigestMap) {
       const d = transferDigestMap[key];
+      const id = sha1({ num: d.block.number, hash: d.txHash, from: d.from, to: d.to });
+      if (id in ids) {
+        continue;
+      }
+      ids[id] = true;
       this.txDigestsCache.push(d);
     }
   }

@@ -37,6 +37,7 @@ export class AccountCache {
       }
       console.log(`Got => ${this.accts[addr].mtrgBalance}`);
     }
+    this.accts[addr].lastUpdate = blockConcise;
   }
 
   private async setDefault(addrStr: string, blockConcise: BlockConcise) {
@@ -77,6 +78,7 @@ export class AccountCache {
       }
       console.log(`Got => ${this.accts[addr].mtrgBalance}`);
     }
+    this.accts[addr].lastUpdate = blockConcise;
   }
 
   public async bound(addrStr: string, token: Token, amount: string | BigNumber, blockConcise: BlockConcise) {
@@ -96,6 +98,7 @@ export class AccountCache {
       }
       console.log(`Got => Balance: ${this.accts[addr].mtrgBalance}, Bounded: ${this.accts[addr].mtrgBounded}`);
     }
+    this.accts[addr].lastUpdate = blockConcise;
   }
 
   public async unbound(addrStr: string, token: Token, amount: string | BigNumber, blockConcise: BlockConcise) {
@@ -112,6 +115,7 @@ export class AccountCache {
       this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.minus(formattedAmount);
       console.log(`Got => Balance: ${this.accts[addr].mtrgBalance}, Bounded: ${this.accts[addr].mtrgBounded}`);
     }
+    this.accts[addr].lastUpdate = blockConcise;
   }
 
   public async saveToDB() {
