@@ -592,7 +592,7 @@ export class PosCMD extends CMD {
 
           const from = decoded.from.toLowerCase();
           const to = decoded.to.toLowerCase();
-          const tokenId = new BigNumber(decoded.value).toNumber();
+          const tokenId = new BigNumber(decoded.tokenId).toNumber();
           const nftTransfers = [{ tokenId, value: 1 }];
           // ### Handle movement
           let movement: Movement = {
