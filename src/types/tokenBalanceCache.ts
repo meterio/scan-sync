@@ -1,5 +1,6 @@
-import { BigNumber, NFTBalance, BlockConcise, TokenBalance, TokenBalanceRepo } from '@meterio/scan-db/dist';
+import { BigNumber, Network, NFTBalance, BlockConcise, TokenBalance, TokenBalanceRepo } from '@meterio/scan-db/dist';
 import { ZeroAddress } from '../const';
+import { Pos } from '../utils';
 
 export const mergeNFTBalances = (origin: NFTBalance[], delta: NFTBalance[], plus = true) => {
   let resultMap: { [key: number]: number } = {};
@@ -33,8 +34,30 @@ export const mergeNFTBalances = (origin: NFTBalance[], delta: NFTBalance[], plus
 export class TokenBalanceCache {
   private bals: { [key: string]: TokenBalance & { save() } } = {};
   private tokenBalanceRepo = new TokenBalanceRepo();
+  private pos: Pos;
+
+  constructor(net: Network) {
+    this.pos = new Pos(net);
+  }
+
   public list() {
     return Object.values(this.bals);
+  }
+
+  private async fixTokenBalance(addrStr: string, tokenAddr: string, blockConcise: BlockConcise) {
+    const key = `${addrStr}_${tokenAddr}`.toLowerCase();
+    let bal = this.bals[key];
+
+    const chainBal = await this.pos.getERC20BalanceOf(addrStr, tokenAddr, blockConcise.number.toString());
+
+    const preBal = bal.balance;
+    if (!preBal.isEqualTo(chainBal)) {
+      bal.balance = new BigNumber(chainBal);
+      console.log(`Fixed balance on ${bal.address} for token ${bal.tokenAddress}:`);
+      console.log(`  Balance: ${preBal.toFixed()} -> ${bal.balance.toFixed()}`);
+      bal.lastUpdate = blockConcise;
+      this.bals[key] = bal;
+    }
   }
 
   private async setDefault(addrStr: string, tokenAddr: string, blockConcise: BlockConcise) {
@@ -61,7 +84,8 @@ export class TokenBalanceCache {
     console.log(`Token ${tokenAddr} on ${addrStr} minus: ${this.bals[key].balance} - ${formattedAmount} `);
     this.bals[key].balance = this.bals[key].balance.minus(formattedAmount);
     if (this.bals[key].balance.isLessThan(0)) {
-      throw new Error(`Got negative balance: ${this.bals[key].balance}`);
+      console.log(`Got negative balance: ${this.bals[key].balance}`);
+      await this.fixTokenBalance(addrStr, tokenAddr, blockConcise);
     }
     console.log(`Got => ${this.bals[key].balance}`);
     this.bals[key].lastUpdate = blockConcise;
@@ -77,7 +101,8 @@ export class TokenBalanceCache {
     console.log(`Token ${tokenAddr} on ${addrStr} plus: ${this.bals[key].balance} + ${formattedAmount} `);
     this.bals[key].balance = this.bals[key].balance.plus(formattedAmount);
     if (this.bals[key].balance.isLessThan(0)) {
-      throw new Error(`Got negative balance: ${this.bals[key].balance}`);
+      console.log(`Got negative balance: ${this.bals[key].balance}`);
+      await this.fixTokenBalance(addrStr, tokenAddr, blockConcise);
     }
     console.log(`Got => ${this.bals[key].balance}`);
     this.bals[key].lastUpdate = blockConcise;

@@ -111,7 +111,7 @@ export class PosCMD extends CMD {
   private rebasingsCache: string[] = [];
   private contractsCache: Contract[] = [];
   private accountCache: AccountCache;
-  private tokenBalanceCache = new TokenBalanceCache();
+  private tokenBalanceCache: TokenBalanceCache;
   private beneficiaryCache = ZeroAddress;
 
   constructor(net: Network) {
@@ -121,6 +121,7 @@ export class PosCMD extends CMD {
     this.network = net;
     this.mtrSysToken = getERC20Token(this.network, Token.MTR);
     this.mtrgSysToken = getERC20Token(this.network, Token.MTRG);
+    this.tokenBalanceCache = new TokenBalanceCache(net);
     const posConfig = GetPosConfig(net);
     this.web3 = meterify(new Web3(), posConfig.url);
     this.accountCache = new AccountCache(this.network);
@@ -264,8 +265,16 @@ export class PosCMD extends CMD {
     for (const acct of accts) {
       await this.fixAccount(acct, blockNum);
     }
+    const incorrectAccts = await this.accountRepo.findIncorrect();
+    for (const acct of incorrectAccts) {
+      await this.fixAccount(acct, blockNum);
+    }
     const bals = await this.tokenBalanceRepo.findLastUpdateAfter(blockNum);
     for (const bal of bals) {
+      await this.fixTokenBalance(bal, blockNum);
+    }
+    const incorrectBals = await this.tokenBalanceRepo.findIncorrect();
+    for (const bal of incorrectBals) {
       await this.fixTokenBalance(bal, blockNum);
     }
     this.logger.info(

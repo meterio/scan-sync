@@ -1,16 +1,62 @@
 import { BigNumber, Token, AccountRepo, Account, BlockConcise, Network } from '@meterio/scan-db/dist';
 import { getAccountName, ZeroAddress } from '../const';
+import { Pos, fromWei } from '../utils';
 
 export class AccountCache {
   private accts: { [key: string]: Account & { save() } } = {};
   private repo = new AccountRepo();
   private network: Network;
+  private pos: Pos;
 
   constructor(network: Network) {
     this.network = network;
+    this.pos = new Pos(network);
   }
+
   public list() {
     return Object.values(this.accts);
+  }
+
+  private async fixAccount(addrStr: string, blockConcise: BlockConcise) {
+    const addr = addrStr.toLowerCase();
+    const chainAcc = await this.pos.getAccount(addr, blockConcise.number.toString());
+    let acct = this.accts[addr];
+
+    const balance = new BigNumber(chainAcc.balance);
+    const energy = new BigNumber(chainAcc.energy);
+    const boundedBalance = new BigNumber(chainAcc.boundbalance);
+    const boundedEnergy = new BigNumber(chainAcc.boundenergy);
+    if (
+      acct.mtrgBalance.toFixed() !== balance.toFixed() ||
+      acct.mtrBalance.toFixed() !== energy.toFixed() ||
+      acct.mtrgBounded.toFixed() !== boundedBalance.toFixed() ||
+      acct.mtrBounded.toFixed() !== boundedEnergy.toFixed()
+    ) {
+      const preMTR = acct.mtrBalance;
+      const preMTRG = acct.mtrgBalance;
+      const preBoundedMTR = acct.mtrBounded;
+      const preBoundedMTRG = acct.mtrgBounded;
+      acct.mtrBalance = energy;
+      acct.mtrgBalance = balance;
+      acct.mtrBounded = boundedEnergy;
+      acct.mtrgBounded = boundedBalance;
+      acct.lastUpdate = blockConcise;
+
+      this.accts[addr] = acct;
+      console.log(`Fixed Account ${acct.address}:`);
+      if (!preMTR.isEqualTo(energy)) {
+        console.log(`  MTR: ${fromWei(preMTR)} -> ${fromWei(energy)} `);
+      }
+      if (!preMTRG.isEqualTo(balance)) {
+        console.log(`  MTRG: ${fromWei(preMTRG)} -> ${fromWei(balance)}`);
+      }
+      if (!preBoundedMTR.isEqualTo(boundedEnergy)) {
+        console.log(`  Bounded MTR: ${fromWei(preBoundedMTR)} -> ${fromWei(boundedEnergy)}`);
+      }
+      if (!preBoundedMTRG.isEqualTo(boundedBalance)) {
+        console.log(`  Bounded MTRG: ${fromWei(preBoundedMTRG)} -> ${fromWei(boundedBalance)}`);
+      }
+    }
   }
 
   public async minus(addrStr: string, token: Token, amount: string | BigNumber, blockConcise: BlockConcise) {
@@ -25,7 +71,8 @@ export class AccountCache {
       console.log(`Account ${addr} minus MTR: ${this.accts[addr].mtrBalance} - ${formattedAmount} `);
       this.accts[addr].mtrBalance = this.accts[addr].mtrBalance.minus(formattedAmount);
       if (this.accts[addr].mtrBalance.isLessThan(0)) {
-        throw new Error(`Got negative balance: ${this.accts[addr].mtrBalance}`);
+        console.log(`Got negative balance: ${this.accts[addr].mtrBalance}`);
+        await this.fixAccount(addr, blockConcise);
       }
       console.log(`Got => ${this.accts[addr].mtrBalance}`);
     }
@@ -33,7 +80,8 @@ export class AccountCache {
       console.log(`Account ${addr} minus MTRG: ${this.accts[addr].mtrgBalance} - ${formattedAmount} `);
       this.accts[addr].mtrgBalance = this.accts[addr].mtrgBalance.minus(formattedAmount);
       if (this.accts[addr].mtrgBalance.isLessThan(0)) {
-        throw new Error(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+        console.log(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+        await this.fixAccount(addr, blockConcise);
       }
       console.log(`Got => ${this.accts[addr].mtrgBalance}`);
     }
@@ -66,7 +114,8 @@ export class AccountCache {
       console.log(`Account ${addr} plus MTR: ${this.accts[addr].mtrBalance} + ${formattedAmount} `);
       this.accts[addr].mtrBalance = this.accts[addr].mtrBalance.plus(formattedAmount);
       if (this.accts[addr].mtrBalance.isLessThan(0)) {
-        throw new Error(`Got negative balance: ${this.accts[addr].mtrBalance}`);
+        console.log(`Got negative balance: ${this.accts[addr].mtrBalance}`);
+        await this.fixAccount(addr, blockConcise);
       }
       console.log(`Got => ${this.accts[addr].mtrBalance}`);
     }
@@ -74,7 +123,8 @@ export class AccountCache {
       console.log(`Account ${addr} plus MTRG: ${this.accts[addr].mtrgBalance} + ${formattedAmount} `);
       this.accts[addr].mtrgBalance = this.accts[addr].mtrgBalance.plus(formattedAmount);
       if (this.accts[addr].mtrgBalance.isLessThan(0)) {
-        throw new Error(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+        console.log(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+        await this.fixAccount(addr, blockConcise);
       }
       console.log(`Got => ${this.accts[addr].mtrgBalance}`);
     }
@@ -95,6 +145,7 @@ export class AccountCache {
       this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.plus(formattedAmount);
       if (this.accts[addr].mtrgBalance.isLessThan(0)) {
         console.log(`Got negative balance: ${this.accts[addr].mtrgBalance}`);
+        await this.fixAccount(addr, blockConcise);
       }
       console.log(`Got => Balance: ${this.accts[addr].mtrgBalance}, Bounded: ${this.accts[addr].mtrgBounded}`);
     }
