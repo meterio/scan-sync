@@ -6,7 +6,7 @@ const uint8ToAddress = (input: number) => '0x' + Buffer.alloc(1).fill(input).toS
 
 const preCompiledContract = [uint8ToAddress(1)];
 export const getPreAllocAccount = (net: Network) => {
-  if (net === Network.MainNet || net === Network.MainNetStandBy) {
+  if (net === Network.MainNet) {
     return [
       ParamsAddress,
       ExecutorAddress,
@@ -15,7 +15,7 @@ export const getPreAllocAccount = (net: Network) => {
       ...preCompiledContract,
       ...mainnet.map((item) => item.address),
     ];
-  } else if (net === Network.TestNet || net === Network.TestNetStandBy) {
+  } else if (net === Network.TestNet) {
     return [
       ParamsAddress,
       PrototypeAddress,
@@ -29,11 +29,11 @@ export const getPreAllocAccount = (net: Network) => {
 };
 
 export const getAccountName = (net, addr) => {
-  if (net === Network.MainNet || net === Network.MainNetStandBy) {
+  if (net === Network.MainNet) {
     if (addr.toLowerCase() in mainnetKnown) {
       return mainnetKnown[addr];
     }
-  } else if (net === Network.TestNet || net === Network.TestNetStandBy) {
+  } else if (net === Network.TestNet) {
     if (addr.toLowerCase() in testnetKnown) {
       return testnetKnown[addr];
     }

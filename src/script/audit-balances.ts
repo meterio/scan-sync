@@ -1,27 +1,24 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { AccountRepo, BigNumber, HeadRepo, Network,  connectDB, disconnectDB } from '@meterio/scan-db';
+import { AccountRepo, BigNumber, HeadRepo, Network, connectDB, disconnectDB } from '@meterio/scan-db';
 
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 
 const adjustBalance = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const headRepo = new HeadRepo();
   const accountRepo = new AccountRepo();
-  const pos = new Pos(net);
-  await checkNetworkWithDB(net);
+  const pos = new Pos(network);
+  await checkNetworkWithDB(network);
 
   const posHead = await headRepo.findByKey('pos');
   console.log('POS Head:', posHead);
 
   let revision = '';
-  if (net === Network.TestNet) {
+  if (network === Network.TestNet) {
     revision = '' + posHead.num;
   } else {
     revision = '' + posHead.num;

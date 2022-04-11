@@ -5,18 +5,15 @@ import { Network, TxRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist'
 
 import { Pos, getNetworkFromCli } from '../utils';
 
-const net = getNetworkFromCli();
-if (!net) {
-  process.exit(-1);
-}
+const { network, standby } = getNetworkFromCli();
 
-const fillTokenInTxOutput = async (net: Network) => {
+const fillTokenInTxOutput = async (net: Network, standby: boolean) => {
   const pos = new Pos(net);
   if (!net) {
     process.exit(-1);
   }
 
-  await connectDB(net);
+  await connectDB(net, standby);
   const txRepo = new TxRepo();
   let txs = await txRepo.findAll();
   for (let tx of txs) {
@@ -46,7 +43,7 @@ const fillTokenInTxOutput = async (net: Network) => {
 
 (async () => {
   try {
-    await fillTokenInTxOutput(net);
+    await fillTokenInTxOutput(network, standby);
     await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

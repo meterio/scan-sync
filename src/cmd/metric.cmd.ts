@@ -6,13 +6,20 @@ import {
   BlockRepo,
   Bucket,
   BucketRepo,
+  ContractRepo,
   HeadRepo,
   Network,
   Validator,
   ValidatorRepo,
   ValidatorStatus,
+  BigNumber,
+  ABIFragment,
+  ABIFragmentRepo,
+  ContractFile,
+  ContractFileRepo,
+  getNetworkConstants,
 } from '@meterio/scan-db/dist';
-import { BigNumber } from '@meterio/scan-db/dist';
+import { toChecksumAddress } from '@meterio/devkit/dist/cry';
 import Logger from 'bunyan';
 
 import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName } from '../const';
@@ -20,8 +27,12 @@ import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { MetricCache } from '../types';
 import { postToSlackChannel } from '../utils/slack';
 import { CMD } from './cmd';
+import axios from 'axios';
+import { EventFragment, FormatTypes, FunctionFragment, Interface } from 'ethers/lib/utils';
 
 const SAMPLING_INTERVAL = 3000;
+
+const SOURCIFY_SERVER_API = 'https://sourcify.dev/server';
 
 const every = 1;
 const every6s = 6 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
@@ -50,6 +61,9 @@ export class MetricCMD extends CMD {
   private blockRepo = new BlockRepo();
   private alertRepo = new AlertRepo();
   private headRepo = new HeadRepo();
+  private contractRepo = new ContractRepo();
+  private abiFragmentRepo = new ABIFragmentRepo();
+  private contractFileRepo = new ContractFileRepo();
 
   private cache = new MetricCache();
 
@@ -173,24 +187,10 @@ export class MetricCMD extends CMD {
         console.log(now - head.timestamp);
         if (now - head.timestamp > 120) {
           // alert
-          let network = '';
-          switch (this.network) {
-            case Network.MainNet:
-              network = 'mainnet';
-              break;
-            case Network.TestNet:
-              network = 'testnet';
-              break;
-            case Network.DevNet:
-              network = 'devnet';
-              break;
-            default:
-              network = 'devnet';
-              break;
-          }
+          const netName = Network[this.network];
           const channel = 'slack';
-          const msg = `network ${network} halted for over 2 minutes at epoch:${head.epoch} and number:${head.number}`;
-          await this.checkOrSendAlert(network, head.epoch, head.number, channel, msg);
+          const msg = `network ${netName} halted for over 2 minutes at epoch:${head.epoch} and number:${head.number}`;
+          await this.checkOrSendAlert(netName, head.epoch, head.number, channel, msg);
         }
       }
     }
@@ -548,6 +548,76 @@ export class MetricCMD extends CMD {
     }
   }
 
+  private async updateVerifiedContracts(index: number, interval: number) {
+    if (index % interval === 0) {
+      console.log('UPDATE VERIFIED CONTRACT');
+      const netConsts = getNetworkConstants(this.network);
+      const chainId = netConsts.chainId;
+      if (!chainId) {
+        console.log('could not get correct chainId to check verified contracts');
+        return;
+      }
+
+      const res = await axios.get(`${SOURCIFY_SERVER_API}/files/contracts/${chainId}`);
+      const addresses = res.data.full.map((s) => s.toLowerCase()).concat(res.data.partial.map((s) => s.toLowerCase()));
+      console.log(addresses);
+      const unverified = await this.contractRepo.findUnverifiedContracts(addresses);
+      console.log('unverified: ', unverified);
+
+      for (const c of unverified) {
+        const addr = toChecksumAddress(c.address);
+        const fileRes = await axios.get(`${SOURCIFY_SERVER_API}/files/any/${chainId}/${addr}`);
+        const { data } = fileRes;
+        c.verified = true;
+        c.status = data.status;
+
+        let contractFiles: ContractFile[] = [];
+        for (const file of data.files) {
+          contractFiles.push({
+            ...file,
+            address: c.address,
+          } as ContractFile);
+
+          if (file.name === 'metadata.json') {
+            // decode metadata
+
+            const meta = JSON.parse(file.content);
+            const abis = meta.output.abi;
+
+            let fragments: ABIFragment[] = [];
+            const iface = new Interface(abis);
+            const funcMap = iface.functions;
+            const evtMap = iface.events;
+            for (const key in funcMap) {
+              const funcFragment = funcMap[key];
+              const name = funcFragment.name;
+              const abi = funcFragment.format(FormatTypes.full);
+              const signature = iface.getSighash(funcFragment);
+              fragments.push({ name, signature, abi, type: 'function' });
+            }
+            for (const key in evtMap) {
+              const evtFragment = evtMap[key];
+              const name = evtFragment.name;
+              const abi = evtFragment.format(FormatTypes.full);
+              const signature = iface.getEventTopic(evtFragment);
+              fragments.push({ name, signature, abi, type: 'event' });
+            }
+
+            console.log('fragments: ', fragments);
+
+            await this.abiFragmentRepo.bulkUpsert(...fragments);
+          }
+        }
+        console.log(
+          'contract files: ',
+          contractFiles.map((c) => ({ name: c.name, path: c.path }))
+        );
+        await this.contractFileRepo.bulkUpsert(...contractFiles);
+        await c.save();
+      }
+    }
+  }
+
   public async loop() {
     let index = 0;
 
@@ -557,6 +627,9 @@ export class MetricCMD extends CMD {
           throw new InterruptedError();
         }
         await sleep(SAMPLING_INTERVAL);
+
+        // update verified contracts from sourcify
+        await this.updateVerifiedContracts(index, every5m);
 
         // update pos best, difficulty && hps
         await this.updatePowInfo(index, every10m);

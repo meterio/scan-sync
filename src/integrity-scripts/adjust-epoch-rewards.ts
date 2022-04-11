@@ -6,13 +6,10 @@ import { BidRepo, BigNumber, EpochRewardRepo, connectDB, disconnectDB } from '@m
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 
 const adjustEpochRewards = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
-  await checkNetworkWithDB(net);
+  await connectDB(network, standby);
+  await checkNetworkWithDB(network);
 
   const bidRepo = new BidRepo();
   const epochRewardRepo = new EpochRewardRepo();

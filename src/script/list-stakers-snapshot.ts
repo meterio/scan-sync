@@ -15,15 +15,12 @@ import { Pos, saveCSV } from '../utils';
 const tippingBlockNum = 14063032;
 
 const listStakersSnapshot = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
-  const pos = new Pos(net);
+  const { network, standby } = getNetworkFromCli();
+  const pos = new Pos(network);
 
   const keyBlock = await pos.getBlock(tippingBlockNum, 'regular');
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const boundRepo = new BoundRepo();
   const unboundRepo = new UnboundRepo();
   const bounds = await boundRepo.findBeforeNum(tippingBlockNum);

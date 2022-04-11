@@ -3,18 +3,15 @@ require('../utils/validateEnv');
 
 import { ERC20 } from '@meterio/devkit';
 import { BigNumber, Token, ContractRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-import { Pos, checkNetworkWithDB,  getNetworkFromCli } from '../utils';
+import { Pos, checkNetworkWithDB, getNetworkFromCli } from '../utils';
 
 const adjustTotalSupply = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const contractRepo = new ContractRepo();
-  const pos = new Pos(net);
-  await checkNetworkWithDB(net);
+  const pos = new Pos(network);
+  await checkNetworkWithDB(network);
 
   const contracts = await contractRepo.findAll();
   console.log(`start checking ${contracts.length} contracts...`);

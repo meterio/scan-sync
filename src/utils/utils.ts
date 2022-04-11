@@ -1,4 +1,4 @@
-import { BigNumber, Network } from '@meterio/scan-db/dist';
+import { BigNumber, Network, parseNetwork } from '@meterio/scan-db/dist';
 
 import { UNIT_WEI } from '../const';
 
@@ -79,16 +79,7 @@ export const getNetworkFromCli = () => {
     process.exit(-1);
   }
 
-  switch (process.argv[2]) {
-    case 'main':
-      return Network.MainNet;
-    case 'test':
-      return Network.TestNet;
-    case 'dev':
-      return Network.DevNet;
-    default:
-      return undefined;
-  }
+  return parseNetwork(process.argv[2]);
 };
 
 export const isHex = (str: string): boolean => {

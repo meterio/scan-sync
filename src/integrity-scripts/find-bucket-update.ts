@@ -9,12 +9,9 @@ import { getNetworkFromCli } from '../utils';
 
 const blockNum = 9470000;
 const findBucketUpdate = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const txRepo = new TxRepo();
   const txs = await txRepo.findTxsAfter(blockNum);
   let total = new BigNumber(0);

@@ -21,17 +21,13 @@ import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 const revertHeight = 4200000;
 
 const revertToHeight = async () => {
-  const net = getNetworkFromCli();
-  if (net === undefined) {
-    process.exit(-1);
-  }
-
-  if (net === Network.MainNet) {
+  const { network, standby } = getNetworkFromCli();
+  if (network === Network.MainNet) {
     console.log('NO REVERT ALLOWED ON MAINNET!!!');
     process.exit(-1);
   }
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const blockRepo = new BlockRepo();
   const blk = await blockRepo.findByNumber(revertHeight);
   if (!blk) {
@@ -39,7 +35,7 @@ const revertToHeight = async () => {
     process.exit(-1);
   }
 
-  await checkNetworkWithDB(net);
+  await checkNetworkWithDB(network);
 
   const headRepo = new HeadRepo();
   const auctionRepo = new AuctionRepo();

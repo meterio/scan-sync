@@ -5,18 +5,15 @@ import { BlockRepo, Network, PowInfo, connectDB, disconnectDB } from '@meterio/s
 
 import { Pos, getNetworkFromCli } from '../utils';
 
-const net = getNetworkFromCli();
-if (!net) {
-  process.exit(-1);
-}
+const { network, standby } = getNetworkFromCli();
 
-const fillPowblocksInKBlock = async (net: Network) => {
+const fillPowblocksInKBlock = async (net: Network, standby: boolean) => {
   const pos = new Pos(net);
   if (!net) {
     process.exit(-1);
   }
 
-  await connectDB(net);
+  await connectDB(net, standby);
   const blockRepo = new BlockRepo();
   let kblks = await blockRepo.findKBlocksWithoutPowBlocks();
   while (!!kblks && kblks.length > 0) {
@@ -43,7 +40,7 @@ const fillPowblocksInKBlock = async (net: Network) => {
 
 (async () => {
   try {
-    await fillPowblocksInKBlock(net);
+    await fillPowblocksInKBlock(network, standby);
     await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

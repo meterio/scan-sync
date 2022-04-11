@@ -8,14 +8,11 @@ import { Pos, getNetworkFromCli } from '../utils';
 
 // other imports
 
-const net = getNetworkFromCli();
-if (!net) {
-  process.exit(-1);
-}
+const { network, standby } = getNetworkFromCli();
 
 const blockNum = 27896;
 
-const processOneBlock = async (net: Network, blockNum: number) => {
+const processOneBlock = async (net: Network, standby: boolean, blockNum: number) => {
   // const blockQueue = new BlockQueue('block');
   let shutdown = false;
   const cmd = new PosCMD(net);
@@ -36,7 +33,7 @@ const processOneBlock = async (net: Network, blockNum: number) => {
     });
   });
 
-  await connectDB(net);
+  await connectDB(net, standby);
   const result = await cmd.processBlock(blk);
   console.log(result);
 };
@@ -44,7 +41,7 @@ const processOneBlock = async (net: Network, blockNum: number) => {
 (async () => {
   // const blockQueue = new BlockQueue('block');
   try {
-    await processOneBlock(net, blockNum);
+    await processOneBlock(network, standby, blockNum);
     await disconnectDB();
   } catch (e) {
     console.log(`process error: ${e.name} ${e.message} - ${e.stack}`);

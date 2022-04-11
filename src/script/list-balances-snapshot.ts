@@ -15,15 +15,12 @@ import { Pos, fromWei, saveCSV } from '../utils';
 const tippingBlockNum = 14063032;
 
 const listBalancesSnapshot = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
-  const pos = new Pos(net);
+  const { network, standby } = getNetworkFromCli();
+  const pos = new Pos(network);
 
   const keyBlock = await pos.getBlock(tippingBlockNum, 'regular');
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const accountRepo = new AccountRepo();
   const accts = await accountRepo.findAll();
   const balances = [];

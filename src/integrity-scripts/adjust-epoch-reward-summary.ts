@@ -17,13 +17,10 @@ import { StakingModuleAddress } from '../const';
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 
 const adjustEpochRewardSummary = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
-  await checkNetworkWithDB(net);
+  await connectDB(network, standby);
+  await checkNetworkWithDB(network);
 
   const epochRewardRepo = new EpochRewardRepo();
   const epochRewardSummaryRepo = new EpochRewardSummaryRepo();

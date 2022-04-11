@@ -21,20 +21,8 @@ const MAINNET_POW_RPC_PORT = 8332;
 const MAINNET_POW_RPC_USER = 'testuser';
 const MAINNET_POW_RPC_PWD = 'testpass';
 
-export const getNetwork = (network: string) => {
-  switch (network.toLowerCase()) {
-    case 'devnet':
-      return Network.DevNet;
-    case 'testnet':
-      return Network.TestNet;
-    case 'mainnet':
-      return Network.MainNet;
-  }
-  return Network.TestNet;
-};
-
 export const GetPowConfig = (network: Network) => {
-  if (network === Network.MainNet || network === Network.MainNetStandBy) {
+  if (network === Network.MainNet) {
     return {
       username: MAINNET_POW_RPC_USER,
       password: MAINNET_POW_RPC_PWD,
@@ -42,7 +30,7 @@ export const GetPowConfig = (network: Network) => {
       port: MAINNET_POW_RPC_PORT,
     };
   }
-  if (network === Network.TestNet || network === Network.TestNetStandBy) {
+  if (network === Network.TestNet) {
     return {
       username: TESTNET_POW_RPC_USER,
       password: TESTNET_POW_RPC_PWD,
@@ -53,12 +41,12 @@ export const GetPowConfig = (network: Network) => {
 };
 
 export const GetPosConfig = (network: Network) => {
-  if (network === Network.MainNet || network === Network.MainNetStandBy) {
+  if (network === Network.MainNet) {
     return {
       url: MAINNET_PROVIDER_URL,
     };
   }
-  if (network === Network.TestNet || network === Network.TestNetStandBy) {
+  if (network === Network.TestNet) {
     return {
       url: TESTNET_PROVIDER_URL,
     };

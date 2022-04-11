@@ -9,12 +9,12 @@ import { getNetworkFromCli } from '../utils/utils';
 
 // other imports
 
-const net = getNetworkFromCli();
-console.log(Network[net]);
+const { network, standby } = getNetworkFromCli();
+console.log(Network[network]);
 const blockNum = 22280145;
 
-const processOneBlock = async (net: Network, blockNum: number) => {
-  await connectDB(net);
+const processOneBlock = async (net: Network, standby: boolean, blockNum: number) => {
+  await connectDB(net, standby);
   console.log('process blockNum: ', blockNum);
   const cmd = new PosCMD(net);
   const pos = new Pos(net);
@@ -25,5 +25,5 @@ const processOneBlock = async (net: Network, blockNum: number) => {
 };
 
 (async () => {
-  await processOneBlock(net, blockNum);
+  await processOneBlock(network, standby, blockNum);
 })();

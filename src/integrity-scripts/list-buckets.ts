@@ -10,12 +10,9 @@ import { getNetworkFromCli } from '../utils';
 const origin = '0x1ce46b7bf47e144e3aa0203e5de1395e85fce087';
 
 const listBuckets = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const txRepo = new TxRepo();
   const txs = await txRepo.findByOrigin(origin);
   let buckets = {};

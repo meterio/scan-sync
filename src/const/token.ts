@@ -47,10 +47,7 @@ testnet.add({ ...MTRSystemContract, address: '' });
 testnet.add({ ...MTRGSystemContract, address: '' });
 
 knownTokens.set(Network.MainNet, mainnet);
-knownTokens.set(Network.MainNetStandBy, mainnet);
 knownTokens.set(Network.TestNet, testnet);
-knownTokens.set(Network.TestNetStandBy, testnet);
-knownTokens.set(Network.DevNet, devnet);
 
 export const getERC20Token = (net: Network, token: Token) => {
   const registry = knownTokens.get(net);

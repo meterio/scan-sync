@@ -7,13 +7,10 @@ import { AccountRepo, Network, connectDB, disconnectDB } from '@meterio/scan-db/
 
 import { checkNetworkWithDB, getNetworkFromCli, saveCSV } from '../utils';
 
-const net = getNetworkFromCli();
-if (!net) {
-  process.exit(-1);
-}
+const { network, standby } = getNetworkFromCli();
 
-const dumpAccounts = async (net: Network) => {
-  await connectDB(net);
+const dumpAccounts = async (net: Network, standby: boolean) => {
+  await connectDB(net, standby);
   const accountRepo = new AccountRepo();
   const accounts = await accountRepo.findAll();
   await checkNetworkWithDB(net);
@@ -36,7 +33,7 @@ const dumpAccounts = async (net: Network) => {
 
 (async () => {
   try {
-    await dumpAccounts(net);
+    await dumpAccounts(network, standby);
     await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

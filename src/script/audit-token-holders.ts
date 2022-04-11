@@ -14,17 +14,14 @@ import { ERC20 } from '@meterio/devkit';
 import { Pos, checkNetworkWithDB, getNetworkFromCli } from '../utils';
 
 const auditTokenBalances = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const headRepo = new HeadRepo();
   const contractRepo = new ContractRepo();
   const tokenBalanceRepo = new TokenBalanceRepo();
-  const pos = new Pos(net);
-  await checkNetworkWithDB(net);
+  const pos = new Pos(network);
+  await checkNetworkWithDB(network);
 
   const contracts = await contractRepo.findAll();
   for (const c of contracts) {

@@ -9,22 +9,19 @@ import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 const testnetRevision = '250000';
 
 const adjustBalance = async () => {
-  const net = getNetworkFromCli();
-  if (!net) {
-    process.exit(-1);
-  }
+  const { network, standby } = getNetworkFromCli();
 
-  await connectDB(net);
+  await connectDB(network, standby);
   const headRepo = new HeadRepo();
   const accountRepo = new AccountRepo();
-  const pos = new Pos(net);
-  await checkNetworkWithDB(net);
+  const pos = new Pos(network);
+  await checkNetworkWithDB(network);
 
   const posHead = await headRepo.findByKey('pos');
   console.log('POS Head:', posHead);
 
   let revision = '';
-  if (net === Network.TestNet) {
+  if (network === Network.TestNet) {
     revision = testnetRevision;
   } else {
     revision = '' + posHead.num;
