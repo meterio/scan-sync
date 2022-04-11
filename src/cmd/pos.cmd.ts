@@ -166,8 +166,16 @@ export class PosCMD extends CMD {
     return b;
   }
 
-  private async fixAccount(acct: Account & { save() }, blockHash: string) {
-    const chainAcc = await this.pos.getAccount(acct.address, blockHash);
+  private async fixAccount(acct: Account & { save() }, blockNum: number) {
+    console.log(`Start to fix account on block ${blockNum}`);
+    const blk = await this.blockRepo.findByNumber(blockNum);
+    if (!blk) {
+      console.log(`[WARN] could not find block ${blockNum}`);
+      return;
+    }
+    const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash } as BlockConcise;
+    const chainAcc = await this.pos.getAccount(acct.address, blockNum.toString());
+
     const balance = new BigNumber(chainAcc.balance);
     const energy = new BigNumber(chainAcc.energy);
     const boundedBalance = new BigNumber(chainAcc.boundbalance);
@@ -186,7 +194,7 @@ export class PosCMD extends CMD {
       acct.mtrgBalance = balance;
       acct.mtrBounded = boundedEnergy;
       acct.mtrgBounded = boundedBalance;
-
+      acct.lastUpdate = blockConcise;
       await acct.save();
 
       console.log(`Fixed Account ${acct.address}:`);
@@ -205,13 +213,22 @@ export class PosCMD extends CMD {
     }
   }
 
-  private async fixTokenBalance(bal: TokenBalance & { save() }, blockHash: string) {
-    const chainBal = await this.pos.getERC20BalanceOf(bal.address, bal.tokenAddress, blockHash);
+  private async fixTokenBalance(bal: TokenBalance & { save() }, blockNum: number) {
+    console.log(`Start to fix token balance on block ${blockNum}`);
+    const blk = await this.blockRepo.findByNumber(blockNum);
+    if (!blk) {
+      console.log(`[WARN] could not find block ${blockNum}`);
+      return;
+    }
+    const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash } as BlockConcise;
+    const chainBal = await this.pos.getERC20BalanceOf(bal.address, bal.tokenAddress, blockNum.toString());
+
     const preBal = bal.balance;
     if (!preBal.isEqualTo(chainBal)) {
       bal.balance = new BigNumber(chainBal);
       console.log(`Fixed balance on ${bal.address} for token ${bal.tokenAddress}:`);
       console.log(`  Balance: ${preBal.toFixed()} -> ${bal.balance.toFixed()}`);
+      bal.lastUpdate = blockConcise;
       await bal.save();
     }
   }
@@ -234,6 +251,7 @@ export class PosCMD extends CMD {
     const blockNum = head.num;
     const blockHash = head.hash;
     // delete invalid/incomplete blocks
+    console.log(`Start to fix dirty data on block ${blockNum}`);
     const block = await this.blockRepo.deleteAfter(blockNum);
     const tx = await this.txRepo.deleteAfter(blockNum);
     const committee = await this.committeeRepo.deleteAfter(blockNum);
@@ -244,11 +262,11 @@ export class PosCMD extends CMD {
     const contract = await this.contractRepo.deleteAfter(blockNum);
     const accts = await this.accountRepo.findLastUpdateAfter(blockNum);
     for (const acct of accts) {
-      await this.fixAccount(acct, blockHash);
+      await this.fixAccount(acct, blockNum);
     }
     const bals = await this.tokenBalanceRepo.findLastUpdateAfter(blockNum);
     for (const bal of bals) {
-      await this.fixTokenBalance(bal, blockHash);
+      await this.fixTokenBalance(bal, blockNum);
     }
     this.logger.info(
       {
@@ -318,7 +336,7 @@ export class PosCMD extends CMD {
             console.log(`Error happened during block processing for:`, blk.number);
             console.log(e);
             await sleep(NORMAL_INTERVAL);
-            continue;
+            throw new InterruptedError();
           }
 
           if (!fastforward) {
