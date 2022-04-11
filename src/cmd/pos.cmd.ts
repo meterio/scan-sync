@@ -481,6 +481,7 @@ export class PosCMD extends CMD {
         c.decimals = erc20.decimals;
       }
     }
+    console.log('found contract: ', c);
     this.contractsCache.push(c);
   }
 
