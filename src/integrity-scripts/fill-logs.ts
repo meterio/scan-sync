@@ -2,7 +2,6 @@
 require('../utils/validateEnv');
 
 import {
-  HeadRepo,
   connectDB,
   disconnectDB,
   LogEvent,
@@ -37,11 +36,15 @@ const run = async () => {
         trs.push({ ...t, txHash: tx.hash, block, clauseIndex, logIndex });
       }
     }
+    if (evts.length > 0) {
+      const r = await evtRepo.bulkInsert(...evts);
+      console.log(`saved ${evts.length} events on tx ${tx.hash}, r: ${r}`);
+    }
+    if (trs.length > 0) {
+      const r = await transRepo.bulkInsert(...trs);
+      console.log(`saved ${trs.length} events on tx ${tx.hash}, r: ${r}`);
+    }
   }
-  const ne = await evtRepo.bulkInsert(...evts);
-  const nt = await transRepo.bulkInsert(...trs);
-  console.log(ne, evts.length);
-  console.log(nt, trs.length);
 };
 
 (async () => {
