@@ -73,8 +73,8 @@ const run = async () => {
 
         const contract = await contractRepo.findByAddress(evt.address);
         if (contract && contract.type === ContractType.ERC721) {
-          tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, evt.block);
-          tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, evt.block);
+          await tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, evt.block);
+          await tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, evt.block);
         } else {
           console.log('[Warning] Found ERC721 transfer event, but ERC721 contract is not tracked!!');
           console.log('contract address: ', evt.address);

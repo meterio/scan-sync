@@ -638,16 +638,8 @@ export class PosCMD extends CMD {
         logIndex,
       };
 
-      const contract = await this.contractRepo.findByAddress(evt.address);
-      if (contract && contract.type === ContractType.ERC721) {
-        await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-        await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
-      } else {
-        console.log('[Warning] Found ERC721 transfer event, but ERC721 contract is not tracked!!');
-        console.log('contract address: ', evt.address);
-        console.log('event: ', evt);
-        console.log('tx hash: ', txHash);
-      }
+      await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+      await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
 
       this.movementsCache.push(movement);
     }
