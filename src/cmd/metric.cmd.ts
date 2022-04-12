@@ -659,7 +659,9 @@ export class MetricCMD extends CMD {
         await this.updateInvalidNodes(index, every2m);
 
         // update auction info
-        await this.updateAuctionInfo(index, every5m);
+        if (process.env.ENABLE_AUCTION === 'true') {
+          await this.updateAuctionInfo(index, every5m);
+        }
 
         // update validator rewards
         await this.updateValidatorRewards(index, every5m);

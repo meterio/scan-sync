@@ -2,13 +2,13 @@ require('../utils/validateEnv');
 
 import { Network, disconnectDB } from '@meterio/scan-db/dist';
 
-import { GetPosConfig } from '../const';
+import { GetNetworkConfig } from '../const';
 import { Net } from '../utils';
 import { Balance } from './types/balance';
 
 const network = Network.TestNet;
-const posConfig = GetPosConfig(network);
-const net = new Net(posConfig.url);
+const posConfig = GetNetworkConfig(network);
+const net = new Net(posConfig.posUrl);
 const args = process.argv.slice(2);
 
 if (args.length < 1) {

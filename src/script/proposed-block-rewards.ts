@@ -3,13 +3,13 @@ require('../utils/validateEnv');
 
 import { BigNumber, Network, disconnectDB } from '@meterio/scan-db/dist';
 
-import { BoundEvent, GetPosConfig, UnboundEvent } from '../const';
+import { BoundEvent, GetNetworkConfig, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
 import { Balance } from './types/balance';
 
 const network = Network.MainNet;
-const posConfig = GetPosConfig(network);
-const net = new Net(posConfig.url);
+const posConfig = GetNetworkConfig(network);
+const net = new Net(posConfig.posUrl);
 const pos = new Pos(network);
 const MTRGSysContratAddr = '0x228ebBeE999c6a7ad74A6130E81b12f9Fe237Ba3'.toLowerCase();
 const MTRSysContratAddr = '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2'.toLowerCase();

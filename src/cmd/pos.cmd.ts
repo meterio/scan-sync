@@ -44,7 +44,7 @@ import { sha1 } from 'object-hash';
 
 import {
   BoundEvent,
-  GetPosConfig,
+  GetNetworkConfig,
   TokenBasic,
   UnboundEvent,
   ZeroAddress,
@@ -122,8 +122,8 @@ export class PosCMD extends CMD {
     this.mtrSysToken = getERC20Token(this.network, Token.MTR);
     this.mtrgSysToken = getERC20Token(this.network, Token.MTRG);
     this.tokenBalanceCache = new TokenBalanceCache(net);
-    const posConfig = GetPosConfig(net);
-    this.web3 = meterify(new Web3(), posConfig.url);
+    const posConfig = GetNetworkConfig(net);
+    this.web3 = meterify(new Web3(), posConfig.posUrl);
     this.accountCache = new AccountCache(this.network);
     this.cleanCache();
   }

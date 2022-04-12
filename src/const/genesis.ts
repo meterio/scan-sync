@@ -24,7 +24,7 @@ export const getPreAllocAccount = (net: Network) => {
       ...testnet.map((item) => item.address),
     ];
   } else {
-    throw new Error('unknown network: ' + net);
+    return [];
   }
 };
 

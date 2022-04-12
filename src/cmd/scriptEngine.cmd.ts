@@ -61,6 +61,9 @@ export class ScriptEngineCMD extends TxBlockReviewer {
       }
       const scriptData = se.decodeScriptData(clause.data);
       if (scriptData.header.modId === se.ModuleID.Auction) {
+        if (process.env.ENABLE_AUCTION === 'false') {
+          continue;
+        }
         // auction
         const body = se.decodeAuctionBody(scriptData.payload);
         this.logger.info({ opCode: body.opCode }, 'handle auction data');

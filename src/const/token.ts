@@ -50,6 +50,9 @@ knownTokens.set(Network.MainNet, mainnet);
 knownTokens.set(Network.TestNet, testnet);
 
 export const getERC20Token = (net: Network, token: Token) => {
+  if (!(net in knownTokens)) {
+    return undefined;
+  }
   const registry = knownTokens.get(net);
   if (registry.has(token)) {
     return registry.get(token);

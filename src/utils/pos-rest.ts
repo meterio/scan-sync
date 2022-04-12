@@ -4,7 +4,7 @@ import { Network, Token } from '@meterio/scan-db/dist';
 import LRU from 'lru-cache';
 import { ERC165, ERC721, ERC1155, ERC721Metadata, ERC20 } from '@meterio/devkit';
 
-import { GetPosConfig } from '../const';
+import { GetNetworkConfig } from '../const';
 import { Net } from './net';
 import { blockIDtoNum, isBytes32 } from './utils';
 
@@ -271,10 +271,10 @@ export class Pos {
   }
 
   // default genesis ID to mainnet
-  constructor(readonly genesisID = Network.MainNet) {
-    const posConfig = GetPosConfig(genesisID);
-    console.log(posConfig.url);
-    this.net = new Net(posConfig.url);
+  constructor(readonly network = Network.MainNet) {
+    const posConfig = GetNetworkConfig(network);
+    console.log(posConfig.posUrl);
+    this.net = new Net(posConfig.posUrl);
     this.cache = new LRU<string, any>({ max: 1024 * 4 });
   }
 
@@ -516,7 +516,7 @@ export class Pos {
         },
         blockHash
       );
-      console.log(outputs)
+      console.log(outputs);
 
       const valid = (i) => !!outputs[i] && !outputs[i].reverted && outputs[i].data !== '0x';
       const name = valid(0) ? ERC20.name.decode(outputs[0].data)['0'] : '';

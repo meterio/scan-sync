@@ -4,7 +4,7 @@ import { BigNumber, Network, PowBlock, PowTx } from '@meterio/scan-db/dist';
 import Client from 'bitcoin-core';
 import LRU from 'lru-cache';
 
-import { GetPowConfig } from '../const';
+import { GetNetworkConfig } from '../const';
 
 var bitcoin = require('bitcoinjs-lib');
 
@@ -30,7 +30,7 @@ export class Pow {
 
   // default genesis ID to mainnet
   constructor(network: Network) {
-    const powConfig = GetPowConfig(network);
+    const powConfig = GetNetworkConfig(network);
     const client = new Client(powConfig);
     this.btc = client;
     this.cache = new LRU<string, any>({ max: 1024 * 4 });

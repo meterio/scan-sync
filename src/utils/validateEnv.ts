@@ -1,4 +1,4 @@
-import { cleanEnv, num, port, str } from 'envalid';
+import { bool, cleanEnv, num, port, str } from 'envalid';
 
 function validateEnv() {
   cleanEnv(process.env, {
@@ -15,6 +15,10 @@ function validateEnv() {
     // restful api
     MAINNET_RESTFUL_ENDPOINT: str(),
     TESTNET_RESTFUL_ENDPOINT: str(),
+    VERSE_RESTFUL_ENDPOINT: str(),
+    VERSE_TEST_RESTFUL_ENDPOINT: str(),
+
+    ENABLE_AUCTION: bool(),
   });
 }
 
