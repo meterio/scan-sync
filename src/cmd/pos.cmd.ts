@@ -697,7 +697,7 @@ export class PosCMD extends CMD {
         return;
       }
       let nftTransfers: NFTTransfer[] = [];
-      for (const [i, id] of decoded.ids) {
+      for (const [i, id] of decoded.ids.entries()) {
         nftTransfers.push({ tokenId: Number(id), value: Number(decoded.values[i]) });
       }
       const from = decoded.from.toLowerCase();
