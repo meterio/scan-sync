@@ -732,7 +732,9 @@ export class PosCMD extends CMD {
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       for (const [logIndex, e] of o.events.entries()) {
         this.logEventCache.push({
-          ...e,
+          address: e.address,
+          topics: e.topics,
+          data: e.data,
           block: blockConcise,
           txHash: tx.id,
           clauseIndex,
@@ -741,7 +743,10 @@ export class PosCMD extends CMD {
       }
       for (const [logIndex, t] of o.transfers.entries()) {
         this.logTransferCache.push({
-          ...t,
+          sender: t.sender,
+          recipient: t.recipient,
+          amount: t.amount,
+          token: t.token,
           block: blockConcise,
           txHash: tx.id,
           clauseIndex,

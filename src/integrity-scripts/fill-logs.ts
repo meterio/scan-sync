@@ -2,6 +2,7 @@
 require('../utils/validateEnv');
 
 import {
+  HeadRepo,
   connectDB,
   disconnectDB,
   LogEvent,
@@ -17,32 +18,63 @@ const run = async () => {
   const { network, standby } = getNetworkFromCli();
 
   await connectDB(network, standby);
+  const headRepo = new HeadRepo();
   const evtRepo = new LogEventRepo();
   const transRepo = new LogTransferRepo();
   const txRepo = new TxRepo();
   await checkNetworkWithDB(network);
 
-  const txs = await txRepo.findAll();
-  console.log('start checking...');
-  let evts: LogEvent[] = [];
-  let trs: LogTransfer[] = [];
-  for (const tx of txs) {
-    const block = tx.block;
-    for (const [clauseIndex, o] of tx.outputs.entries()) {
-      for (const [logIndex, e] of o.events.entries()) {
-        evts.push({ ...e, txHash: tx.hash, block, clauseIndex, logIndex });
-      }
-      for (const [logIndex, t] of o.transfers.entries()) {
-        trs.push({ ...t, txHash: tx.hash, block, clauseIndex, logIndex });
+  const pos = await headRepo.findByKey('pos');
+  const step = 2000;
+  const best = 21000200; // pos.num;
+
+  for (let i = 0; i < best; i += step) {
+    const start = i;
+    const end = i + step - 1 > best ? best : i + step - 1;
+    const txs = await txRepo.findInBlockRangeSortAsc(start, end);
+
+    console.log(`start checking tx ${start} - ${end}`);
+    let trs: LogTransfer[] = [];
+    let evts: LogEvent[] = [];
+    for (const tx of txs) {
+      const block = tx.block;
+      for (const [clauseIndex, o] of tx.outputs.entries()) {
+        for (const [logIndex, e] of o.events.entries()) {
+          const evt = {
+            address: e.address,
+            topics: e.topics,
+            data: e.data,
+            txHash: tx.hash,
+            block,
+            clauseIndex,
+            logIndex,
+          } as LogEvent;
+          evts.push(evt);
+        }
+        for (const [logIndex, t] of o.transfers.entries()) {
+          const tr = {
+            sender: t.sender,
+            recipient: t.recipient,
+            amount: t.amount,
+            token: t.token,
+            txHash: tx.hash,
+            block,
+            clauseIndex,
+            logIndex,
+          } as LogTransfer;
+          trs.push(tr);
+        }
       }
     }
     if (evts.length > 0) {
-      const r = await evtRepo.bulkInsert(...evts);
-      console.log(`saved ${evts.length} events on tx ${tx.hash}, r: ${r}`);
+      console.log(`saving ${evts.length} events `);
+      const r = await evtRepo.bulkUpsert(...evts);
+      console.log(`saved, r: ${r}`);
     }
     if (trs.length > 0) {
-      const r = await transRepo.bulkInsert(...trs);
-      console.log(`saved ${trs.length} events on tx ${tx.hash}, r: ${r}`);
+      console.log(`saving ${trs.length} transfers `);
+      const r = await transRepo.bulkUpsert(...trs);
+      console.log(`saved, r: ${r}`);
     }
   }
 };
