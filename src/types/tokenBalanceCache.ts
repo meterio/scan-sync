@@ -111,7 +111,7 @@ export class TokenBalanceCache {
   public async plusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
-    console.log(`NFT ${tokenAddr} on ${addrStr} plus: ${this.bals[key].nftBalances} + ${nftDeltas} `);
+    console.log(`NFT ${tokenAddr} on ${addrStr} plus: ${this.bals[key].nftBalances} + ${JSON.stringify(nftDeltas)} `);
     const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas);
     this.bals[key].nftBalances = newNFTBalances;
     console.log(`Got => ${this.bals[key].nftBalances}`);
@@ -124,7 +124,7 @@ export class TokenBalanceCache {
     }
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
-    console.log(`NFT ${tokenAddr} on ${addrStr} minus: ${this.bals[key].nftBalances} - ${nftDeltas} `);
+    console.log(`NFT ${tokenAddr} on ${addrStr} minus: ${this.bals[key].nftBalances} - ${JSON.stringify(nftDeltas)} `);
     const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas, false);
     this.bals[key].nftBalances = newNFTBalances;
     console.log(`Got => ${this.bals[key].nftBalances}`);
@@ -132,7 +132,14 @@ export class TokenBalanceCache {
   }
 
   public async saveToDB() {
-    await Promise.all(Object.values(this.bals).map((b) => b.save()));
+    console.log(`saving NFTBalances to DB`);
+    await Promise.all(
+      Object.values(this.bals).map((b) => {
+        console.log(`addr: ${b.address} tokenAddr: ${b.tokenAddress} : ${JSON.stringify(b.nftBalances)}`);
+        b.nftBalances = b.nftBalances.map((b) => ({ tokenId: b.tokenId, value: b.value }));
+        return b.save();
+      })
+    );
   }
 
   public nftBalances() {

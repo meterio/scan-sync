@@ -811,15 +811,15 @@ export class PosCMD extends CMD {
       // save call digests with data
       if (clause.data && clause.data.length > 10) {
         console.log('tx: ', tx.id);
-        console.log('data', clause.data);
+        // console.log('data', clause.data);
         const isSE = ScriptEngine.IsScriptEngineData(clause.data);
         console.log('isSE: ', isSE);
-        console.log('clause.to: ', clause.to);
+        // console.log('clause.to: ', clause.to);
         const token = clause.token;
         let signature = '';
         if (isSE) {
           const decoded = ScriptEngine.decodeScriptData(clause.data);
-          console.log('decoded: ', decoded);
+          // console.log('decoded: ', decoded);
           signature = decoded.action;
         } else {
           signature = clause.data.substring(0, 10);
