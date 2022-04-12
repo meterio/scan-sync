@@ -135,6 +135,15 @@ export class TokenBalanceCache {
     await Promise.all(Object.values(this.bals).map((b) => b.save()));
   }
 
+  public nftBalances() {
+    return Object.values(this.bals).map((b) => ({
+      address: b.address,
+      tokenAddress: b.tokenAddress,
+      nftBalances: b.nftBalances,
+      lastUpdate: b.lastUpdate,
+    }));
+  }
+
   public clean() {
     this.bals = {};
   }

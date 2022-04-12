@@ -37,6 +37,10 @@ import {
   MetricRepo,
   AccountRepo,
   Account,
+  LogEvent,
+  LogEventRepo,
+  LogTransfer,
+  LogTransferRepo,
 } from '@meterio/scan-db/dist';
 import { BigNumber } from '@meterio/scan-db/dist';
 import * as Logger from 'bunyan';
@@ -91,6 +95,8 @@ export class PosCMD extends CMD {
   private contractRepo = new ContractRepo();
   private accountRepo = new AccountRepo();
   private tokenBalanceRepo = new TokenBalanceRepo();
+  private logEventRepo = new LogEventRepo();
+  private logTransferRepo = new LogTransferRepo();
 
   private metricRepo = new MetricRepo(); // readonly
 
@@ -113,6 +119,8 @@ export class PosCMD extends CMD {
   private accountCache: AccountCache;
   private tokenBalanceCache: TokenBalanceCache;
   private beneficiaryCache = ZeroAddress;
+  private logEventCache: LogEvent[] = [];
+  private logTransferCache: LogTransfer[] = [];
 
   constructor(net: Network) {
     super();
@@ -153,6 +161,9 @@ export class PosCMD extends CMD {
     this.tokenBalanceCache.clean();
     this.rebasingsCache = [];
     this.beneficiaryCache = ZeroAddress;
+
+    this.logEventCache = [];
+    this.logTransferCache = [];
   }
 
   private async getBlockFromREST(num: number) {
@@ -255,6 +266,8 @@ export class PosCMD extends CMD {
     console.log(`Start to fix dirty data on block ${blockNum}`);
     const block = await this.blockRepo.deleteAfter(blockNum);
     const tx = await this.txRepo.deleteAfter(blockNum);
+    const logEvent = await this.logEventRepo.deleteAfter(blockNum);
+    const logTransfer = await this.logTransferRepo.deleteAfter(blockNum);
     const committee = await this.committeeRepo.deleteAfter(blockNum);
     const bound = await this.boundRepo.deleteAfter(blockNum);
     const unbound = await this.unboundRepo.deleteAfter(blockNum);
@@ -281,6 +294,8 @@ export class PosCMD extends CMD {
       {
         block,
         tx,
+        logEvent,
+        logTransfer,
         committee,
         bound,
         unbound,
@@ -379,6 +394,14 @@ export class PosCMD extends CMD {
     if (this.txsCache.length > 0) {
       await this.txRepo.bulkInsert(...this.txsCache);
       this.logger.info(`saved ${this.txsCache.length} txs`);
+    }
+    if (this.logEventCache.length > 0) {
+      await this.logEventRepo.bulkInsert(...this.logEventCache);
+      this.logger.info(`saved ${this.logEventCache.length} logEvents`);
+    }
+    if (this.logTransferCache.length > 0) {
+      await this.logTransferRepo.bulkInsert(...this.logTransferCache);
+      this.logger.info(`saved ${this.logTransferCache.length} logTransfers`);
     }
     if (this.committeesCache.length > 0) {
       await this.committeeRepo.bulkInsert(...this.committeesCache);
@@ -531,6 +554,203 @@ export class PosCMD extends CMD {
     });
   }
 
+  async parseERC20Movement(
+    logIndex: number,
+    evt: Flex.Meter.Event,
+    clauseIndex: number,
+    blockConcise: BlockConcise,
+    txHash: string
+  ) {
+    if (evt.topics && evt.topics[0] === ERC20.Transfer.signature) {
+      let decoded: abi.Decoded;
+      try {
+        decoded = ERC20.Transfer.decode(evt.data, evt.topics);
+      } catch (e) {
+        console.log('error decoding transfer event');
+        return;
+      }
+
+      const from = decoded.from.toLowerCase();
+      const to = decoded.to.toLowerCase();
+      const amount = new BigNumber(decoded.value);
+      let movement: Movement = {
+        from,
+        to,
+        token: Token.ERC20,
+        amount,
+        tokenAddress: evt.address,
+        nftTransfers: [],
+        txHash,
+        block: blockConcise,
+        clauseIndex,
+        logIndex,
+      };
+      if (evt.address.toLowerCase() === this.mtrSysToken.address) {
+        // MTR: convert system contract event into system transfer
+        movement.token = Token.MTR;
+        await this.accountCache.minus(from, Token.MTR, amount, blockConcise);
+        await this.accountCache.plus(to, Token.MTR, amount, blockConcise);
+      } else if (evt.address.toLowerCase() === this.mtrgSysToken.address) {
+        // MTRG: convert system contract event into system transfer
+        movement.token = Token.MTRG;
+        await this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
+        await this.accountCache.plus(to, Token.MTRG, amount, blockConcise);
+      } else {
+        // regular ERC20 transfer
+        await this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
+        await this.tokenBalanceCache.plus(to, evt.address, amount, blockConcise);
+      }
+      this.movementsCache.push(movement);
+    }
+  }
+
+  async parseERC721Movement(
+    logIndex: number,
+    evt: Flex.Meter.Event,
+    clauseIndex: number,
+    blockConcise: BlockConcise,
+    txHash: string
+  ) {
+    if (evt.topics && evt.topics[0] === ERC721.Transfer.signature) {
+      let decoded: abi.Decoded;
+      try {
+        decoded = ERC721.Transfer.decode(evt.data, evt.topics);
+      } catch (e) {
+        console.log('error decoding transfer event');
+        return;
+      }
+
+      const from = decoded.from.toLowerCase();
+      const to = decoded.to.toLowerCase();
+      const tokenId = new BigNumber(decoded.tokenId).toNumber();
+      const nftTransfers = [{ tokenId, value: 1 }];
+      // ### Handle movement
+      let movement: Movement = {
+        from,
+        to,
+        amount: new BigNumber(0),
+        token: Token.ERC721,
+        tokenAddress: evt.address,
+        nftTransfers,
+        txHash,
+        block: blockConcise,
+        clauseIndex,
+        logIndex,
+      };
+
+      const contract = await this.contractRepo.findByAddress(evt.address);
+      if (contract && contract.type === ContractType.ERC721) {
+        await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+        await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+      } else {
+        console.log('[Warning] Found ERC721 transfer event, but ERC721 contract is not tracked!!');
+        console.log('contract address: ', evt.address);
+        console.log('event: ', evt);
+        console.log('tx hash: ', txHash);
+      }
+
+      this.movementsCache.push(movement);
+    }
+  }
+
+  async parseERC1155Movement(
+    logIndex: number,
+    evt: Flex.Meter.Event,
+    clauseIndex: number,
+    blockConcise: BlockConcise,
+    txHash: string
+  ) {
+    if (evt.topics && evt.topics[0] === ERC1155.TransferSingle.signature) {
+      let decoded: abi.Decoded;
+      try {
+        decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
+      } catch (e) {
+        console.log('error decoding transfer event');
+        return;
+      }
+      const from = decoded.from.toLowerCase();
+      const to = decoded.to.toLowerCase();
+      const nftTransfers = [{ tokenId: Number(decoded.id), value: Number(decoded.value) }];
+      const movement: Movement = {
+        from,
+        to,
+        token: Token.ERC20,
+        amount: new BigNumber(0),
+        tokenAddress: evt.address,
+        nftTransfers,
+        txHash,
+        block: blockConcise,
+        clauseIndex,
+        logIndex,
+      };
+      await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+      await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+      this.movementsCache.push(movement);
+    }
+
+    if (evt.topics && evt.topics[0] === ERC1155.TransferBatch.signature) {
+      let decoded: abi.Decoded;
+      try {
+        decoded = ERC1155.TransferBatch.decode(evt.data, evt.topics);
+      } catch (e) {
+        console.log('error decoding transfer event');
+        return;
+      }
+      let nftTransfers: NFTTransfer[] = [];
+      for (const [i, id] of decoded.ids) {
+        nftTransfers.push({ tokenId: Number(id), value: Number(decoded.values[i]) });
+      }
+      const from = decoded.from.toLowerCase();
+      const to = decoded.to.toLowerCase();
+      const movement: Movement = {
+        from,
+        to,
+        token: Token.ERC20,
+        amount: new BigNumber(0),
+        tokenAddress: evt.address,
+        nftTransfers,
+        txHash,
+        block: blockConcise,
+        clauseIndex,
+        logIndex,
+      };
+      await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+      await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+
+      this.movementsCache.push(movement);
+    }
+  }
+
+  async updateLogs(
+    tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
+    blockConcise: BlockConcise
+  ): Promise<void> {
+    if (!tx.outputs || tx.outputs.length <= 0) {
+      return;
+    }
+
+    for (const [clauseIndex, o] of tx.outputs.entries()) {
+      for (const [logIndex, e] of o.events.entries()) {
+        this.logEventCache.push({
+          ...e,
+          block: blockConcise,
+          txHash: tx.id,
+          clauseIndex,
+          logIndex,
+        });
+      }
+      for (const [logIndex, t] of o.transfers.entries()) {
+        this.logTransferCache.push({
+          ...t,
+          block: blockConcise,
+          txHash: tx.id,
+          clauseIndex,
+          logIndex,
+        });
+      }
+    }
+  }
+
   async updateMovements(
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
     blockConcise: BlockConcise
@@ -567,148 +787,9 @@ export class PosCMD extends CMD {
 
       for (const [logIndex, evt] of o.events.entries()) {
         // ### Handle ERC20 Transfer event (they have the same signature)
-        if (evt.topics && evt.topics[0] === ERC20.Transfer.signature) {
-          let decoded: abi.Decoded;
-          try {
-            decoded = ERC20.Transfer.decode(evt.data, evt.topics);
-          } catch (e) {
-            console.log('error decoding transfer event');
-            continue;
-          }
-
-          const from = decoded.from.toLowerCase();
-          const to = decoded.to.toLowerCase();
-          const amount = new BigNumber(decoded.value);
-          let movement: Movement = {
-            from,
-            to,
-            token: Token.ERC20,
-            amount,
-            tokenAddress: evt.address,
-            nftTransfers: [],
-            txHash: tx.id,
-            block: blockConcise,
-            clauseIndex,
-            logIndex,
-          };
-          if (evt.address.toLowerCase() === this.mtrSysToken.address) {
-            // MTR: convert system contract event into system transfer
-            movement.token = Token.MTR;
-            await this.accountCache.minus(from, Token.MTR, amount, blockConcise);
-            await this.accountCache.plus(to, Token.MTR, amount, blockConcise);
-          } else if (evt.address.toLowerCase() === this.mtrgSysToken.address) {
-            // MTRG: convert system contract event into system transfer
-            movement.token = Token.MTRG;
-            await this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
-            await this.accountCache.plus(to, Token.MTRG, amount, blockConcise);
-          } else {
-            // regular ERC20 transfer
-            await this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
-            await this.tokenBalanceCache.plus(to, evt.address, amount, blockConcise);
-          }
-          this.movementsCache.push(movement);
-        }
-
-        if (evt.topics && evt.topics[0] === ERC721.Transfer.signature) {
-          let decoded: abi.Decoded;
-          try {
-            decoded = ERC721.Transfer.decode(evt.data, evt.topics);
-          } catch (e) {
-            console.log('error decoding transfer event');
-            continue;
-          }
-
-          const from = decoded.from.toLowerCase();
-          const to = decoded.to.toLowerCase();
-          const tokenId = new BigNumber(decoded.tokenId).toNumber();
-          const nftTransfers = [{ tokenId, value: 1 }];
-          // ### Handle movement
-          let movement: Movement = {
-            from,
-            to,
-            amount: new BigNumber(0),
-            token: Token.ERC721,
-            tokenAddress: evt.address,
-            nftTransfers,
-            txHash: tx.id,
-            block: blockConcise,
-            clauseIndex,
-            logIndex,
-          };
-
-          const contract = await this.contractRepo.findByAddress(evt.address);
-          if (contract && contract.type === ContractType.ERC721) {
-            await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-            await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
-          } else {
-            console.log('[Warning] Found ERC721 transfer event, but ERC721 contract is not tracked!!');
-            console.log('contract address: ', evt.address);
-            console.log('event: ', evt);
-            console.log('tx hash: ', tx.id);
-          }
-
-          this.movementsCache.push(movement);
-        }
-
-        if (evt.topics && evt.topics[0] === ERC1155.TransferSingle.signature) {
-          let decoded: abi.Decoded;
-          try {
-            decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
-          } catch (e) {
-            console.log('error decoding transfer event');
-            continue;
-          }
-          const from = decoded.from.toLowerCase();
-          const to = decoded.to.toLowerCase();
-          const nftTransfers = [{ tokenId: Number(decoded.id), value: Number(decoded.value) }];
-          const movement: Movement = {
-            from,
-            to,
-            token: Token.ERC20,
-            amount: new BigNumber(0),
-            tokenAddress: evt.address,
-            nftTransfers,
-            txHash: tx.id,
-            block: blockConcise,
-            clauseIndex,
-            logIndex,
-          };
-          await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-          await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
-          this.movementsCache.push(movement);
-        }
-
-        if (evt.topics && evt.topics[0] === ERC1155.TransferBatch.signature) {
-          let decoded: abi.Decoded;
-          try {
-            decoded = ERC1155.TransferBatch.decode(evt.data, evt.topics);
-          } catch (e) {
-            console.log('error decoding transfer event');
-            continue;
-          }
-          let nftTransfers: NFTTransfer[] = [];
-          for (const [i, id] of decoded.ids) {
-            nftTransfers.push({ tokenId: Number(id), value: Number(decoded.values[i]) });
-          }
-          const from = decoded.from.toLowerCase();
-          const to = decoded.to.toLowerCase();
-          const movement: Movement = {
-            from,
-            to,
-            token: Token.ERC20,
-            amount: new BigNumber(0),
-            tokenAddress: evt.address,
-            nftTransfers,
-            txHash: tx.id,
-            block: blockConcise,
-            clauseIndex,
-            logIndex,
-          };
-          await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-          await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
-
-          this.movementsCache.push(movement);
-        }
+        await this.parseERC20Movement(logIndex, evt, clauseIndex, blockConcise, tx.id);
+        await this.parseERC721Movement(logIndex, evt, clauseIndex, blockConcise, tx.id);
+        await this.parseERC1155Movement(logIndex, evt, clauseIndex, blockConcise, tx.id);
       } // End of handling events
     }
   }
@@ -999,6 +1080,8 @@ export class PosCMD extends CMD {
 
     // update movement
     await this.updateMovements(tx, blockConcise);
+
+    await this.updateLogs(tx, blockConcise);
 
     this.updateTxDigests(tx, blockConcise);
 
