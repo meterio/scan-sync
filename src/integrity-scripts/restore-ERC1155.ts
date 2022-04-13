@@ -30,6 +30,8 @@ const run = async () => {
   const best = pos.num;
   const step = 100000;
 
+  await mvtRepo.deleteByToken(Token.ERC1155);
+
   for (let i = 0; i < best; i += step) {
     const start = i;
     const end = i + step - 1 > best ? best : i + step - 1;
