@@ -35,7 +35,7 @@ const run = async () => {
     const end = i + step - 1 > best ? best : i + step - 1;
 
     const singles = await evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferSingle.signature, start, end);
-    console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
+    console.log(`searching for ERC1155 singles in blocks [${start}, ${end}]`);
     let movementsCache: Movement[] = [];
     let nftAuditor = new NFTBalanceAuditor();
     for (const evt of singles) {
@@ -67,6 +67,8 @@ const run = async () => {
         movementsCache.push(movement);
       }
     }
+
+    console.log(`searching for ERC1155 batches in blocks [${start}, ${end}]`);
     const batchs = await evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferBatch.signature, start, end);
     for (const evt of batchs) {
       if (evt.topics && evt.topics[0] === ERC1155.TransferBatch.signature) {
