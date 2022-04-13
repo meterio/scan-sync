@@ -2,6 +2,31 @@ import { BigNumber, Network, NFTBalance, BlockConcise, TokenBalance, TokenBalanc
 import { ZeroAddress } from '../const';
 import { Pos } from '../utils';
 
+const printNFT = (bals: NFTBalance[], deltas: NFTBalance[]) => {
+  if (bals.length <= 0) {
+    return '[]';
+  }
+  let m = {};
+  let matches = [];
+  for (const bal of bals) {
+    m[bal.tokenId] = bal.value;
+  }
+  for (const d of deltas) {
+    if (d.tokenId in m) {
+      matches.push(`${d.tokenId}=>${m[d.tokenId]}`);
+    }
+  }
+  return `[${matches.join(', ')} ${matches.length === bals.length ? '' : '...'}]`;
+};
+
+const printDelta = (deltas: NFTBalance[]) => {
+  let tokens = [];
+  for (const d of deltas) {
+    tokens.push(`${d.tokenId}=>${d.value}`);
+  }
+  return `[${tokens.join(', ')}]`;
+};
+
 export const mergeNFTBalances = (origin: NFTBalance[], delta: NFTBalance[], plus = true) => {
   let resultMap: { [key: number]: number } = {};
   for (const i in origin) {
@@ -26,7 +51,10 @@ export const mergeNFTBalances = (origin: NFTBalance[], delta: NFTBalance[], plus
   }
   let bals: NFTBalance[] = [];
   for (const tokenId in resultMap) {
-    bals.push({ tokenId: Number(tokenId), value: resultMap[tokenId] });
+    const value = resultMap[tokenId];
+    if (value > 0) {
+      bals.push({ tokenId, value });
+    }
   }
   return bals;
 };
@@ -111,10 +139,14 @@ export class TokenBalanceCache {
   public async plusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
-    console.log(`NFT ${tokenAddr} on ${addrStr} plus: ${this.bals[key].nftBalances} + ${JSON.stringify(nftDeltas)} `);
+    console.log(
+      `NFT ${tokenAddr} on ${addrStr} plus: ${printNFT(this.bals[key].nftBalances, nftDeltas)} + ${printDelta(
+        nftDeltas
+      )} `
+    );
     const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas);
+    console.log(`Got => ${printNFT(newNFTBalances, nftDeltas)}`);
     this.bals[key].nftBalances = newNFTBalances;
-    console.log(`Got => ${this.bals[key].nftBalances}`);
     this.bals[key].lastUpdate = blockConcise;
   }
 
@@ -124,10 +156,14 @@ export class TokenBalanceCache {
     }
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
-    console.log(`NFT ${tokenAddr} on ${addrStr} minus: ${this.bals[key].nftBalances} - ${JSON.stringify(nftDeltas)} `);
+    console.log(
+      `NFT ${tokenAddr} on ${addrStr} minus: ${printNFT(this.bals[key].nftBalances, nftDeltas)} - ${printDelta(
+        nftDeltas
+      )} `
+    );
     const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas, false);
+    console.log(`Got => ${printNFT(newNFTBalances, nftDeltas)}`);
     this.bals[key].nftBalances = newNFTBalances;
-    console.log(`Got => ${this.bals[key].nftBalances}`);
     this.bals[key].lastUpdate = blockConcise;
   }
 
@@ -135,23 +171,91 @@ export class TokenBalanceCache {
     console.log(`saving NFTBalances to DB`);
     await Promise.all(
       Object.values(this.bals).map((b) => {
-        console.log(`addr: ${b.address} tokenAddr: ${b.tokenAddress} : ${JSON.stringify(b.nftBalances)}`);
+        console.log(`addr: ${b.address} tokenAddr: ${b.tokenAddress} : ${printDelta(b.nftBalances)}`);
         b.nftBalances = b.nftBalances.map((b) => ({ tokenId: b.tokenId, value: b.value }));
         return b.save();
       })
     );
   }
 
-  public nftBalances() {
-    return Object.values(this.bals).map((b) => ({
-      address: b.address,
-      tokenAddress: b.tokenAddress,
-      nftBalances: b.nftBalances,
-      lastUpdate: b.lastUpdate,
-    }));
-  }
-
   public clean() {
     this.bals = {};
+  }
+}
+
+export class NFTBalanceAuditor {
+  private bals: { [key: string]: NFTBalance[] } = {};
+  private lastUpdates: { [key: string]: BlockConcise } = {};
+  private tbRepo = new TokenBalanceRepo();
+
+  private setDefault(addrStr: string, tokenAddr: string, blockConcise: BlockConcise) {
+    const key = `${addrStr}_${tokenAddr}`.toLowerCase();
+    if (this.bals[key]) {
+      return;
+    }
+    this.bals[key] = [];
+    this.lastUpdates[key] = blockConcise;
+  }
+
+  public plusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
+    this.setDefault(addrStr, tokenAddr, blockConcise);
+    const key = `${addrStr}_${tokenAddr}`.toLowerCase();
+    console.log(
+      `NFT ${tokenAddr} on ${addrStr} plus: ${printNFT(this.bals[key], nftDeltas)} + ${printDelta(nftDeltas)} `
+    );
+    const newNFTBalances = mergeNFTBalances(this.bals[key], nftDeltas);
+    for (const { tokenId, value } of this.bals[key]) {
+      if (value < 0) {
+        throw new Error(`got negative balance for NFT ${tokenAddr} tokenId:${tokenId}, value:${value} `);
+      }
+    }
+    console.log(`Got => ${printNFT(newNFTBalances, nftDeltas)}`);
+    this.bals[key] = newNFTBalances;
+    this.lastUpdates[key] = blockConcise;
+  }
+
+  public minusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
+    if (addrStr === ZeroAddress) {
+      return;
+    }
+    this.setDefault(addrStr, tokenAddr, blockConcise);
+    const key = `${addrStr}_${tokenAddr}`.toLowerCase();
+    console.log(
+      `NFT ${tokenAddr} on ${addrStr} minus: ${printNFT(this.bals[key], nftDeltas)} - ${printDelta(nftDeltas)} `
+    );
+    const newNFTBalances = mergeNFTBalances(this.bals[key], nftDeltas, false);
+    for (const { tokenId, value } of this.bals[key]) {
+      if (value < 0) {
+        throw new Error(`got negative balance for NFT ${tokenAddr} tokenId:${tokenId}, value:${value} `);
+      }
+    }
+    console.log(`Got => ${printNFT(newNFTBalances, nftDeltas)}`);
+    this.bals[key] = newNFTBalances;
+    this.lastUpdates[key] = blockConcise;
+  }
+
+  public async updateDB() {
+    if (Object.keys(this.bals).length > 0) {
+      for (const key in this.bals) {
+        const items = key.split('_');
+        const addr = items[0];
+        const tokenAddr = items[1];
+        let tb = await this.tbRepo.findByID(addr, tokenAddr);
+        console.log(`updating balances of NFT ${tokenAddr} on ${addr}`);
+        if (!tb) {
+          tb = await this.tbRepo.create(addr, tokenAddr, this.lastUpdates[key]);
+        }
+        tb.nftBalances = this.bals[key];
+        if (tb.lastUpdate.number < this.lastUpdates[key].number) {
+          tb.lastUpdate = this.lastUpdates[key];
+        }
+        await tb.save();
+        console.log('done');
+      }
+    }
+  }
+
+  get(key) {
+    return this.bals[key];
   }
 }

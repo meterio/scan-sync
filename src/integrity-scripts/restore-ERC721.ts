@@ -7,16 +7,14 @@ import {
   connectDB,
   disconnectDB,
   LogEventRepo,
-  LogTransfer,
   Movement,
   MovementRepo,
   BigNumber,
   Token,
   ContractRepo,
   ContractType,
-  TokenBalanceRepo,
 } from '@meterio/scan-db/dist';
-import { TokenBalanceCache } from '../types';
+import { NFTBalanceAuditor } from '../types';
 
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 
@@ -28,12 +26,11 @@ const run = async () => {
   const evtRepo = new LogEventRepo();
   const mvtRepo = new MovementRepo();
   const contractRepo = new ContractRepo();
-  const tokenBalanceRepo = new TokenBalanceRepo();
   await checkNetworkWithDB(network);
 
   const pos = await headRepo.findByKey('pos');
   const best = pos.num;
-  const step = 10000;
+  const step = 100000;
 
   for (let i = 0; i < best; i += step) {
     const start = i;
@@ -42,20 +39,21 @@ const run = async () => {
     const transferEvts = await evtRepo.findByTopic0InBlockRangeSortAsc(ERC721.Transfer.signature, start, end);
     console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
     let movementsCache: Movement[] = [];
-    let tokenBalanceCache = new TokenBalanceCache(network);
+    let nftAuditor = new NFTBalanceAuditor();
     for (const evt of transferEvts) {
       if (evt.topics && evt.topics[0] === ERC721.Transfer.signature) {
         let decoded: abi.Decoded;
         try {
           decoded = ERC721.Transfer.decode(evt.data, evt.topics);
         } catch (e) {
-          console.log('error decoding transfer event');
+          // console.log('error decoding transfer event');
           continue;
         }
+        console.log(`tx: ${evt.txHash}`);
 
         const from = decoded.from.toLowerCase();
         const to = decoded.to.toLowerCase();
-        const tokenId = new BigNumber(decoded.tokenId).toNumber();
+        const tokenId = new BigNumber(decoded.tokenId).toFixed();
         const nftTransfers = [{ tokenId, value: 1 }];
         // ### Handle movement
         let movement: Movement = {
@@ -73,8 +71,8 @@ const run = async () => {
 
         const contract = await contractRepo.findByAddress(evt.address);
         if (contract && contract.type === ContractType.ERC721) {
-          await tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, evt.block);
-          await tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, evt.block);
+          nftAuditor.minusNFT(from, evt.address, nftTransfers, evt.block);
+          nftAuditor.plusNFT(to, evt.address, nftTransfers, evt.block);
         } else {
           console.log('[Warning] Found ERC721 transfer event, but ERC721 contract is not tracked!!');
           console.log('contract address: ', evt.address);
@@ -85,19 +83,7 @@ const run = async () => {
         movementsCache.push(movement);
       }
     }
-    const bals = tokenBalanceCache.nftBalances();
-    if (bals.length > 0) {
-      console.log(`prepare to update ${bals.length} balances`);
-      for (const b of bals) {
-        let tb = await tokenBalanceRepo.findByID(b.address, b.tokenAddress);
-        if (!tb) {
-          tb = await tokenBalanceRepo.create(b.address, b.tokenAddress, b.lastUpdate);
-        }
-        tb.nftBalances = b.nftBalances;
-        const r = await tb.save();
-        console.log(`done: `, b, r);
-      }
-    }
+    await nftAuditor.updateDB();
     if (movementsCache.length > 0) {
       console.log(`prepare to save ${movementsCache.length} movements`);
       const m = await mvtRepo.bulkUpsert(...movementsCache);

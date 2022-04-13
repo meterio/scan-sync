@@ -367,23 +367,24 @@ export class PosCMD extends CMD {
             // step over mode
             // save blocks/txs along the way
             await this.saveCacheToDB();
-            await this.cleanCache();
+            this.cleanCache();
           }
         }
 
         if (fastforward) {
           // fastforward mode, save blocks/txs with bulk insert
           await this.saveCacheToDB();
-          await this.cleanCache();
+          this.cleanCache();
           await sleep(FASTFORWARD_INTERVAL);
         } else {
           await sleep(NORMAL_INTERVAL);
         }
       } catch (e) {
-        if (!(e instanceof InterruptedError)) {
-          this.logger.error(this.name + 'loop: ' + (e as Error).stack);
-        } else {
+        if (e instanceof InterruptedError) {
           console.log('quit loop');
+          break;
+        } else {
+          console.log('Error happened: ', e);
           break;
         }
       }
@@ -622,7 +623,7 @@ export class PosCMD extends CMD {
 
       const from = decoded.from.toLowerCase();
       const to = decoded.to.toLowerCase();
-      const tokenId = new BigNumber(decoded.tokenId).toNumber();
+      const tokenId = new BigNumber(decoded.tokenId).toFixed();
       const nftTransfers = [{ tokenId, value: 1 }];
       // ### Handle movement
       let movement: Movement = {
@@ -662,7 +663,7 @@ export class PosCMD extends CMD {
       }
       const from = decoded.from.toLowerCase();
       const to = decoded.to.toLowerCase();
-      const nftTransfers = [{ tokenId: Number(decoded.id), value: Number(decoded.value) }];
+      const nftTransfers = [{ tokenId: decoded.id, value: Number(decoded.value) }];
       const movement: Movement = {
         from,
         to,
@@ -690,7 +691,7 @@ export class PosCMD extends CMD {
       }
       let nftTransfers: NFTTransfer[] = [];
       for (const [i, id] of decoded.ids.entries()) {
-        nftTransfers.push({ tokenId: Number(id), value: Number(decoded.values[i]) });
+        nftTransfers.push({ tokenId: id, value: Number(decoded.values[i]) });
       }
       const from = decoded.from.toLowerCase();
       const to = decoded.to.toLowerCase();
