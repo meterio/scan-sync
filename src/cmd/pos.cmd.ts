@@ -667,7 +667,7 @@ export class PosCMD extends CMD {
       const movement: Movement = {
         from,
         to,
-        token: Token.ERC20,
+        token: Token.ERC1155,
         amount: new BigNumber(0),
         tokenAddress: evt.address,
         nftTransfers,
@@ -698,7 +698,7 @@ export class PosCMD extends CMD {
       const movement: Movement = {
         from,
         to,
-        token: Token.ERC20,
+        token: Token.ERC1155,
         amount: new BigNumber(0),
         tokenAddress: evt.address,
         nftTransfers,
