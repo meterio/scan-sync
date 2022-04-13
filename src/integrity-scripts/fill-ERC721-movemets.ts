@@ -33,14 +33,14 @@ const run = async () => {
 
   const pos = await headRepo.findByKey('pos');
   const best = pos.num;
-  const step = 2000;
+  const step = 10000;
 
   for (let i = 0; i < best; i += step) {
     const start = i;
     const end = i + step - 1 > best ? best : i + step - 1;
 
     const transferEvts = await evtRepo.findByTopic0InBlockRangeSortAsc(ERC721.Transfer.signature, start, end);
-    console.log('start checking...');
+    console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
     let movementsCache: Movement[] = [];
     let tokenBalanceCache = new TokenBalanceCache(network);
     for (const evt of transferEvts) {
@@ -50,7 +50,7 @@ const run = async () => {
           decoded = ERC721.Transfer.decode(evt.data, evt.topics);
         } catch (e) {
           console.log('error decoding transfer event');
-          return;
+          continue;
         }
 
         const from = decoded.from.toLowerCase();
@@ -86,19 +86,23 @@ const run = async () => {
       }
     }
     const bals = tokenBalanceCache.nftBalances();
-    console.log(`prepare to update ${bals.length} balances`);
-    for (const b of bals) {
-      let tb = await tokenBalanceRepo.findByID(b.address, b.tokenAddress);
-      if (!tb) {
-        tb = await tokenBalanceRepo.create(b.address, b.tokenAddress, b.lastUpdate);
+    if (bals.length > 0) {
+      console.log(`prepare to update ${bals.length} balances`);
+      for (const b of bals) {
+        let tb = await tokenBalanceRepo.findByID(b.address, b.tokenAddress);
+        if (!tb) {
+          tb = await tokenBalanceRepo.create(b.address, b.tokenAddress, b.lastUpdate);
+        }
+        tb.nftBalances = b.nftBalances;
+        const r = await tb.save();
+        console.log(`done: `, b, r);
       }
-      tb.nftBalances = b.nftBalances;
-      const r = await tb.save();
-      console.log(`done: `, b, r);
     }
-    console.log(`prepare to save ${movementsCache.length} movements`);
-    const m = await mvtRepo.bulkUpsert(...movementsCache);
-    console.log(`done`, m);
+    if (movementsCache.length > 0) {
+      console.log(`prepare to save ${movementsCache.length} movements`);
+      const m = await mvtRepo.bulkUpsert(...movementsCache);
+      console.log(`done`, m);
+    }
   }
 };
 
