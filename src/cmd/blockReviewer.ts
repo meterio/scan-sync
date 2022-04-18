@@ -64,7 +64,14 @@ export abstract class TxBlockReviewer extends CMD {
         await this.headRepo.update(this.name, 0, genesis.hash);
       }
     }
+
+    head = await this.headRepo.findByKey(this.name);
+    if (head) {
+      await this.cleanUpIncompleteData(head);
+    }
   }
+
+  public async cleanUpIncompleteData(head) {}
 
   public async start() {
     await this.beforeStart();
@@ -145,6 +152,8 @@ export abstract class TxBlockReviewer extends CMD {
       } catch (e) {
         if (!(e instanceof InterruptedError)) {
           this.logger.error(this.name + 'loop: ' + (e as Error).stack);
+          console.log('Error happened:', e);
+          break;
         } else {
           if (this.shutdown) {
             this.ev.emit('closed');

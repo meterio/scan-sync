@@ -305,7 +305,7 @@ export class PosCMD extends CMD {
         accounts: accts.length,
         tokenBalance: bals.length,
       },
-      'deleted block higher than head '
+      `deleted dirty data higher than head ${blockNum}`
     );
   }
 

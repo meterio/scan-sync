@@ -39,9 +39,26 @@ export class ScriptEngineCMD extends TxBlockReviewer {
     this.logger = Logger.createLogger({ name: this.name });
   }
 
-  async processTx(tx: Tx, txIndex: number, blk: Block) {
-    this.logger.info(`start to process tx ${tx.hash}`);
+  public async cleanUpIncompleteData(head: any): Promise<void> {
+    const blockNum = head.num;
+    const auction = await this.auctionRepo.deleteAfter(blockNum);
+    const bid = await this.bidRepo.deleteAfter(blockNum);
+    const auctionSummary = await this.auctionSummaryRepo.deleteAfter(blockNum);
+    const epochReward = await this.epochRewardRepo.deleteAfter(blockNum);
+    const epochRewardSummary = await this.epochRewardSummaryRepo.deleteAfter(blockNum);
+    this.logger.info(
+      {
+        auction,
+        auctionSummary,
+        bid,
+        epochReward,
+        epochRewardSummary,
+      },
+      `deleted dirty data higher than head ${blockNum}`
+    );
+  }
 
+  async processTx(tx: Tx, txIndex: number, blk: Block) {
     const epoch = blk.epoch;
     const blockNum = blk.number;
     if (tx.reverted) {
@@ -57,16 +74,18 @@ export class ScriptEngineCMD extends TxBlockReviewer {
         continue;
       }
       if (!se.IsScriptEngineData(clause.data)) {
+        this.logger.info(`skip non-scriptengine tx ${tx.hash}`);
         continue;
       }
       const scriptData = se.decodeScriptData(clause.data);
+      this.logger.info(`start to process scriptengine tx ${tx.hash}`);
       if (scriptData.header.modId === se.ModuleID.Auction) {
         if (process.env.ENABLE_AUCTION === 'false') {
           continue;
         }
         // auction
         const body = se.decodeAuctionBody(scriptData.payload);
-        this.logger.info({ opCode: body.opCode }, 'handle auction data');
+        // this.logger.info({ opCode: body.opCode }, 'handle auction data');
         switch (body.opCode) {
           case se.AuctionOpCode.End:
             // end auction
@@ -82,36 +101,35 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               break;
             }
 
-            let dists: AuctionDist[] = [];
-            let txs: AuctionTx[] = [];
-            for (const d of endedAuction.distMTRG) {
-              dists.push({
-                address: d.addr,
-                amount: new BigNumber(d.amount),
-                token: Token.MTRG,
-              });
+            const dists: AuctionDist[] = endedAuction.distMTRG.map((d) => ({
+              address: d.addr,
+              amount: new BigNumber(d.amount),
+              token: Token.MTRG,
+            }));
+            const txs: AuctionTx[] = endedAuction.auctionTxs.map((t) => ({ ...t }));
+
+            // upsert auction summary
+            const sExist = await this.auctionSummaryRepo.existID(endedAuction.auctionID);
+            if (!sExist) {
+              const summary = {
+                id: endedAuction.auctionID,
+                startHeight: endedAuction.startHeight,
+                startEpoch: endedAuction.startEpoch,
+                endHeight: endedAuction.endHeight,
+                endEpoch: endedAuction.endEpoch,
+                sequence: endedAuction.sequence,
+                createTime: endedAuction.createTime,
+                releasedMTRG: new BigNumber(endedAuction.releasedMTRG),
+                reservedMTRG: new BigNumber(endedAuction.reservedMTRG),
+                reservedPrice: new BigNumber(endedAuction.reservedPrice),
+                receivedMTR: new BigNumber(endedAuction.receivedMTR),
+                actualPrice: new BigNumber(endedAuction.actualPrice),
+                leftoverMTRG: new BigNumber(endedAuction.leftoverMTRG),
+                txs,
+                distMTRG: dists,
+              };
+              await this.auctionSummaryRepo.create(summary);
             }
-            for (const t of endedAuction.auctionTxs) {
-              txs.push({ ...t });
-            }
-            const summary = {
-              id: endedAuction.auctionID,
-              startHeight: endedAuction.startHeight,
-              startEpoch: endedAuction.startEpoch,
-              endHeight: endedAuction.endHeight,
-              endEpoch: endedAuction.endEpoch,
-              sequence: endedAuction.sequence,
-              createTime: endedAuction.createTime,
-              releasedMTRG: new BigNumber(endedAuction.releasedMTRG),
-              reservedMTRG: new BigNumber(endedAuction.reservedMTRG),
-              reservedPrice: new BigNumber(endedAuction.reservedPrice),
-              receivedMTR: new BigNumber(endedAuction.receivedMTR),
-              actualPrice: new BigNumber(endedAuction.actualPrice),
-              leftoverMTRG: new BigNumber(endedAuction.leftoverMTRG),
-              txs,
-              distMTRG: dists,
-            };
-            await this.auctionSummaryRepo.create(summary);
 
             // update bids
             let autobidTotal = new BigNumber(0);
@@ -151,6 +169,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             tgtAuction.userbidTotal = userbidTotal;
 
             await tgtAuction.save();
+            console.log(`ended auction ${tgtAuction}`);
             break;
           case se.AuctionOpCode.Start:
             this.logger.info('handle auction start');
@@ -184,6 +203,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               autobidTotal: new BigNumber(0),
             };
             await this.auctionRepo.create(auction);
+            console.log(`started auction ${auction.id}`);
             break;
           case se.AuctionOpCode.Bid:
             // TODO: handle the tx reverted case
@@ -227,13 +247,14 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               present.actualPrice = present.reservedPrice;
             }
             await present.save();
+            console.log(`append bid ${bid.id} to auction ${present.id}`);
             break;
         }
       }
 
       if (scriptData.header.modId === se.ModuleID.Staking) {
         const body = se.decodeStakingBody(scriptData.payload);
-        this.logger.info({ opCode: body.opCode }, `handle staking data`);
+        // this.logger.info({ opCode: body.opCode }, `handle staking data`);
 
         // handle staking candidate / candidate update
         if (body.opCode === se.StakingOpCode.Candidate || body.opCode === se.StakingOpCode.CandidateUpdate) {
@@ -338,12 +359,12 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             transferTotal = transferTotal.plus(r.amount);
           }
 
-          // update validator rewards
-          const exist = await this.validatorRewardRepo.existEpoch(epoch);
-          if (!exist) {
-            let rewards: RewardInfo[] = vreward.rewards.map((info) => {
-              return { amount: new BigNumber(info.amount), address: info.address };
-            });
+          // upsert validator rewards
+          const vExist = await this.validatorRewardRepo.existEpoch(epoch);
+          const rewards: RewardInfo[] = vreward.rewards.map((info) => {
+            return { amount: new BigNumber(info.amount), address: info.address };
+          });
+          if (!vExist) {
             await this.validatorRewardRepo.create({
               epoch: epoch,
               baseReward: new BigNumber(vreward.baseReward),
@@ -353,9 +374,9 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           }
 
           // update epoch reward summary
-          const summaryExist = await this.epochRewardSummaryRepo.existEpoch(epoch);
-          if (!summaryExist) {
-            let epochSummary: EpochRewardSummary = {
+          const sExist = await this.epochRewardSummaryRepo.existEpoch(epoch);
+          if (!sExist) {
+            const epochSummary: EpochRewardSummary = {
               epoch,
               blockNum,
               timestamp: blk.timestamp,
