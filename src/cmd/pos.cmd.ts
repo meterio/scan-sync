@@ -807,7 +807,7 @@ export class PosCMD extends CMD {
       }
 
       // save call digests with data
-      if (clause.data && clause.data.length > 10) {
+      if (clause.data && clause.data.length >= 10) {
         console.log('tx: ', tx.id);
         // console.log('data', clause.data);
         const isSE = ScriptEngine.IsScriptEngineData(clause.data);
