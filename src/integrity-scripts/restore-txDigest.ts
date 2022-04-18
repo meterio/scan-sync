@@ -49,7 +49,7 @@ const run = async () => {
             );
             txDigestsCache.push({
               block: tx.block,
-              txHash: tx.id,
+              txHash: tx.hash,
               fee: new BigNumber(tx.paid),
               from,
               to,
@@ -60,6 +60,14 @@ const run = async () => {
               clauseIndexs: [clauseIndex],
               seq: 0,
             });
+            const digests = await txDigestRepo.findByBlockNum(tx.block.number);
+            for (const digest of digests) {
+              if (digest.txHash.length <= 24) {
+                console.log(`found invalid txHash: `, digest);
+                const r = await digest.delete();
+                console.log('deleted', r);
+              }
+            }
           }
         }
       }
