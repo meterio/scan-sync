@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { AccountRepo, BigNumber, HeadRepo, Network, connectDB, disconnectDB } from '@meterio/scan-db';
+import { AccountRepo, BigNumber, HeadRepo, Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
 
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 
-const adjustBalance = async () => {
+const audit = async () => {
   const { network, standby } = getNetworkFromCli();
 
   await connectDB(network, standby);
@@ -69,7 +69,7 @@ const adjustBalance = async () => {
 
 (async () => {
   try {
-    await adjustBalance();
+    await audit();
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

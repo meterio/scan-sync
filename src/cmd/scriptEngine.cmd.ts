@@ -18,9 +18,12 @@ import {
   Token,
   Tx,
   ValidatorRewardRepo,
+  CandidateRepo,
+  Candidate,
+  BigNumber,
 } from '@meterio/scan-db/dist';
-import { BigNumber } from '@meterio/scan-db/dist';
 import * as Logger from 'bunyan';
+import { getHeapStatistics } from 'v8';
 
 import { TxBlockReviewer } from './blockReviewer';
 
@@ -32,6 +35,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
   protected epochRewardSummaryRepo = new EpochRewardSummaryRepo();
   protected validatorRewardRepo = new ValidatorRewardRepo();
   protected knownRepo = new KnownRepo();
+  protected candidateRepo = new CandidateRepo();
 
   constructor(net: Network) {
     super(net);
@@ -311,6 +315,18 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           let transferCount = 0;
           const prePresent = await this.pos.getPresentAuctionByRevision(blockNum - 1);
           const present = await this.pos.getPresentAuctionByRevision(blockNum);
+          const candidateList = await this.pos.getCandidatesOnRevision(blockNum);
+
+          const candidatesInEpoch: Candidate[] = [];
+          for (const c of candidateList) {
+            candidatesInEpoch.push({
+              ...c,
+              epoch,
+              ipAddress: c.ipAddr,
+            } as Candidate);
+          }
+          await this.candidateRepo.bulkUpsert(...candidatesInEpoch);
+
           let visited = {};
           for (const atx of prePresent.auctionTxs) {
             visited[atx.txid] = true;
