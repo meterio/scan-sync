@@ -6,8 +6,6 @@ import { AccountRepo, BigNumber, HeadRepo, Network, Token, connectDB, disconnect
 import { PrototypeAddress, ZeroAddress, prototype } from '../const';
 import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
 
-const testnetRevision = '250000';
-
 const adjustBalance = async () => {
   const { network, standby } = getNetworkFromCli();
 
@@ -20,12 +18,7 @@ const adjustBalance = async () => {
   const posHead = await headRepo.findByKey('pos');
   console.log('POS Head:', posHead);
 
-  let revision = '';
-  if (network === Network.TestNet) {
-    revision = testnetRevision;
-  } else {
-    revision = '' + posHead.num;
-  }
+  const revision = '' + posHead.num;
   console.log(`Adjust account balances based on revision: ${revision}`);
 
   const accounts = await accountRepo.findAll();
