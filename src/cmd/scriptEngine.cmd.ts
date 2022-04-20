@@ -315,17 +315,17 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           let transferCount = 0;
           const prePresent = await this.pos.getPresentAuctionByRevision(blockNum - 1);
           const present = await this.pos.getPresentAuctionByRevision(blockNum);
-          const candidateList = await this.pos.getCandidatesOnRevision(blockNum);
+          // const candidateList = await this.pos.getCandidatesOnRevision(blockNum);
 
-          const candidatesInEpoch: Candidate[] = [];
-          for (const c of candidateList) {
-            candidatesInEpoch.push({
-              ...c,
-              epoch,
-              ipAddress: c.ipAddr,
-            } as Candidate);
-          }
-          await this.candidateRepo.bulkUpsert(...candidatesInEpoch);
+          // const candidatesInEpoch: Candidate[] = [];
+          // for (const c of candidateList) {
+          //   candidatesInEpoch.push({
+          //     ...c,
+          //     epoch,
+          //     ipAddress: c.ipAddr,
+          //   } as Candidate);
+          // }
+          // await this.candidateRepo.bulkUpsert(...candidatesInEpoch);
 
           let visited = {};
           for (const atx of prePresent.auctionTxs) {

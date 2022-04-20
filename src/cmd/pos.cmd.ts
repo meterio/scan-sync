@@ -509,7 +509,7 @@ export class PosCMD extends CMD {
     this.contractsCache.push(c);
   }
 
-  handleBound(
+  async handleBound(
     evt: Flex.Meter.Event,
     txHash: string,
     clauseIndex: number,
@@ -521,18 +521,21 @@ export class PosCMD extends CMD {
     }
     const decoded = BoundEvent.decode(evt.data, evt.topics);
     const owner = decoded.owner.toLowerCase();
+    const token = decoded.token == 1 ? Token.MTRG : Token.MTR;
+    const amount = new BigNumber(decoded.amount);
     this.boundsCache.push({
       owner,
-      amount: new BigNumber(decoded.amount),
-      token: decoded.token == 1 ? Token.MTRG : Token.MTR,
+      amount,
+      token,
       txHash,
       block: blockConcise,
       clauseIndex,
       logIndex,
     });
+    await this.accountCache.bound(owner, token, amount, blockConcise);
   }
 
-  handleUnbound(
+  async handleUnbound(
     evt: Flex.Meter.Event,
     txHash: string,
     clauseIndex: number,
@@ -544,6 +547,8 @@ export class PosCMD extends CMD {
     }
     const decoded = UnboundEvent.decode(evt.data, evt.topics);
     const owner = decoded.owner.toLowerCase();
+    const token = decoded.token == 1 ? Token.MTRG : Token.MTR;
+    const amount = new BigNumber(decoded.amount);
     this.unboundsCache.push({
       owner,
       amount: new BigNumber(decoded.amount),
@@ -553,6 +558,7 @@ export class PosCMD extends CMD {
       clauseIndex,
       logIndex,
     });
+    await this.accountCache.unbound(owner, token, amount, blockConcise);
   }
 
   async parseERC20Movement(
@@ -1098,10 +1104,10 @@ export class PosCMD extends CMD {
         await this.handleContractCreation(evt, tx.id, blockConcise);
 
         // ### Handle staking bound event
-        this.handleBound(evt, tx.id, clauseIndex, logIndex, blockConcise);
+        await this.handleBound(evt, tx.id, clauseIndex, logIndex, blockConcise);
 
         // ### Handle staking unbound event
-        this.handleUnbound(evt, tx.id, clauseIndex, logIndex, blockConcise);
+        await this.handleUnbound(evt, tx.id, clauseIndex, logIndex, blockConcise);
       } // End of handling events
     }
 
