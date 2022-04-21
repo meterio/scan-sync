@@ -6,16 +6,30 @@ export interface TokenBasic {
   decimals: number;
 }
 
-export const MTRSystemContract = {
+const MTRSystemContract = {
   token: Token.MTR,
   address: '0x687A6294D0D6d63e751A059bf1ca68E4AE7B13E2'.toLowerCase(),
   name: 'Meter ERC20',
   decimals: 18,
 };
-export const MTRGSystemContract = {
+const MTRGSystemContract = {
   token: Token.MTRG,
   address: '0x228ebBeE999c6a7ad74A6130E81b12f9Fe237Ba3'.toLowerCase(),
   name: 'Meter Governance ERC20',
+  decimals: 18,
+};
+
+const STPTSystemContractOnTestnet = {
+  token: Token.MTR,
+  address: '0x000000000000000000004d657465724552433230 （'.toLowerCase(),
+  name: 'STPT',
+  decimals: 18,
+};
+
+const STPDSystemContractOnTestnet = {
+  token: Token.MTRG,
+  address: '0x000000000000004d65746572476f764552433230 （'.toLowerCase(),
+  name: 'STPD',
   decimals: 18,
 };
 
@@ -37,7 +51,8 @@ class TokenRegistry {
 }
 const mainnet = new TokenRegistry();
 const testnet = new TokenRegistry();
-const devnet = new TokenRegistry();
+// const devnet = new TokenRegistry();
+const verseTest = new TokenRegistry();
 const knownTokens = new Map<Network, TokenRegistry>();
 
 mainnet.add(MTRSystemContract);
@@ -46,8 +61,12 @@ mainnet.add(MTRGSystemContract);
 testnet.add({ ...MTRSystemContract, address: '' });
 testnet.add({ ...MTRGSystemContract, address: '' });
 
+verseTest.add(STPTSystemContractOnTestnet);
+verseTest.add(STPDSystemContractOnTestnet);
+
 knownTokens.set(Network.MainNet, mainnet);
 knownTokens.set(Network.TestNet, testnet);
+knownTokens.set(Network.VerseTest, verseTest);
 
 export const getSysContractToken = (net: Network, token: Token) => {
   if (!knownTokens.has(net)) {

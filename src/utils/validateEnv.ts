@@ -19,6 +19,7 @@ function validateEnv() {
     VERSE_TEST_RESTFUL_ENDPOINT: str(),
 
     ENABLE_AUCTION: bool(),
+    ENABLE_SOURCIFY: bool(),
   });
 }
 

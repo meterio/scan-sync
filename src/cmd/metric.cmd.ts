@@ -629,7 +629,9 @@ export class MetricCMD extends CMD {
         await sleep(SAMPLING_INTERVAL);
 
         // update verified contracts from sourcify
-        await this.updateVerifiedContracts(index, every5m);
+        if (process.env.ENABLE_SOURCIFY === 'true') {
+          await this.updateVerifiedContracts(index, every4h);
+        }
 
         // update pos best, difficulty && hps
         await this.updatePowInfo(index, every10m);
