@@ -16,7 +16,7 @@ const printNFT = (bals: NFTBalance[], deltas: NFTBalance[]) => {
       matches.push(`${d.tokenId}=>${m[d.tokenId]}`);
     }
   }
-  return `[${matches.join(', ')} ${matches.length === bals.length ? '' : '...'}]`;
+  return matches.length === 0 ? '[...]' : `[${matches.join(', ')} ${matches.length === bals.length ? '' : '...'}]`;
 };
 
 const printDelta = (deltas: NFTBalance[]) => {
@@ -64,6 +64,11 @@ export class TokenBalanceCache {
   private tokenBalanceRepo = new TokenBalanceRepo();
   private pos: Pos;
 
+  // normally we could just update the nftBalances in bals map
+  // but mongoose is really slow on large array init (even just an update in memory!!)
+  // so here save nft into a separate map would boost the performance
+  private nfts: { [key: string]: NFTBalance[] } = {};
+
   constructor(net: Network) {
     this.pos = new Pos(net);
   }
@@ -100,6 +105,9 @@ export class TokenBalanceCache {
     } else {
       this.bals[key] = balInDB;
     }
+
+    // be careful NOT just save nftBalances, that's only a reference, does NOT boost performance at all
+    this.nfts[key] = mergeNFTBalances(this.bals[key].nftBalances, []);
   }
 
   public async minus(addrStr: string, tokenAddr: string, amount: string | BigNumber, blockConcise: BlockConcise) {
@@ -140,13 +148,12 @@ export class TokenBalanceCache {
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
     console.log(
-      `NFT ${tokenAddr} on ${addrStr} plus: ${printNFT(this.bals[key].nftBalances, nftDeltas)} + ${printDelta(
-        nftDeltas
-      )} `
+      `NFT ${tokenAddr} on ${addrStr} plus: ${printNFT(this.nfts[key], nftDeltas)} + ${printDelta(nftDeltas)} `
     );
-    const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas);
+    const newNFTBalances = mergeNFTBalances(this.nfts[key], nftDeltas);
     console.log(`Got => ${printNFT(newNFTBalances, nftDeltas)}`);
-    this.bals[key].nftBalances = newNFTBalances;
+
+    this.nfts[key] = newNFTBalances;
     this.bals[key].lastUpdate = blockConcise;
   }
 
@@ -157,18 +164,21 @@ export class TokenBalanceCache {
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
     console.log(
-      `NFT ${tokenAddr} on ${addrStr} minus: ${printNFT(this.bals[key].nftBalances, nftDeltas)} - ${printDelta(
-        nftDeltas
-      )} `
+      `NFT ${tokenAddr} on ${addrStr} minus: ${printNFT(this.nfts[key], nftDeltas)} - ${printDelta(nftDeltas)} `
     );
-    const newNFTBalances = mergeNFTBalances(this.bals[key].nftBalances, nftDeltas, false);
+    const newNFTBalances = mergeNFTBalances(this.nfts[key], nftDeltas, false);
     console.log(`Got => ${printNFT(newNFTBalances, nftDeltas)}`);
-    this.bals[key].nftBalances = newNFTBalances;
+    this.nfts[key] = newNFTBalances;
     this.bals[key].lastUpdate = blockConcise;
   }
 
   public async saveToDB() {
     console.log(`saving NFTBalances to DB`);
+    for (const key in this.nfts) {
+      if (key in this.bals) {
+        this.bals[key].nftBalances = this.nfts[key];
+      }
+    }
     await Promise.all(
       Object.values(this.bals).map((b) => {
         console.log(`addr: ${b.address} tokenAddr: ${b.tokenAddress} : ${printDelta(b.nftBalances)}`);
