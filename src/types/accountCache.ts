@@ -140,7 +140,9 @@ export class AccountCache {
       this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.plus(formattedAmount);
     }
     if (token === Token.MTRG) {
-      console.log(`Account ${addr} bound MTRG: ${this.accts[addr].mtrgBalance} - ${formattedAmount} `);
+      console.log(`Account ${addr} bound MTRG:`);
+      console.log(`  Balance: ${this.accts[addr].mtrgBalance} - ${formattedAmount}`);
+      console.log(`  Bounded: ${this.accts[addr].mtrgBounded} + ${formattedAmount} `);
       this.accts[addr].mtrgBalance = this.accts[addr].mtrgBalance.minus(formattedAmount);
       this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.plus(formattedAmount);
       if (this.accts[addr].mtrgBalance.isLessThan(0)) {
@@ -161,7 +163,9 @@ export class AccountCache {
       this.accts[addr].mtrBounded = this.accts[addr].mtrBounded.minus(formattedAmount);
     }
     if (token === Token.MTRG) {
-      console.log(`Account ${addr} unbound MTRG: ${this.accts[addr].mtrgBalance} + ${formattedAmount} `);
+      console.log(`Account ${addr} unbound MTRG:`);
+      console.log(`  Balance: ${this.accts[addr].mtrgBalance} + ${formattedAmount}`);
+      console.log(`  Bounded: ${this.accts[addr].mtrgBounded} - ${formattedAmount} `);
       this.accts[addr].mtrgBalance = this.accts[addr].mtrgBalance.plus(formattedAmount);
       this.accts[addr].mtrgBounded = this.accts[addr].mtrgBounded.minus(formattedAmount);
       console.log(`Got => Balance: ${this.accts[addr].mtrgBalance}, Bounded: ${this.accts[addr].mtrgBounded}`);

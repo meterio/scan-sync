@@ -542,7 +542,7 @@ export class PosCMD extends CMD {
     logIndex: number,
     blockConcise: BlockConcise
   ) {
-    if (!evt.topics || evt.topics[0] !== BoundEvent.signature) {
+    if (!evt.topics || evt.topics[0] !== UnboundEvent.signature) {
       return;
     }
     const decoded = UnboundEvent.decode(evt.data, evt.topics);
