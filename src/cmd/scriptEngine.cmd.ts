@@ -24,6 +24,7 @@ import {
 } from '@meterio/scan-db/dist';
 import * as Logger from 'bunyan';
 import { getHeapStatistics } from 'v8';
+import { GetNetworkConfig } from '../const';
 
 import { TxBlockReviewer } from './blockReviewer';
 
@@ -68,6 +69,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
     if (tx.reverted) {
       return;
     }
+    const config = GetNetworkConfig(this.network);
     const se = devkit.ScriptEngine;
     // process outputs
     for (const [clauseIndex, o] of tx.outputs.entries()) {
@@ -84,7 +86,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
       const scriptData = se.decodeScriptData(clause.data);
       this.logger.info(`start to process scriptengine tx ${tx.hash}`);
       if (scriptData.header.modId === se.ModuleID.Auction) {
-        if (process.env.ENABLE_AUCTION === 'false') {
+        if (!config.auctionEnabled) {
           continue;
         }
         // auction

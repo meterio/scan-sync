@@ -17,9 +17,6 @@ function validateEnv() {
     TESTNET_RESTFUL_ENDPOINT: str(),
     VERSE_RESTFUL_ENDPOINT: str(),
     VERSE_TEST_RESTFUL_ENDPOINT: str(),
-
-    ENABLE_AUCTION: bool(),
-    ENABLE_SOURCIFY: bool(),
   });
 }
 

@@ -550,7 +550,7 @@ export class Pos {
   }
 
   public async probe(ipAddress: string): Promise<Pos.ProbeInfo> {
-    const net = new Net(`http://${ipAddress}:8670`);
+    const net = new Net(`http://${ipAddress}:8670`, 3 * 1000); // probe with a timeout of 3s
     return net.http('GET', 'probe', {});
   }
 }

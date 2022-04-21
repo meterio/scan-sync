@@ -22,7 +22,7 @@ import {
 import { toChecksumAddress } from '@meterio/devkit/dist/cry';
 import Logger from 'bunyan';
 
-import { LockedMeterAddrs, LockedMeterGovAddrs, MetricName } from '../const';
+import { GetNetworkConfig, LockedMeterAddrs, LockedMeterGovAddrs, MetricName } from '../const';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { MetricCache } from '../types';
 import { postToSlackChannel } from '../utils/slack';
@@ -621,6 +621,7 @@ export class MetricCMD extends CMD {
   public async loop() {
     let index = 0;
 
+    const config = GetNetworkConfig(this.network);
     for (;;) {
       try {
         if (this.shutdown) {
@@ -629,21 +630,23 @@ export class MetricCMD extends CMD {
         await sleep(SAMPLING_INTERVAL);
 
         // update verified contracts from sourcify
-        if (process.env.ENABLE_SOURCIFY === 'true') {
+        if (config.sourcifyEnabled) {
           await this.updateVerifiedContracts(index, every4h);
         }
 
-        // update pos best, difficulty && hps
-        await this.updatePowInfo(index, every10m);
+        if (config.powEnabled) {
+          // update pow best, difficulty && hps
+          await this.updatePowInfo(index, every10m);
+
+          // update bitcoin info every 5 minutes
+          await this.updateBitcoinInfo(index, every5m);
+        }
 
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);
 
         // check network, if halt for 2 mins, send alert
         await this.alertIfNetworkHalt(index, every1m);
-
-        // update bitcoin info every 5 minutes
-        await this.updateBitcoinInfo(index, every5m);
 
         // update price/change every 10 minutes
         await this.updateMarketPrice(index, every5m);
@@ -661,7 +664,7 @@ export class MetricCMD extends CMD {
         await this.updateInvalidNodes(index, every2m);
 
         // update auction info
-        if (process.env.ENABLE_AUCTION === 'true') {
+        if (config.auctionEnabled) {
           await this.updateAuctionInfo(index, every5m);
         }
 

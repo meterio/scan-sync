@@ -35,6 +35,10 @@ export const GetNetworkConfig = (net: Network) => {
         host: MAINNET_POW_RPC_HOST,
         port: MAINNET_POW_RPC_PORT,
         posUrl: MAINNET_RESTFUL_ENDPOINT,
+
+        powEnabled: true,
+        auctionEnabled: true,
+        sourcifyEnabled: true,
       };
     case Network.TestNet:
       return {
@@ -43,15 +47,27 @@ export const GetNetworkConfig = (net: Network) => {
         host: TESTNET_POW_RPC_HOST,
         port: TESTNET_POW_RPC_PORT,
         posUrl: TESTNET_RESTFUL_ENDPOINT,
+
+        powEnabled: true,
+        auctionEnabled: true,
+        sourcifyEnabled: true,
       };
     case Network.VerseMain: {
       return {
         posUrl: VERSE_RESTFUL_ENDPOINT,
+
+        powEnabled: false,
+        auctionEnabled: false,
+        sourcifyEnabled: false,
       };
     }
     case Network.VerseTest: {
       return {
         posUrl: VERSE_TEST_RESTFUL_ENDPOINT,
+
+        powEnabled: false,
+        auctionEnabled: false,
+        sourcifyEnabled: false,
       };
     }
   }
