@@ -49,7 +49,7 @@ testnet.add({ ...MTRGSystemContract, address: '' });
 knownTokens.set(Network.MainNet, mainnet);
 knownTokens.set(Network.TestNet, testnet);
 
-export const getERC20Token = (net: Network, token: Token) => {
+export const getSysContractToken = (net: Network, token: Token) => {
   if (!knownTokens.has(net)) {
     return undefined;
   }

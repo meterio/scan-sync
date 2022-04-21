@@ -52,7 +52,7 @@ import {
   TokenBasic,
   UnboundEvent,
   ZeroAddress,
-  getERC20Token,
+  getSysContractToken,
   prototype,
   getAccountName,
   ParamsAddress,
@@ -127,8 +127,8 @@ export class PosCMD extends CMD {
 
     this.pos = new Pos(net);
     this.network = net;
-    this.mtrSysToken = getERC20Token(this.network, Token.MTR);
-    this.mtrgSysToken = getERC20Token(this.network, Token.MTRG);
+    this.mtrSysToken = getSysContractToken(this.network, Token.MTR);
+    this.mtrgSysToken = getSysContractToken(this.network, Token.MTRG);
     this.tokenBalanceCache = new TokenBalanceCache(net);
     const posConfig = GetNetworkConfig(net);
     this.web3 = meterify(new Web3(), posConfig.posUrl);
@@ -592,12 +592,12 @@ export class PosCMD extends CMD {
         clauseIndex,
         logIndex,
       };
-      if (evt.address.toLowerCase() === this.mtrSysToken.address) {
+      if (!!this.mtrSysToken && evt.address.toLowerCase() === this.mtrSysToken.address) {
         // MTR: convert system contract event into system transfer
         movement.token = Token.MTR;
         await this.accountCache.minus(from, Token.MTR, amount, blockConcise);
         await this.accountCache.plus(to, Token.MTR, amount, blockConcise);
-      } else if (evt.address.toLowerCase() === this.mtrgSysToken.address) {
+      } else if (!!this.mtrgSysToken && evt.address.toLowerCase() === this.mtrgSysToken.address) {
         // MTRG: convert system contract event into system transfer
         movement.token = Token.MTRG;
         await this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
@@ -808,7 +808,10 @@ export class PosCMD extends CMD {
     let visitedClause = {};
     for (const [clauseIndex, clause] of tx.clauses.entries()) {
       // skip handling of clause if it's a sys contract call
-      if (clause.to === this.mtrSysToken.address || clause.to === this.mtrgSysToken.address) {
+      if (
+        (!!this.mtrSysToken && clause.to === this.mtrSysToken.address) ||
+        (!!this.mtrgSysToken && clause.to === this.mtrgSysToken.address)
+      ) {
         continue;
       }
 
@@ -874,8 +877,8 @@ export class PosCMD extends CMD {
             reverted: tx.reverted,
           };
           const amount = new BigNumber(decoded.value);
-          const isMTRSysContract = evt.address.toLowerCase() === this.mtrSysToken.address;
-          const isMTRGSysContract = evt.address.toLowerCase() === this.mtrgSysToken.address;
+          const isMTRSysContract = !!this.mtrSysToken && evt.address.toLowerCase() === this.mtrSysToken.address;
+          const isMTRGSysContract = !!this.mtrgSysToken && evt.address.toLowerCase() === this.mtrgSysToken.address;
 
           if (isMTRSysContract || isMTRGSysContract) {
             // ### Handle sys contract transfer events
