@@ -42,6 +42,7 @@ const every1m = 60 / (SAMPLING_INTERVAL / 1000); // count of index in 1 minute
 const every2m = (60 * 2) / (SAMPLING_INTERVAL / 1000); // count of index in 3 minute
 const every5m = (60 * 5) / (SAMPLING_INTERVAL / 1000); // count of index in 5 minutes
 const every10m = (60 * 10) / (SAMPLING_INTERVAL / 1000); // count of index in 10 minutes
+const every20m = (60 * 20) / (SAMPLING_INTERVAL / 1000); // count of index in 20 minutes
 const every30m = (60 * 30) / (SAMPLING_INTERVAL / 1000); // count of index in 30 minutes
 const every2h = (2 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 4 hours
 const every4h = (4 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 4 hours
@@ -274,26 +275,27 @@ export class MetricCMD extends CMD {
         const validators = await this.validatorRepo.findAll();
         for (const v of validators) {
           let probe: Pos.ProbeInfo;
+          const base = { name: v.name, ip: v.ipAddress, pubKey: v.pubKey };
           try {
             probe = await this.pos.probe(v.ipAddress);
           } catch (e) {
             console.log(e);
             console.log(`could not probe ${v.ipAddress}`);
-            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'could not probe' });
+            invalidNodes.push({ ...base, reason: 'could not probe' });
             continue;
           }
           console.log(`got probe for ${v.ipAddress}`);
           if (!(probe.isCommitteeMember && probe.isPacemakerRunning)) {
-            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'in committee without pacemaker running' });
+            invalidNodes.push({ ...base, reason: 'in committee without pacemaker running' });
             continue;
           }
           if (!probe.pubkeyValid) {
-            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'invalid pubkey' });
+            invalidNodes.push({ ...base, reason: 'invalid pubkey' });
             continue;
           }
           const headHeight = Number(this.cache.get(MetricName.POS_BEST));
           if (headHeight - probe.bestBlock.number > 3) {
-            invalidNodes.push({ name: v.name, ip: v.ipAddress, reason: 'fall behind' });
+            invalidNodes.push({ ...base, reason: 'fall behind' });
           }
         }
         console.log('update invalid nodes');
@@ -636,17 +638,17 @@ export class MetricCMD extends CMD {
 
         if (config.powEnabled) {
           // update pow best, difficulty && hps
-          await this.updatePowInfo(index, every10m);
+          await this.updatePowInfo(index, every5m);
 
           // update bitcoin info every 5 minutes
-          await this.updateBitcoinInfo(index, every5m);
+          await this.updateBitcoinInfo(index, every20m);
         }
 
         // update pos best, kblock & seq
         await this.updatePosInfo(index, every);
 
         // check network, if halt for 2 mins, send alert
-        await this.alertIfNetworkHalt(index, every1m);
+        await this.alertIfNetworkHalt(index, every2m);
 
         // update price/change every 10 minutes
         await this.updateMarketPrice(index, every5m);
@@ -655,13 +657,13 @@ export class MetricCMD extends CMD {
         await this.updateCirculationAndRank(index, every4h);
 
         // update candidate/delegate/jailed info
-        await this.updateStakingInfo(index, every1m);
+        await this.updateStakingInfo(index, every5m);
 
         // update slashing penalty points
-        await this.updateSlashingInfo(index, every1m);
+        await this.updateSlashingInfo(index, every5m);
 
         // update network status
-        await this.updateInvalidNodes(index, every2m);
+        await this.updateInvalidNodes(index, every5m);
 
         // update auction info
         if (config.auctionEnabled) {
