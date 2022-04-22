@@ -64,6 +64,7 @@ import { newIterator, LogItem } from '../utils/log-traverser';
 import { AccountCache, TokenBalanceCache } from '../types';
 import { MetricName, getPreAllocAccount } from '../const';
 import { KeyTransactionFeeAddress } from '../const/key';
+import { config } from 'dotenv';
 
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
@@ -1198,6 +1199,7 @@ export class PosCMD extends CMD {
       await this.accountCache.plus(this.beneficiaryCache, Token.MTR, actualReward, blockConcise);
     }
 
+    const config = GetNetworkConfig(this.network);
     let powBlocks: Flex.Meter.PowBlock[] = [];
     if (blk.powBlocks) {
       for (const pb of blk.powBlocks) {
@@ -1205,9 +1207,11 @@ export class PosCMD extends CMD {
       }
     } else {
       if (blk.isKBlock) {
-        const epochInfo = await this.pos.getEpochInfo(blk.qc.epochID);
-        for (const pb of epochInfo.powBlocks) {
-          powBlocks.push({ ...pb, beneficiary: pb.Beneficiary || pb.beneficiary });
+        if (config.powEnabled) {
+          const epochInfo = await this.pos.getEpochInfo(blk.qc.epochID);
+          for (const pb of epochInfo.powBlocks) {
+            powBlocks.push({ ...pb, beneficiary: pb.Beneficiary || pb.beneficiary });
+          }
         }
       }
     }
