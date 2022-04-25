@@ -72,7 +72,7 @@ const meterify = require('meterify').meterify;
 const FASTFORWARD_INTERVAL = 300; // 0.3 second gap between each loop
 const NORMAL_INTERVAL = 2000; // 2 seconds gap between each loop
 const PRELOAD_WINDOW = 100;
-const LOOP_WINDOW = 500;
+const LOOP_WINDOW = 100;
 
 const revertReasonSelector = '0x' + cry.keccak256('Error(string)').toString('hex').slice(0, 8);
 const panicErrorSelector = '0x' + cry.keccak256('Panic(uint256)').toString('hex').slice(0, 8);
@@ -161,7 +161,7 @@ export class PosCMD extends CMD {
     this.accountCache.clean();
     this.tokenBalanceCache.clean();
     this.rebasingsCache = [];
-    this.beneficiaryCache = ZeroAddress;
+    // this.beneficiaryCache = ZeroAddress;
 
     this.logEventCache = [];
     this.logTransferCache = [];
@@ -376,6 +376,7 @@ export class PosCMD extends CMD {
           // fastforward mode, save blocks/txs with bulk insert
           await this.saveCacheToDB();
           this.cleanCache();
+          this.beneficiaryCache = ZeroAddress;
           await sleep(FASTFORWARD_INTERVAL);
         } else {
           await sleep(NORMAL_INTERVAL);
@@ -576,7 +577,7 @@ export class PosCMD extends CMD {
       try {
         decoded = ERC20.Transfer.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding transfer event');
+        console.log('error decoding ERC20 transfer event');
         return;
       }
 
@@ -626,7 +627,7 @@ export class PosCMD extends CMD {
       try {
         decoded = ERC721.Transfer.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding transfer event');
+        console.log('error decoding ERC721 transfer event');
         return;
       }
 
@@ -667,7 +668,7 @@ export class PosCMD extends CMD {
       try {
         decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding transfer event');
+        console.log('error decoding ERC1155 transfer event');
         return;
       }
       const from = decoded.from.toLowerCase();
@@ -820,10 +821,8 @@ export class PosCMD extends CMD {
 
       // save call digests with data
       if (clause.data && clause.data.length >= 10) {
-        console.log('tx: ', tx.id);
         // console.log('data', clause.data);
         const isSE = ScriptEngine.IsScriptEngineData(clause.data);
-        console.log('isSE: ', isSE);
         // console.log('clause.to: ', clause.to);
         const token = clause.token;
         let signature = '';
@@ -836,7 +835,7 @@ export class PosCMD extends CMD {
         }
         const key = sha1({ num: blockConcise.number, hash: tx.id, from: tx.origin, to: clause.to || ZeroAddress });
         if (key in visitedClause) {
-          console.log('Skip clause for duplicate data: ', clause);
+          // console.log('Skip clause for duplicate data: ', clause);
           continue;
         }
         visitedClause[key] = true;
@@ -861,13 +860,13 @@ export class PosCMD extends CMD {
     // prepare events and outputs
     for (const [clauseIndex, o] of tx.outputs.entries()) {
       for (const [logIndex, evt] of o.events.entries()) {
-        // ### Handle ERC20/ERC721 transfer event (they have the same signature)
+        // ### Handle ERC20 transfer event (they have the same signature)
         if (evt.topics && evt.topics[0] === ERC20.Transfer.signature) {
           let decoded: abi.Decoded;
           try {
             decoded = ERC20.Transfer.decode(evt.data, evt.topics);
           } catch (e) {
-            console.log('error decoding transfer event');
+            console.log('error decoding ERC20 transfer event');
             continue;
           }
 
@@ -1086,6 +1085,7 @@ export class PosCMD extends CMD {
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
     txIndex: number
   ): Promise<void> {
+    console.log(`start to process tx ${tx.id}`);
     const blockConcise = { number: blk.number, hash: blk.id, timestamp: blk.timestamp };
 
     // update movement
@@ -1195,10 +1195,14 @@ export class PosCMD extends CMD {
     }
 
     // add block reward beneficiary account
-    if (this.beneficiaryCache === ZeroAddress || this.beneficiaryCache === '0x') {
-      await this.accountCache.plus(blk.beneficiary, Token.MTR, actualReward, blockConcise);
-    } else {
-      await this.accountCache.plus(this.beneficiaryCache, Token.MTR, actualReward, blockConcise);
+    if (actualReward.isGreaterThan(0)) {
+      if (this.beneficiaryCache === ZeroAddress || this.beneficiaryCache === '0x') {
+        console.log(`Add block reward ${actualReward.toFixed()} to ${blk.beneficiary}`);
+        await this.accountCache.plus(blk.beneficiary, Token.MTR, actualReward, blockConcise);
+      } else {
+        console.log(`Add block reward ${actualReward.toFixed()} to ${this.beneficiaryCache}`);
+        await this.accountCache.plus(this.beneficiaryCache, Token.MTR, actualReward, blockConcise);
+      }
     }
 
     const config = GetNetworkConfig(this.network);

@@ -60,7 +60,7 @@ export const mergeNFTBalances = (origin: NFTBalance[], delta: NFTBalance[], plus
 };
 
 export class TokenBalanceCache {
-  private bals: { [key: string]: TokenBalance & { save() } } = {};
+  private bals: { [key: string]: TokenBalance & { save(); remove() } } = {};
   private tokenBalanceRepo = new TokenBalanceRepo();
   private pos: Pos;
 
@@ -173,19 +173,26 @@ export class TokenBalanceCache {
   }
 
   public async saveToDB() {
-    console.log(`saving NFTBalances to DB`);
-    for (const key in this.nfts) {
-      if (key in this.bals) {
-        this.bals[key].nftBalances = this.nfts[key];
+    const count = Object.keys(this.bals).length;
+    if (count > 0) {
+      console.log(`saving ${count} NFTBalances to DB`);
+      for (const key in this.nfts) {
+        if (key in this.bals) {
+          this.bals[key].nftBalances = this.nfts[key];
+        }
       }
+      await Promise.all(
+        Object.values(this.bals).map((b) => {
+          console.log(`addr: ${b.address} tokenAddr: ${b.tokenAddress} : ${printDelta(b.nftBalances)}`);
+          b.nftBalances = b.nftBalances.map((b) => ({ tokenId: b.tokenId, value: b.value }));
+          if (b.balance.isLessThanOrEqualTo(0) && b.nftBalances.length <= 0) {
+            return this.tokenBalanceRepo.deleteByID(b.address, b.tokenAddress);
+          } else {
+            return b.save();
+          }
+        })
+      );
     }
-    await Promise.all(
-      Object.values(this.bals).map((b) => {
-        console.log(`addr: ${b.address} tokenAddr: ${b.tokenAddress} : ${printDelta(b.nftBalances)}`);
-        b.nftBalances = b.nftBalances.map((b) => ({ tokenId: b.tokenId, value: b.value }));
-        return b.save();
-      })
-    );
   }
 
   public clean() {

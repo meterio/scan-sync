@@ -19,20 +19,6 @@ const MTRGSystemContract = {
   decimals: 18,
 };
 
-const STPTSystemContractOnTestnet = {
-  token: Token.MTR,
-  address: '0x000000000000000000004d657465724552433230 （'.toLowerCase(),
-  name: 'STPT',
-  decimals: 18,
-};
-
-const STPDSystemContractOnTestnet = {
-  token: Token.MTRG,
-  address: '0x000000000000004d65746572476f764552433230 （'.toLowerCase(),
-  name: 'STPD',
-  decimals: 18,
-};
-
 class TokenRegistry {
   private registry = new Map<Token, TokenBasic>();
   public add(tb: TokenBasic) {
@@ -58,11 +44,11 @@ const knownTokens = new Map<Network, TokenRegistry>();
 mainnet.add(MTRSystemContract);
 mainnet.add(MTRGSystemContract);
 
-testnet.add({ ...MTRSystemContract, address: '' });
-testnet.add({ ...MTRGSystemContract, address: '' });
+testnet.add({ ...MTRSystemContract, address: '0x4cb6cef87d8cadf966b455e8bd58fff32aba49d1' });
+testnet.add({ ...MTRGSystemContract, address: '0x8a419ef4941355476cf04933e90bf3bbf2f73814' });
 
-verseTest.add(STPTSystemContractOnTestnet);
-verseTest.add(STPDSystemContractOnTestnet);
+verseTest.add({ ...MTRSystemContract, address: '0x000000000000000000004d657465724552433230', name: 'STPT' });
+verseTest.add({ ...MTRGSystemContract, address: '0x000000000000004d65746572476f764552433230', name: 'STPD' });
 
 knownTokens.set(Network.MainNet, mainnet);
 knownTokens.set(Network.TestNet, testnet);
