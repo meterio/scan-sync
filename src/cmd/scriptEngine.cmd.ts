@@ -315,50 +315,53 @@ export class ScriptEngineCMD extends TxBlockReviewer {
           let transferTotal = new BigNumber(0);
           let autobidCount = 0;
           let transferCount = 0;
-          const prePresent = await this.pos.getPresentAuctionByRevision(blockNum - 1);
-          const present = await this.pos.getPresentAuctionByRevision(blockNum);
-          // const candidateList = await this.pos.getCandidatesOnRevision(blockNum);
+          const config = GetNetworkConfig(this.network);
+          if (config.auctionEnabled) {
+            const prePresent = await this.pos.getPresentAuctionByRevision(blockNum - 1);
+            const present = await this.pos.getPresentAuctionByRevision(blockNum);
+            // const candidateList = await this.pos.getCandidatesOnRevision(blockNum);
 
-          // const candidatesInEpoch: Candidate[] = [];
-          // for (const c of candidateList) {
-          //   candidatesInEpoch.push({
-          //     ...c,
-          //     epoch,
-          //     ipAddress: c.ipAddr,
-          //   } as Candidate);
-          // }
-          // await this.candidateRepo.bulkUpsert(...candidatesInEpoch);
+            // const candidatesInEpoch: Candidate[] = [];
+            // for (const c of candidateList) {
+            //   candidatesInEpoch.push({
+            //     ...c,
+            //     epoch,
+            //     ipAddress: c.ipAddr,
+            //   } as Candidate);
+            // }
+            // await this.candidateRepo.bulkUpsert(...candidatesInEpoch);
 
-          let visited = {};
-          for (const atx of prePresent.auctionTxs) {
-            visited[atx.txid] = true;
-          }
-          for (const atx of present.auctionTxs) {
-            if (atx.type != 'autobid') {
-              continue;
+            let visited = {};
+            for (const atx of prePresent.auctionTxs) {
+              visited[atx.txid] = true;
             }
-            if (atx.txid in visited) {
-              continue;
-            }
-            const savedBid = await this.bidRepo.findById(atx.txid);
-            let reward: EpochReward = {
-              epoch,
-              blockNum,
-              txHash: tx.hash,
-              clauseIndex,
-              bidID: atx.txid,
+            for (const atx of present.auctionTxs) {
+              if (atx.type != 'autobid') {
+                continue;
+              }
+              if (atx.txid in visited) {
+                continue;
+              }
+              const savedBid = await this.bidRepo.findById(atx.txid);
+              let reward: EpochReward = {
+                epoch,
+                blockNum,
+                txHash: tx.hash,
+                clauseIndex,
+                bidID: atx.txid,
 
-              address: atx.address,
-              amount: new BigNumber(atx.amount),
-              type: 'autobid',
-            };
-            if (savedBid) {
-              reward.txHash = savedBid.txHash;
-              reward.clauseIndex = savedBid.clauseIndex;
+                address: atx.address,
+                amount: new BigNumber(atx.amount),
+                type: 'autobid',
+              };
+              if (savedBid) {
+                reward.txHash = savedBid.txHash;
+                reward.clauseIndex = savedBid.clauseIndex;
+              }
+              await this.epochRewardRepo.create(reward);
+              autobidCount++;
+              autobidTotal = autobidTotal.plus(atx.amount);
             }
-            await this.epochRewardRepo.create(reward);
-            autobidCount++;
-            autobidTotal = autobidTotal.plus(atx.amount);
           }
 
           const vreward = await this.pos.getLastValidatorReward(blockNum);

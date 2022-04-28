@@ -233,22 +233,41 @@ export class MetricCMD extends CMD {
   private async updateMarketPrice(index: number, interval: number) {
     if (index % interval === 0) {
       console.log('update market price');
-      const price = await this.coingecko.http<any>('GET', 'simple/price', {
-        query: { ids: 'meter,meter-stable', vs_currencies: 'usd,usd', include_24hr_change: 'true' },
-      });
-      if (!!price) {
-        if (price.meter) {
-          const m = price.meter;
-          const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
-          this.cache.update(MetricName.MTRG_PRICE, String(m.usd));
-          this.cache.update(MetricName.MTRG_PRICE_CHANGE, `${percent20h}%`);
-        }
-        if (price['meter-stable']) {
-          const m = price['meter-stable'];
+      const config = GetNetworkConfig(this.network);
+
+      if (typeof config.coingeckoEnergy === 'string') {
+        const price = await this.coingecko.http<any>('GET', 'simple/price', {
+          query: { ids: `${config.coingeckoEnergy}`, vs_currencies: 'usd', include_24hr_change: 'true' },
+        });
+        console.log(`Got energy price: ${price}`);
+        if (!!price && config.coingeckoEnergy in price) {
+          const m = price[config.coingeckoEnergy];
           const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
           this.cache.update(MetricName.MTR_PRICE, String(m.usd));
           this.cache.update(MetricName.MTR_PRICE_CHANGE, `${percent20h}%`);
         }
+      } else if (typeof config.coingeckoEnergy === 'number') {
+        this.cache.update(MetricName.MTR_PRICE, String(config.coingeckoEnergy));
+        this.cache.update(MetricName.MTR_PRICE_CHANGE, `0%`);
+      } else {
+        console.log('invalid type for coingeckoEnergy');
+      }
+
+      if (typeof config.coingeckoBalance === 'string') {
+        const price = await this.coingecko.http<any>('GET', 'simple/price', {
+          query: { ids: `${config.coingeckoBalance}`, vs_currencies: 'usd', include_24hr_change: 'true' },
+        });
+        if (!!price && config.coingeckoBalance in price) {
+          const m = price[config.coingeckoBalance];
+          const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
+          this.cache.update(MetricName.MTRG_PRICE, String(m.usd));
+          this.cache.update(MetricName.MTRG_PRICE_CHANGE, `${percent20h}%`);
+        }
+      } else if (typeof config.coingeckoBalance === 'number') {
+        this.cache.update(MetricName.MTRG_PRICE, String(config.coingeckoBalance));
+        this.cache.update(MetricName.MTRG_PRICE_CHANGE, `0%`);
+      } else {
+        console.log('invalid type for coingeckoBalance');
       }
     }
   }

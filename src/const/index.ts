@@ -39,6 +39,9 @@ export const GetNetworkConfig = (net: Network) => {
         powEnabled: true,
         auctionEnabled: true,
         sourcifyEnabled: true,
+
+        coingeckoEnergy: 'meter-stable',
+        coingeckoBalance: 'meter',
       };
     case Network.TestNet:
       return {
@@ -51,6 +54,9 @@ export const GetNetworkConfig = (net: Network) => {
         powEnabled: true,
         auctionEnabled: true,
         sourcifyEnabled: true,
+
+        coingeckoEnergy: 'meter-stable',
+        coingeckoBalance: 'meter',
       };
     case Network.VerseMain: {
       return {
@@ -59,6 +65,9 @@ export const GetNetworkConfig = (net: Network) => {
         powEnabled: false,
         auctionEnabled: false,
         sourcifyEnabled: false,
+
+        coingeckoEnergy: 'meter-stable',
+        coingeckoBalance: 1,
       };
     }
     case Network.VerseTest: {
@@ -68,6 +77,9 @@ export const GetNetworkConfig = (net: Network) => {
         powEnabled: false,
         auctionEnabled: false,
         sourcifyEnabled: false,
+
+        coingeckoEnergy: 'stp-network',
+        coingeckoBalance: 1,
       };
     }
   }
