@@ -244,12 +244,54 @@ export namespace Pos {
     hasCommitteeInfo: Boolean;
     nonce: number;
   };
+  export type ChainProbe = {
+    bestBlock: ProbeBlock;
+    bestQC: ProbeQC;
+    bestQCCandidate: ProbeQC;
+  };
+  export type QCProbe = {
+    Height: number;
+    Round: number;
+    EpochID: number;
+  };
+  export type BlockProbe = {
+    Height: number;
+    Round: number;
+    Type: string;
+  };
+  export type PacemakerProbe = {
+    Mode: string;
+    StartHeight: number;
+    StartRound: number;
+    CurRound: number;
+    MyCommitteeIndex: number;
+
+    LastVotingHeight: number;
+    ProposalCount: number;
+    PendingCount: number;
+    PendingLowest: number;
+
+    QCHigh: ProbeQC;
+    BlockExecuted: BlockProbe;
+    BlockLocked: BlockProbe;
+    BlockLeaf: BlockProbe;
+  };
+
+  export type PowProbe = {
+    Status: string;
+    LatestHeight: number;
+    KFrameHeight: number;
+    PoolSize: number;
+  };
+
   export type ProbeInfo = {
     name: string;
     pubkey: string;
     pubkeyValid: Boolean;
     version: string;
-    bestBlock: ProbeBlock;
+    chain: ChainProbe;
+    pacemaker: PacemakerProbe;
+    pow: PowProbe;
     bestQC: ProbeQC;
     qcHigh: ProbeQC;
     bestQCCandidate: ProbeQC;

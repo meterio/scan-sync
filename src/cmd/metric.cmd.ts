@@ -313,7 +313,7 @@ export class MetricCMD extends CMD {
             continue;
           }
           const headHeight = Number(this.cache.get(MetricName.POS_BEST));
-          if (headHeight - probe.bestBlock.number > 3) {
+          if (probe.chain && probe.chain.bestBlock && headHeight - probe.chain.bestBlock.number > 3) {
             invalidNodes.push({ ...base, reason: 'fall behind' });
           }
         }
