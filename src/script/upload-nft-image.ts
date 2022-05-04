@@ -19,7 +19,7 @@ import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 // Set the AWS Region
 const REGION = "ap-northeast-1";
 const ALBUM_BUCKET_NAME = 'meter-nft-image';
-const INFURA_IPFS_PREFIX = 'https://ipfs.infura.io/';
+const INFURA_IPFS_PREFIX = 'https://ipfs.infura.io/ipfs/';
 const MAINNET_JSON_RPC = 'https://rpc.meter.io';
 const TOKEN_URI_ABI = [
   {
@@ -67,25 +67,30 @@ const run = async () => {
         console.log(`tx: ${evt.txHash}`);
 
         const from = decoded.from.toLowerCase();
-        const to = decoded.to.toLowerCase();
-        const tokenId = new BigNumber(decoded.tokenId).toFixed();
+        // const to = decoded.to.toLowerCase();
         const tokenAddress = evt.address.toLowerCase();
+        const tokenId = new BigNumber(decoded.tokenId).toFixed();
 
         if (from === '0x0000000000000000000000000000000000000000') {
-
+          try {
+            await actionUpload(tokenAddress, tokenId);
+          } catch (err) {
+            console.log(err.message)
+            continue;
+          }
         }
       }
     }
   }
 };
 
-const actionUpload = async () => {
-  const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
-  const tokenId = '2204';
+const actionUpload = async (tokenAddress, tokenId) => {
+  // const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
+  // const tokenId = '2204';
 
   const uploadStatus = await checkIsUploaded(tokenAddress, tokenId);
   if (!uploadStatus) {
-    const imageArraybuffer = getImageArraybuffer(tokenAddress, tokenId);
+    const imageArraybuffer = await getImageArraybuffer(tokenAddress, tokenId);
 
     await uploadToAlbum(tokenAddress, tokenId, imageArraybuffer)
   }
@@ -99,7 +104,7 @@ const getImageArraybuffer = async (tokenAddress, tokenId) => {
   console.log(`Get ERC721 ${tokenAddress} #${tokenId} metaURI:\n${ipfsMetaURI}\n${httpMetaURI}`);
 
   const meta = await axios.get(httpMetaURI);
-  console.log(`meta:\n${meta}`)
+  console.log(`meta:\nname: ${meta.data.name}\nipfsURL:${meta.data.image}`)
 
   const imgURI = String(meta.data.image).replace('ipfs://', INFURA_IPFS_PREFIX);
   const res = await axios.get(imgURI, { responseType: 'arraybuffer' });
@@ -130,7 +135,7 @@ const createAlbum = async (albumName) => {
     const key = albumName + "/";
     const params = { Bucket: ALBUM_BUCKET_NAME, Key: key };
     const data = await s3.send(new PutObjectCommand(params));
-    console.log("Successfully created album.");
+    console.log("Successfully created album.", albumName);
     return data;
   } catch (err) {
     throw new Error("There was an error creating your album: " + err.message);
@@ -170,53 +175,10 @@ const uploadToAlbum = async (albumName, photoName, imageArraybuffer) => {
   }
 }
 
-// Add a photo to an album
-// const addPhoto = async (albumName, photoName, imgBuffer) => {
-//   const albumPhotosKey = albumName + "/";
-//   const data = await s3.send(
-//     new ListObjectsCommand({
-//       // Prefix: albumPhotosKey,
-//       Bucket: ALBUM_BUCKET_NAME
-//     })
-//   );
-//   const isAlbumExist = data.Contents.find(album => album.Key.includes(albumName));
-//   if (!isAlbumExist) {
-//     console.log(`${albumName} not exists will creating.`)
-//     await createAlbum(albumName);
-//   }
-//   // console.log('ListObjectsCommand res', data);
-//   const photoKey = albumPhotosKey + photoName;
-//   const uploadParams = {
-//     Bucket: ALBUM_BUCKET_NAME,
-//     Key: photoKey,
-//     Body: imgBuffer,
-//     ACL: 'public-read'
-//   };
-//   try {
-//     const data = await s3.send(new PutObjectCommand(uploadParams));
-//     console.log("Successfully uploaded photo.", albumName, photoName);
-//   } catch (err) {
-//     console.log("There was an error uploading your photo: ", err.message);
-//   }
-// };
-
-// const testUpload = async () => {
-//   const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
-//   const tokenId = '2204';
-
-//   const imgURI = 'https://ipfs.infura.io/ipfs/QmYMCycWQd3iJnnECCGPCASBPiTDhUvsURkhKeC1UpNgL4/2204.png';
-//   const image = await axios.get(imgURI, { responseType: 'arraybuffer' });
-
-//   // upload to s3
-//   await addPhoto(tokenAddress, tokenId, image.data);
-// }
-
 (async () => {
   try {
-    // await run();
-    // await disconnectDB();
-
-    await actionUpload();
+    await run();
+    await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
     process.exit(-1);
