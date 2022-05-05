@@ -32,9 +32,7 @@
     "typescript": "^4.6.2"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity": "^3.82.0",
     "@aws-sdk/client-s3": "^3.82.0",
-    "@aws-sdk/credential-provider-cognito-identity": "^3.82.0",
     "@meterio/devkit": "^1.6.5",
     "@meterio/flex": "^0.5.8",
     "@meterio/scan-db": "^0.1.89",

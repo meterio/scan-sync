@@ -100,6 +100,9 @@ const actionUpload = async (tokenAddress, tokenId) => {
 const getImageArraybuffer = async (tokenAddress, tokenId) => {
   const contract = new ethers.Contract(tokenAddress, TOKEN_URI_ABI, SIGNER);
   const ipfsMetaURI = await contract.tokenURI(tokenId);
+  if (!ipfsMetaURI) {
+    throw new Error('Can not get ipfsMetaURI.')
+  }
   const httpMetaURI = String(ipfsMetaURI).replace('ipfs://', INFURA_IPFS_PREFIX)
   console.log(`Get ERC721 ${tokenAddress} #${tokenId} metaURI:\n${ipfsMetaURI}\n${httpMetaURI}`);
 
