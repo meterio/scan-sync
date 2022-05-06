@@ -63,33 +63,33 @@ const run = async () => {
     const start = i;
     const end = i + step - 1 > best ? best : i + step - 1;
 
-    // const transferEvts = await evtRepo.findByTopic0InBlockRangeSortAsc(ERC721.Transfer.signature, start, end);
-    // console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
-    // for (const evt of transferEvts) {
-    //   if (evt.topics && evt.topics[0] === ERC721.Transfer.signature) {
-    //     let decoded: abi.Decoded;
-    //     try {
-    //       decoded = ERC721.Transfer.decode(evt.data, evt.topics);
-    //     } catch (e) {
-    //       continue;
-    //     }
-    //     console.log(`tx: ${evt.txHash}`);
+    const transferEvts = await evtRepo.findByTopic0InBlockRangeSortAsc(ERC721.Transfer.signature, start, end);
+    console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
+    for (const evt of transferEvts) {
+      if (evt.topics && evt.topics[0] === ERC721.Transfer.signature) {
+        let decoded: abi.Decoded;
+        try {
+          decoded = ERC721.Transfer.decode(evt.data, evt.topics);
+        } catch (e) {
+          continue;
+        }
+        console.log(`tx: ${evt.txHash}`);
 
-    //     const from = decoded.from.toLowerCase();
-    //     // const to = decoded.to.toLowerCase();
-    //     const tokenAddress = evt.address.toLowerCase();
-    //     const tokenId = new BigNumber(decoded.tokenId).toFixed();
+        const from = decoded.from.toLowerCase();
+        // const to = decoded.to.toLowerCase();
+        const tokenAddress = evt.address.toLowerCase();
+        const tokenId = new BigNumber(decoded.tokenId).toFixed();
 
-    //     if (from === '0x0000000000000000000000000000000000000000') {
-    //       try {
-    //         await actionUpload(tokenAddress, tokenId, true);
-    //       } catch (err) {
-    //         console.log(err.message + '\n')
-    //         continue;
-    //       }
-    //     }
-    //   }
-    // }
+        if (from === '0x0000000000000000000000000000000000000000') {
+          try {
+            await actionUpload(tokenAddress, tokenId, true);
+          } catch (err) {
+            console.log(err.message + '\n')
+            continue;
+          }
+        }
+      }
+    }
 
     const singles = await evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferSingle.signature, start, end);
     console.log(`searching for ERC1155 singles in blocks [${start}, ${end}]`);
@@ -111,7 +111,7 @@ const run = async () => {
           try {
             await actionUpload(tokenAddress, tokenId, false);
           } catch (err) {
-            console.log(err.message + '\n')
+            console.log('Error: ', err.message + '\n')
             continue;
           }
         }
@@ -172,10 +172,10 @@ const getImageArraybuffer = async (tokenAddress, tokenId, isERC721) => {
     metaURI = await contract.uri(tokenId);
   }
   if (!metaURI) {
-    throw new Error('Can not get metaURI.\n')
+    throw new Error(`Can not get #${tokenId} metaURI from contract ${tokenAddress}.\n`)
   }
   const httpMetaURI = String(metaURI).replace('ipfs://', INFURA_IPFS_PREFIX)
-  console.log(`Get ERC721 ${tokenAddress} #${tokenId} metaURI:\n${httpMetaURI}`);
+  console.log(`Get ERC${isERC721 ? '721' : '1155'} ${tokenAddress} #${tokenId} metaURI:\n${httpMetaURI}`);
 
   const meta = await axios.get(httpMetaURI);
   const imgURI = String(meta.data.image).replace('ipfs://', INFURA_IPFS_PREFIX);
