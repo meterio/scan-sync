@@ -178,7 +178,12 @@ const getImageArraybuffer = async (tokenAddress, tokenId, isERC721) => {
   console.log(`Get ERC${isERC721 ? '721' : '1155'} ${tokenAddress} #${tokenId} metaURI:\n${httpMetaURI}`);
 
   const meta = await axios.get(httpMetaURI);
-  const imgURI = String(meta.data.image).replace('ipfs://', INFURA_IPFS_PREFIX);
+
+  const image = String(meta.data.image);
+  if (image.includes(';base64')) {
+    return Buffer.from(image.split(';base64').pop(), 'base64');
+  }
+  const imgURI = image.replace('ipfs://', INFURA_IPFS_PREFIX);
   console.log(`meta:\nname: ${meta.data.name}\nimageURI:${meta.data.image}`)
 
   const res = await axios.get(imgURI, { responseType: 'arraybuffer' });
