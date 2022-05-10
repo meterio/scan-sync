@@ -36,6 +36,7 @@
     "@meterio/devkit": "^1.6.5",
     "@meterio/flex": "^0.5.8",
     "@meterio/scan-db": "^0.1.89",
+    "@supercharge/promise-pool": "^2.1.0",
     "axios": "^0.26.1",
     "bignumber.js": "^9.0.2",
     "bitcoin-core": "^3.0.0",

@@ -2,24 +2,20 @@
 require('../utils/validateEnv');
 
 import { ERC721, ERC1155, abi } from '@meterio/devkit';
-import {
-  HeadRepo,
-  connectDB,
-  disconnectDB,
-  LogEventRepo,
-  BigNumber
-} from '@meterio/scan-db/dist';
+import { HeadRepo, connectDB, disconnectDB, LogEventRepo, BigNumber } from '@meterio/scan-db/dist';
 import axios from 'axios';
 import { ethers } from 'ethers';
+import { PromisePool } from '@supercharge/promise-pool';
 
-import { S3Client, PutObjectCommand, ListObjectsCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
+import { ZeroAddress } from '../const';
 
 // Set the AWS Region
-const REGION = "ap-northeast-1";
+const REGION = 'ap-northeast-1';
 const ALBUM_BUCKET_NAME = 'meter-nft-image';
-const INFURA_IPFS_PREFIX = 'https://ipfs.infura.io/ipfs/';
+const INFURA_IPFS_PREFIX = 'https://meter.infura-ipfs.io/ipfs/';
 const MAINNET_JSON_RPC = 'https://rpc.meter.io';
 const TOKEN_URI_ABI = [
   {
@@ -28,7 +24,7 @@ const TOKEN_URI_ABI = [
     outputs: [{ internalType: 'string', name: '', type: 'string' }],
     stateMutability: 'view',
     type: 'function',
-  }
+  },
 ];
 const URI_ABI = [
   {
@@ -37,14 +33,21 @@ const URI_ABI = [
     outputs: [{ internalType: 'string', name: '', type: 'string' }],
     stateMutability: 'view',
     type: 'function',
-  }
-]
+  },
+];
 
 const SIGNER = new ethers.providers.JsonRpcProvider(MAINNET_JSON_RPC).getSigner();
 
 const s3 = new S3Client({
   region: REGION,
 });
+
+type Target = {
+  tokenAddress: string;
+  tokenId: string;
+  isERC721: boolean;
+};
+const targets: Target[] = [];
 
 const run = async () => {
   const { network, standby } = getNetworkFromCli();
@@ -73,20 +76,15 @@ const run = async () => {
         } catch (e) {
           continue;
         }
-        console.log(`tx: ${evt.txHash}`);
 
         const from = decoded.from.toLowerCase();
         // const to = decoded.to.toLowerCase();
         const tokenAddress = evt.address.toLowerCase();
         const tokenId = new BigNumber(decoded.tokenId).toFixed();
 
-        if (from === '0x0000000000000000000000000000000000000000') {
-          try {
-            await actionUpload(tokenAddress, tokenId, true);
-          } catch (err) {
-            console.log(err.message + '\n')
-            continue;
-          }
+        if (from === ZeroAddress) {
+          console.log(`mint ERC721 token [${tokenId}] on ${tokenAddress} `);
+          targets.push({ tokenAddress, tokenId, isERC721: true });
         }
       }
     }
@@ -107,13 +105,9 @@ const run = async () => {
         const tokenId = decoded.id;
         const tokenAddress = evt.address.toLowerCase();
 
-        if (from === '0x0000000000000000000000000000000000000000') {
-          try {
-            await actionUpload(tokenAddress, tokenId, false);
-          } catch (err) {
-            console.log('Error: ', err.message + '\n')
-            continue;
-          }
+        if (from === ZeroAddress) {
+          console.log(`mint ERC1155 token [${tokenId}] on ${tokenAddress} `);
+          targets.push({ tokenAddress, tokenId, isERC721: false });
         }
       }
     }
@@ -133,36 +127,36 @@ const run = async () => {
         // const to = decoded.to.toLowerCase();
         const tokenAddress = evt.address.toLowerCase();
         for (const [i, id] of decoded.ids.entries()) {
-          if (from === '0x0000000000000000000000000000000000000000') {
-            try {
-              await actionUpload(tokenAddress, id, false);
-            } catch (err) {
-              console.log(err.message + '\n')
-              continue;
-            }
+          if (from === ZeroAddress) {
+            console.log(`mint ERC1155 token [${id}] on ${tokenAddress} `);
+            targets.push({ tokenAddress, tokenId: `${id}`, isERC721: false });
           }
         }
       }
     }
   }
+  console.log(`------------------------------------------------------`);
+  console.log(`Start to upload for ${targets.length} nft images `);
+  console.log(`------------------------------------------------------`);
+  const total = targets.length;
+  await PromisePool.withConcurrency(20)
+    .for(targets)
+    .process(async (targetData, index, pool) => {
+      try {
+        await actionUpload(targetData.tokenAddress, targetData.tokenId, targetData.isERC721);
+        console.log(`${index}/${total}| Successfully processed`);
+      } catch (e) {
+        console.log(
+          `${index}/${total}| Error: ${e.message} for [${targetData.tokenId}] of ${targetData.tokenAddress} `
+        );
+      }
+    });
 };
-
-const actionUpload = async (tokenAddress, tokenId, isERC721) => {
-  // const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
-  // const tokenId = '2204';
-
-  const uploadStatus = await checkIsUploaded(tokenAddress, tokenId);
-  if (!uploadStatus) {
-    const imageArraybuffer = await getImageArraybuffer(tokenAddress, tokenId, isERC721);
-
-    await uploadToAlbum(tokenAddress, tokenId, imageArraybuffer)
-  }
-}
 
 // get token image arraybuffer
 const getImageArraybuffer = async (tokenAddress, tokenId, isERC721) => {
-  let contract
-  let metaURI
+  let contract;
+  let metaURI;
 
   if (isERC721) {
     contract = new ethers.Contract(tokenAddress, TOKEN_URI_ABI, SIGNER);
@@ -172,26 +166,37 @@ const getImageArraybuffer = async (tokenAddress, tokenId, isERC721) => {
     metaURI = await contract.uri(tokenId);
   }
   if (!metaURI) {
-    throw new Error(`Can not get #${tokenId} metaURI from contract ${tokenAddress}.\n`)
+    throw new Error(`Can not get tokenURI`);
   }
-  const httpMetaURI = String(metaURI).replace('ipfs://', INFURA_IPFS_PREFIX)
-  console.log(`Get ERC${isERC721 ? '721' : '1155'} ${tokenAddress} #${tokenId} metaURI:\n${httpMetaURI}`);
+  const httpMetaURI = String(metaURI).replace('ipfs://', INFURA_IPFS_PREFIX);
 
   const meta = await axios.get(httpMetaURI);
+  console.log(`ERC${isERC721 ? '721' : '1155'} [${tokenId}] on ${tokenAddress} Metadata:
+  name: ${meta.data.name}
+  image: ${meta.data.image}`);
 
   const image = String(meta.data.image);
   if (image.includes(';base64')) {
     return Buffer.from(image.split(';base64').pop(), 'base64');
   }
   const imgURI = image.replace('ipfs://', INFURA_IPFS_PREFIX);
-  console.log(`meta:\nname: ${meta.data.name}\nimageURI:${meta.data.image}`)
-
   const res = await axios.get(imgURI, { responseType: 'arraybuffer' });
   return res.data;
-}
+};
+
+const exist = async (tokenAddress: string, tokenId: string): Promise<Boolean> => {
+  try {
+    const res = await s3.send(new HeadObjectCommand({ Bucket: ALBUM_BUCKET_NAME, Key: `${tokenAddress}/${tokenId}` }));
+    // console.log(res);
+    return true;
+  } catch (e) {
+    // console.log('Error happened', e);
+    return false;
+  }
+};
 
 // check image is uploaded
-const checkIsUploaded = async (tokenAddress, tokenId): Promise<Boolean> => {
+const checkIsUploaded = async (tokenAddress: string, tokenId: string): Promise<Boolean> => {
   const album = await getAlbum(tokenAddress);
   if (!album) {
     // album is not exit, need create
@@ -202,22 +207,22 @@ const checkIsUploaded = async (tokenAddress, tokenId): Promise<Boolean> => {
     // album exit
     // check image ${tokenId} is already uploaded
     const imgPath = tokenAddress + '/' + tokenId;
-    const isUploaded = album.some(a => a.Key === imgPath);
+    const isUploaded = album.some((a) => a.Key === imgPath);
 
     return isUploaded;
   }
-}
+};
 
 // Create an album in the bucket
 const createAlbum = async (albumName) => {
   try {
-    const key = albumName + "/";
+    const key = albumName + '/';
     const params = { Bucket: ALBUM_BUCKET_NAME, Key: key };
     const data = await s3.send(new PutObjectCommand(params));
-    console.log("Successfully created album.", albumName);
+    console.log('Successfully created album.', albumName);
     return data;
   } catch (err) {
-    throw new Error("There was an error creating your album: " + err.message);
+    throw new Error('There was an error creating your album: ' + err.message);
   }
 };
 
@@ -227,15 +232,15 @@ const getAlbum = async (albumName) => {
     const data = await s3.send(
       new ListObjectsCommand({
         Prefix: albumName,
-        Bucket: ALBUM_BUCKET_NAME
+        Bucket: ALBUM_BUCKET_NAME,
       })
     );
 
     return data.Contents;
   } catch (err) {
-    throw new Error("There was an error check album exists: " + err.message)
+    throw new Error('There was an error check album exists: ' + err.message);
   }
-}
+};
 
 // upload token image to album
 const uploadToAlbum = async (albumName, photoName, imageArraybuffer) => {
@@ -244,19 +249,34 @@ const uploadToAlbum = async (albumName, photoName, imageArraybuffer) => {
     Bucket: ALBUM_BUCKET_NAME,
     Key: photoKey,
     Body: imageArraybuffer,
-    ACL: 'public-read'
+    ACL: 'public-read',
   };
   try {
     const data = await s3.send(new PutObjectCommand(uploadParams));
-    console.log(`Successfully uploaded photo: ${albumName} ${photoName}\n`);
   } catch (err) {
-    throw new Error("There was an error uploading your photo: " + err.message);
+    throw new Error('error uploading your photo: ' + err.message);
   }
-}
+};
+
+const actionUpload = async (tokenAddress, tokenId, isERC721) => {
+  // const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
+  // const tokenId = '2204';
+  const existed = await exist(tokenAddress, tokenId);
+  // const uploadStatus = await checkIsUploaded(tokenAddress, tokenId);
+  if (!existed) {
+    const imageArraybuffer = await getImageArraybuffer(tokenAddress, tokenId, isERC721);
+    await uploadToAlbum(tokenAddress, tokenId, imageArraybuffer);
+    console.log(`uploaded image: ${tokenAddress}/${tokenId}`);
+  } else {
+    console.log(`skip existing image: ${tokenAddress}/${tokenId}`);
+  }
+};
 
 (async () => {
   try {
     await run();
+    // const res = await exist('0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78', '9999');
+    // console.log(res);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);
