@@ -155,33 +155,37 @@ const run = async () => {
 
 // get token image arraybuffer
 const getImageArraybuffer = async (tokenAddress, tokenId, isERC721) => {
-  let contract;
-  let metaURI;
+  try {
+    let contract;
+    let metaURI;
 
-  if (isERC721) {
-    contract = new ethers.Contract(tokenAddress, TOKEN_URI_ABI, SIGNER);
-    metaURI = await contract.tokenURI(tokenId);
-  } else {
-    contract = new ethers.Contract(tokenAddress, URI_ABI, SIGNER);
-    metaURI = await contract.uri(tokenId);
-  }
-  if (!metaURI) {
-    throw new Error(`Can not get tokenURI`);
-  }
-  const httpMetaURI = String(metaURI).replace('ipfs://', INFURA_IPFS_PREFIX);
+    if (isERC721) {
+      contract = new ethers.Contract(tokenAddress, TOKEN_URI_ABI, SIGNER);
+      metaURI = await contract.tokenURI(tokenId);
+    } else {
+      contract = new ethers.Contract(tokenAddress, URI_ABI, SIGNER);
+      metaURI = await contract.uri(tokenId);
+    }
+    if (!metaURI) {
+      throw new Error(`Can not get tokenURI`);
+    }
+    const httpMetaURI = String(metaURI).replace('ipfs://', INFURA_IPFS_PREFIX);
 
-  const meta = await axios.get(httpMetaURI);
-  console.log(`ERC${isERC721 ? '721' : '1155'} [${tokenId}] on ${tokenAddress} Metadata:
-  name: ${meta.data.name}
-  image: ${meta.data.image}`);
+    const meta = await axios.get(httpMetaURI);
+    console.log(`ERC${isERC721 ? '721' : '1155'} [${tokenId}] on ${tokenAddress} Metadata:
+    name: ${meta.data.name}
+    image: ${meta.data.image}`);
 
-  const image = String(meta.data.image);
-  if (image.includes(';base64')) {
-    return Buffer.from(image.split(';base64').pop(), 'base64');
+    const image = String(meta.data.image);
+    if (image.includes(';base64')) {
+      return Buffer.from(image.split(';base64').pop(), 'base64');
+    }
+    const imgURI = image.replace('ipfs://', INFURA_IPFS_PREFIX);
+    const res = await axios.get(imgURI, { responseType: 'arraybuffer' });
+    return res.data;
+  } catch (err) {
+    throw new Error('There was an error getting image buffer: ' + err.message);
   }
-  const imgURI = image.replace('ipfs://', INFURA_IPFS_PREFIX);
-  const res = await axios.get(imgURI, { responseType: 'arraybuffer' });
-  return res.data;
 };
 
 const exist = async (tokenAddress: string, tokenId: string): Promise<Boolean> => {
@@ -275,6 +279,10 @@ const actionUpload = async (tokenAddress, tokenId, isERC721) => {
 (async () => {
   try {
     await run();
+    // const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
+    // const tokenId = '2204';
+    // const isERC721 = true;
+    // actionUpload(tokenAddress, tokenId, isERC721);
     // const res = await exist('0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78', '9999');
     // console.log(res);
     await disconnectDB();
