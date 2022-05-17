@@ -9,7 +9,7 @@ import { PromisePool } from '@supercharge/promise-pool';
 
 import { S3Client, PutObjectCommand, ListObjectsCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
+import { checkNetworkWithDB, getNetworkFromCli, sleep } from '../utils';
 import { ZeroAddress } from '../const';
 
 // Set the AWS Region
@@ -49,6 +49,10 @@ type Target = {
 };
 const targets: Target[] = [];
 
+const imageInPinata = ['0x90bacf98c0d55255306a910da5959dcd72252ce0'];
+
+const pinataTarget: Target[] = [];
+
 const run = async () => {
   const { network, standby } = getNetworkFromCli();
 
@@ -84,7 +88,11 @@ const run = async () => {
 
         if (from === ZeroAddress) {
           console.log(`mint ERC721 token [${tokenId}] on ${tokenAddress} `);
-          targets.push({ tokenAddress, tokenId, isERC721: true });
+          if (imageInPinata.includes(tokenAddress)) {
+            pinataTarget.push({ tokenAddress, tokenId, isERC721: true });
+          } else {
+            targets.push({ tokenAddress, tokenId, isERC721: true });
+          }
         }
       }
     }
@@ -136,7 +144,7 @@ const run = async () => {
     }
   }
   console.log(`------------------------------------------------------`);
-  console.log(`Start to upload for ${targets.length} nft images `);
+  console.log(`Start to upload for ${targets.length + pinataTarget.length} nft images `);
   console.log(`------------------------------------------------------`);
   const total = targets.length;
   await PromisePool.withConcurrency(20)
@@ -148,6 +156,21 @@ const run = async () => {
       } catch (e) {
         console.log(
           `${index}/${total}| Error: ${e.message} for [${targetData.tokenId}] of ${targetData.tokenAddress} `
+        );
+      }
+    });
+
+  const pinataLength = pinataTarget.length;
+  await PromisePool.withConcurrency(15)
+    .for(pinataTarget)
+    .process(async (targetData, index, pool) => {
+      try {
+        await actionUpload(targetData.tokenAddress, targetData.tokenId, targetData.isERC721);
+        console.log(`${index}/${pinataLength}| Successfully processed`);
+        await sleep(1000 * 61)
+      } catch (e) {
+        console.log(
+          `${index}/${pinataLength}| Error: ${e.message} for [${targetData.tokenId}] of ${targetData.tokenAddress} `
         );
       }
     });
