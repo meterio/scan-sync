@@ -146,13 +146,15 @@ const run = async () => {
   console.log(`------------------------------------------------------`);
   console.log(`Start to upload for ${targets.length + pinataTarget.length} nft images `);
   console.log(`------------------------------------------------------`);
-  const total = targets.length;
+  const total = targets.length + pinataTarget.length;
+  let totalIndex = 1;
   await PromisePool.withConcurrency(20)
     .for(targets)
     .process(async (targetData, index, pool) => {
       try {
         await actionUpload(targetData.tokenAddress, targetData.tokenId, targetData.isERC721);
         console.log(`${index}/${total}| Successfully processed`);
+        totalIndex = index;
       } catch (e) {
         console.log(
           `${index}/${total}| Error: ${e.message} for [${targetData.tokenId}] of ${targetData.tokenAddress} `
@@ -161,19 +163,23 @@ const run = async () => {
     });
 
   const pinataLength = pinataTarget.length;
-  await PromisePool.withConcurrency(15)
-    .for(pinataTarget)
-    .process(async (targetData, index, pool) => {
-      try {
-        await actionUpload(targetData.tokenAddress, targetData.tokenId, targetData.isERC721);
-        console.log(`${index}/${pinataLength}| Successfully processed`);
-        await sleep(1000 * 61)
-      } catch (e) {
-        console.log(
-          `${index}/${pinataLength}| Error: ${e.message} for [${targetData.tokenId}] of ${targetData.tokenAddress} `
-        );
-      }
-    });
+
+  for (const t of pinataTarget) {
+    try {
+      await actionUpload(t.tokenAddress, t.tokenId, t.isERC721);
+      console.log(`${totalIndex}/${pinataLength}| Successfully upload`);
+      totalIndex++;
+      console.log('sleep 4s');
+      await sleep(1000 * 4);
+    } catch (e) {
+      console.log(
+        `${totalIndex}/${total}| Error: ${e.message} for [${t.tokenId}] of ${t.tokenAddress} `
+      );
+      console.log('sleep 60s');
+      await sleep(1000 * 60);
+      continue;
+    }
+  }
 };
 
 // get token image arraybuffer
