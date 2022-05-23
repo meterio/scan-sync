@@ -9,7 +9,7 @@ import { PromisePool } from '@supercharge/promise-pool';
 
 import { S3Client, PutObjectCommand, ListObjectsCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
+import { checkNetworkWithDB, getNetworkFromCli, sleep } from '../utils';
 import { ZeroAddress } from '../const';
 
 // Set the AWS Region
@@ -49,6 +49,10 @@ type Target = {
 };
 const targets: Target[] = [];
 
+const imageInPinata = ['0x90bacf98c0d55255306a910da5959dcd72252ce0'];
+
+const pinataTarget: Target[] = [];
+
 const run = async () => {
   const { network, standby } = getNetworkFromCli();
 
@@ -84,7 +88,11 @@ const run = async () => {
 
         if (from === ZeroAddress) {
           console.log(`mint ERC721 token [${tokenId}] on ${tokenAddress} `);
-          targets.push({ tokenAddress, tokenId, isERC721: true });
+          if (imageInPinata.includes(tokenAddress)) {
+            pinataTarget.push({ tokenAddress, tokenId, isERC721: true });
+          } else {
+            targets.push({ tokenAddress, tokenId, isERC721: true });
+          }
         }
       }
     }
@@ -136,52 +144,77 @@ const run = async () => {
     }
   }
   console.log(`------------------------------------------------------`);
-  console.log(`Start to upload for ${targets.length} nft images `);
+  console.log(`Start to upload for ${targets.length + pinataTarget.length} nft images `);
   console.log(`------------------------------------------------------`);
-  const total = targets.length;
+  const total = targets.length + pinataTarget.length;
+  let totalIndex = 1;
   await PromisePool.withConcurrency(20)
     .for(targets)
     .process(async (targetData, index, pool) => {
       try {
         await actionUpload(targetData.tokenAddress, targetData.tokenId, targetData.isERC721);
         console.log(`${index}/${total}| Successfully processed`);
+        totalIndex = index;
       } catch (e) {
         console.log(
           `${index}/${total}| Error: ${e.message} for [${targetData.tokenId}] of ${targetData.tokenAddress} `
         );
       }
     });
+
+  const pinataLength = pinataTarget.length;
+
+  for (const t of pinataTarget) {
+    try {
+      await actionUpload(t.tokenAddress, t.tokenId, t.isERC721);
+      console.log(`${totalIndex}/${pinataLength}| Successfully upload`);
+      totalIndex++;
+      console.log('sleep 4s');
+      await sleep(1000 * 4);
+    } catch (e) {
+      console.log(
+        `${totalIndex}/${total}| Error: ${e.message} for [${t.tokenId}] of ${t.tokenAddress} `
+      );
+      console.log('sleep 60s');
+      await sleep(1000 * 60);
+      continue;
+    }
+  }
 };
 
 // get token image arraybuffer
 const getImageArraybuffer = async (tokenAddress, tokenId, isERC721) => {
-  let contract;
-  let metaURI;
+  try {
+    let contract;
+    let metaURI;
 
-  if (isERC721) {
-    contract = new ethers.Contract(tokenAddress, TOKEN_URI_ABI, SIGNER);
-    metaURI = await contract.tokenURI(tokenId);
-  } else {
-    contract = new ethers.Contract(tokenAddress, URI_ABI, SIGNER);
-    metaURI = await contract.uri(tokenId);
-  }
-  if (!metaURI) {
-    throw new Error(`Can not get tokenURI`);
-  }
-  const httpMetaURI = String(metaURI).replace('ipfs://', INFURA_IPFS_PREFIX);
+    if (isERC721) {
+      contract = new ethers.Contract(tokenAddress, TOKEN_URI_ABI, SIGNER);
+      metaURI = await contract.tokenURI(tokenId);
+    } else {
+      contract = new ethers.Contract(tokenAddress, URI_ABI, SIGNER);
+      metaURI = await contract.uri(tokenId);
+    }
+    if (!metaURI) {
+      throw new Error(`Can not get tokenURI`);
+    }
+    const httpMetaURI = String(metaURI).replace('ipfs://', INFURA_IPFS_PREFIX);
 
-  const meta = await axios.get(httpMetaURI);
-  console.log(`ERC${isERC721 ? '721' : '1155'} [${tokenId}] on ${tokenAddress} Metadata:
-  name: ${meta.data.name}
-  image: ${meta.data.image}`);
+    const meta = await axios.get(httpMetaURI);
+    console.log(`ERC${isERC721 ? '721' : '1155'} [${tokenId}] on ${tokenAddress} Metadata:
+    name: ${meta.data.name}
+    image: ${meta.data.image}`);
 
-  const image = String(meta.data.image);
-  if (image.includes(';base64')) {
-    return Buffer.from(image.split(';base64').pop(), 'base64');
+    const image = String(meta.data.image);
+    if (image.includes(';base64')) {
+      return Buffer.from(image.split(';base64').pop(), 'base64');
+    }
+    const imgURI = image.replace('ipfs://', INFURA_IPFS_PREFIX);
+    const res = await axios.get(imgURI, { responseType: 'arraybuffer' });
+    return res.data;
+  } catch (err) {
+    throw new Error('There was an error getting image buffer: ' + err.message);
   }
-  const imgURI = image.replace('ipfs://', INFURA_IPFS_PREFIX);
-  const res = await axios.get(imgURI, { responseType: 'arraybuffer' });
-  return res.data;
 };
 
 const exist = async (tokenAddress: string, tokenId: string): Promise<Boolean> => {
@@ -275,6 +308,10 @@ const actionUpload = async (tokenAddress, tokenId, isERC721) => {
 (async () => {
   try {
     await run();
+    // const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
+    // const tokenId = '2204';
+    // const isERC721 = true;
+    // actionUpload(tokenAddress, tokenId, isERC721);
     // const res = await exist('0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78', '9999');
     // console.log(res);
     await disconnectDB();
