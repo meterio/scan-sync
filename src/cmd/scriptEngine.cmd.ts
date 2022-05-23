@@ -1,4 +1,5 @@
 import * as devkit from '@meterio/devkit';
+import pino from 'pino';
 import {
   AuctionDist,
   AuctionRepo,
@@ -22,7 +23,6 @@ import {
   Candidate,
   BigNumber,
 } from '@meterio/scan-db/dist';
-import * as Logger from 'bunyan';
 import { getHeapStatistics } from 'v8';
 import { GetNetworkConfig } from '../const';
 
@@ -40,8 +40,12 @@ export class ScriptEngineCMD extends TxBlockReviewer {
 
   constructor(net: Network) {
     super(net);
+    this.log = pino({
+      transport: {
+        target: 'pino-pretty',
+      },
+    }).child({ cmd: 'se' });
     this.name = 'scriptengine';
-    this.logger = Logger.createLogger({ name: this.name });
   }
 
   public async cleanUpIncompleteData(head: any): Promise<void> {
@@ -51,7 +55,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
     const auctionSummary = await this.auctionSummaryRepo.deleteAfter(blockNum);
     const epochReward = await this.epochRewardRepo.deleteAfter(blockNum);
     const epochRewardSummary = await this.epochRewardSummaryRepo.deleteAfter(blockNum);
-    this.logger.info(
+    this.log.info(
       {
         auction,
         auctionSummary,
@@ -76,34 +80,34 @@ export class ScriptEngineCMD extends TxBlockReviewer {
       const clause = tx.clauses[clauseIndex];
 
       if (!clause) {
-        console.log('clause is EMPTY: ', tx.hash, ', txIndex=', txIndex, ', clauseIndex=', clauseIndex);
+        this.log.info('clause is EMPTY: ', tx.hash, ', txIndex=', txIndex, ', clauseIndex=', clauseIndex);
         continue;
       }
       if (!se.IsScriptEngineData(clause.data)) {
-        this.logger.info(`skip non-scriptengine tx ${tx.hash}`);
+        this.log.info(`skip non-scriptengine tx ${tx.hash}`);
         continue;
       }
       const scriptData = se.decodeScriptData(clause.data);
-      this.logger.info(`start to process scriptengine tx ${tx.hash}`);
+      this.log.info(`start to process scriptengine tx ${tx.hash}`);
       if (scriptData.header.modId === se.ModuleID.Auction) {
         if (!config.auctionEnabled) {
           continue;
         }
         // auction
         const body = se.decodeAuctionBody(scriptData.payload);
-        // this.logger.info({ opCode: body.opCode }, 'handle auction data');
+        // this.log.info({ opCode: body.opCode }, 'handle auction data');
         switch (body.opCode) {
           case se.AuctionOpCode.End:
             // end auction
-            this.logger.info('handle auction end');
+            this.log.info('handle auction end');
             const endedAuction = await this.pos.getLastAuctionSummary(blockNum);
             if (endedAuction.actualPrice === '<nil>') {
-              console.log('Error: empty auction, something wrong happened');
+              this.log.info('Error: empty auction, something wrong happened');
               break;
             }
             const tgtAuction = await this.auctionRepo.findByID(endedAuction.auctionID);
             if (tgtAuction.pending !== true) {
-              console.log('Error: try to end an already ended auction');
+              this.log.info('Error: try to end an already ended auction');
               break;
             }
 
@@ -144,11 +148,11 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               // const d = dists[i];
               const bid = await this.bidRepo.findById(t.txid);
               if (!bid) {
-                console.log('Bid not found! probably missed one bid');
+                this.log.info('Bid not found! probably missed one bid');
                 continue;
               }
               // if (bid.address.toLowerCase() !== d.address.toLowerCase()) {
-              //   console.log('Address mismatch! probably the order is different');
+              //   this.log.info('Address mismatch! probably the order is different');
               //   continue;
               // }
               bid.pending = false;
@@ -175,10 +179,10 @@ export class ScriptEngineCMD extends TxBlockReviewer {
             tgtAuction.userbidTotal = userbidTotal;
 
             await tgtAuction.save();
-            console.log(`ended auction ${tgtAuction}`);
+            this.log.info(`ended auction ${tgtAuction}`);
             break;
           case se.AuctionOpCode.Start:
-            this.logger.info('handle auction start');
+            this.log.info('handle auction start');
             // TODO: handle the "auction not started" case
             // start auction
             const curAuction = await this.pos.getPresentAuctionByRevision(blockNum);
@@ -209,13 +213,13 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               autobidTotal: new BigNumber(0),
             };
             await this.auctionRepo.create(auction);
-            console.log(`started auction ${auction.id}`);
+            this.log.info(`started auction ${auction.id}`);
             break;
           case se.AuctionOpCode.Bid:
             // TODO: handle the tx reverted case
             // auction bid
 
-            this.logger.info('handle auction bid');
+            this.log.info('handle auction bid');
             const atx = se.getAuctionTxFromAuctionBody(body);
             const presentAuction = await this.auctionRepo.findPresent();
             const bid: Bid = {
@@ -253,18 +257,18 @@ export class ScriptEngineCMD extends TxBlockReviewer {
               present.actualPrice = present.reservedPrice;
             }
             await present.save();
-            console.log(`append bid ${bid.id} to auction ${present.id}`);
+            this.log.info(`append bid ${bid.id} to auction ${present.id}`);
             break;
         }
       }
 
       if (scriptData.header.modId === se.ModuleID.Staking) {
         const body = se.decodeStakingBody(scriptData.payload);
-        // this.logger.info({ opCode: body.opCode }, `handle staking data`);
+        // this.log.info({ opCode: body.opCode }, `handle staking data`);
 
         // handle staking candidate / candidate update
         if (body.opCode === se.StakingOpCode.Candidate || body.opCode === se.StakingOpCode.CandidateUpdate) {
-          this.logger.info(`handle staking candidate or candidateUpdate`);
+          this.log.info(`handle staking candidate or candidateUpdate`);
           const pk = body.candidatePubKey.toString();
           const items = pk.split(':::');
           const ecdsaPK = items[0];
@@ -310,7 +314,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
 
         // handle staking governing
         if (body.opCode === se.StakingOpCode.Governing) {
-          this.logger.info(`handle staking governing`);
+          this.log.info(`handle staking governing`);
           let autobidTotal = new BigNumber(0);
           let transferTotal = new BigNumber(0);
           let autobidCount = 0;
@@ -412,11 +416,11 @@ export class ScriptEngineCMD extends TxBlockReviewer {
         }
       }
     }
-    this.logger.info(`processed tx ${tx.hash}`);
+    this.log.info(`processed tx ${tx.hash}`);
   }
 
   async processBlock(blk: Block) {
-    this.logger.info(`start to process block ${blk.number}`);
+    this.log.info(`start to process block ${blk.number}`);
     const number = blk.number;
     const epoch = blk.epoch;
     for (const [txIndex, txHash] of blk.txHashs.entries()) {
@@ -427,6 +431,6 @@ export class ScriptEngineCMD extends TxBlockReviewer {
       await this.processTx(txModel, txIndex, blk);
     }
 
-    this.logger.info({ hash: blk.hash }, `processed block ${blk.number}`);
+    this.log.info({ hash: blk.hash }, `processed block ${blk.number}`);
   }
 }

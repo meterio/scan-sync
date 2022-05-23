@@ -43,8 +43,8 @@ import {
   LogTransferRepo,
 } from '@meterio/scan-db/dist';
 import { BigNumber } from '@meterio/scan-db/dist';
-import * as Logger from 'bunyan';
 import { sha1 } from 'object-hash';
+import pino from 'pino';
 
 import {
   BoundEvent,
@@ -64,7 +64,6 @@ import { newIterator, LogItem } from '../utils/log-traverser';
 import { AccountCache, TokenBalanceCache } from '../types';
 import { MetricName, getPreAllocAccount } from '../const';
 import { KeyTransactionFeeAddress } from '../const/key';
-import { config } from 'dotenv';
 
 const Web3 = require('web3');
 const meterify = require('meterify').meterify;
@@ -81,7 +80,6 @@ export class PosCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
   private name = 'pos';
-  private logger = Logger.createLogger({ name: this.name });
 
   private web3: any;
 
@@ -125,7 +123,12 @@ export class PosCMD extends CMD {
 
   constructor(net: Network) {
     super();
-
+    const dest = pino.destination({ sync: true });
+    this.log = pino({
+      transport: {
+        target: 'pino-pretty',
+      },
+    }).child({ cmd: 'pos' });
     this.pos = new Pos(net);
     this.network = net;
     this.mtrSysToken = getSysContractToken(this.network, Token.MTR);
@@ -138,7 +141,7 @@ export class PosCMD extends CMD {
   }
 
   public async start() {
-    this.logger.info(`${this.name}: start`);
+    this.log.info(`${this.name}: start`);
     this.loop();
     return;
   }
@@ -180,10 +183,10 @@ export class PosCMD extends CMD {
   }
 
   private async fixAccount(acct: Account & { save() }, blockNum: number) {
-    console.log(`Start to fix account on block ${blockNum}`);
+    this.log.info(`Start to fix account on block ${blockNum}`);
     const blk = await this.blockRepo.findByNumber(blockNum);
     if (!blk) {
-      console.log(`[WARN] could not find block ${blockNum}`);
+      this.log.info(`[WARN] could not find block ${blockNum}`);
       return;
     }
     const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash } as BlockConcise;
@@ -210,27 +213,27 @@ export class PosCMD extends CMD {
       acct.lastUpdate = blockConcise;
       await acct.save();
 
-      console.log(`Fixed Account ${acct.address}:`);
+      this.log.info(`Fixed Account ${acct.address}:`);
       if (!preMTR.isEqualTo(energy)) {
-        console.log(`  MTR: ${fromWei(preMTR)} -> ${fromWei(energy)} `);
+        this.log.info(`  MTR: ${fromWei(preMTR)} -> ${fromWei(energy)} `);
       }
       if (!preMTRG.isEqualTo(balance)) {
-        console.log(`  MTRG: ${fromWei(preMTRG)} -> ${fromWei(balance)}`);
+        this.log.info(`  MTRG: ${fromWei(preMTRG)} -> ${fromWei(balance)}`);
       }
       if (!preBoundedMTR.isEqualTo(boundedEnergy)) {
-        console.log(`  Bounded MTR: ${fromWei(preBoundedMTR)} -> ${fromWei(boundedEnergy)}`);
+        this.log.info(`  Bounded MTR: ${fromWei(preBoundedMTR)} -> ${fromWei(boundedEnergy)}`);
       }
       if (!preBoundedMTRG.isEqualTo(boundedBalance)) {
-        console.log(`  Bounded MTRG: ${fromWei(preBoundedMTRG)} -> ${fromWei(boundedBalance)}`);
+        this.log.info(`  Bounded MTRG: ${fromWei(preBoundedMTRG)} -> ${fromWei(boundedBalance)}`);
       }
     }
   }
 
   private async fixTokenBalance(bal: TokenBalance & { save() }, blockNum: number) {
-    console.log(`Start to fix token balance on block ${blockNum}`);
+    this.log.info(`Start to fix token balance on block ${blockNum}`);
     const blk = await this.blockRepo.findByNumber(blockNum);
     if (!blk) {
-      console.log(`[WARN] could not find block ${blockNum}`);
+      this.log.info(`[WARN] could not find block ${blockNum}`);
       return;
     }
     const blockConcise = { number: blk.number, timestamp: blk.timestamp, hash: blk.hash } as BlockConcise;
@@ -239,8 +242,8 @@ export class PosCMD extends CMD {
     const preBal = bal.balance;
     if (!preBal.isEqualTo(chainBal)) {
       bal.balance = new BigNumber(chainBal);
-      console.log(`Fixed balance on ${bal.address} for token ${bal.tokenAddress}:`);
-      console.log(`  Balance: ${preBal.toFixed()} -> ${bal.balance.toFixed()}`);
+      this.log.info(`Fixed balance on ${bal.address} for token ${bal.tokenAddress}:`);
+      this.log.info(`  Balance: ${preBal.toFixed()} -> ${bal.balance.toFixed()}`);
       bal.lastUpdate = blockConcise;
       await bal.save();
     }
@@ -253,7 +256,7 @@ export class PosCMD extends CMD {
       const n = 40;
       const newBeneficiary = '0x' + addrVal.substring(addrVal.length - n);
       if (newBeneficiary !== this.beneficiaryCache) {
-        console.log('Beneficiary updated to :', newBeneficiary);
+        this.log.info('Beneficiary updated to :', newBeneficiary);
         this.beneficiaryCache = newBeneficiary;
         await this.metricRepo.update(MetricName.TX_FEE_BENEFICIARY, newBeneficiary);
       }
@@ -264,7 +267,7 @@ export class PosCMD extends CMD {
     const blockNum = head.num;
     const blockHash = head.hash;
     // delete invalid/incomplete blocks
-    console.log(`Start to fix dirty data on block ${blockNum}`);
+    this.log.info(`Start to fix dirty data on block ${blockNum}`);
     const block = await this.blockRepo.deleteAfter(blockNum);
     const tx = await this.txRepo.deleteAfter(blockNum);
     const logEvent = await this.logEventRepo.deleteAfter(blockNum);
@@ -291,7 +294,7 @@ export class PosCMD extends CMD {
     for (const bal of incorrectBals) {
       await this.fixTokenBalance(bal, blockNum);
     }
-    this.logger.info(
+    this.log.info(
       {
         block,
         tx,
@@ -340,7 +343,7 @@ export class PosCMD extends CMD {
         if (endNum <= headNum) {
           continue;
         }
-        this.logger.info(
+        this.log.info(
           { best: bestNum, head: headNum, mode: fastforward ? 'fast-forward' : 'normal' },
           `start import PoS block from number ${headNum + 1} to ${endNum}`
         );
@@ -350,7 +353,7 @@ export class PosCMD extends CMD {
           const blk = await this.getBlockFromREST(num);
 
           if (!blk) {
-            console.log('block is empty');
+            this.log.info('block is empty');
             await sleep(FASTFORWARD_INTERVAL);
             continue;
           }
@@ -358,8 +361,7 @@ export class PosCMD extends CMD {
           try {
             await this.processBlock(blk);
           } catch (e) {
-            console.log(`Error happened during block processing for:`, blk.number);
-            console.log(e);
+            this.log.error({ err: e }, `Error happened during block processing for:`, blk.number);
             await sleep(NORMAL_INTERVAL);
             throw new InterruptedError();
           }
@@ -383,10 +385,10 @@ export class PosCMD extends CMD {
         }
       } catch (e) {
         if (e instanceof InterruptedError) {
-          console.log('quit loop');
+          this.log.info('quit loop');
           break;
         } else {
-          console.log('Error happened: ', e);
+          this.log.error({ err: e }, 'Error happened: ', e);
           break;
         }
       }
@@ -396,41 +398,41 @@ export class PosCMD extends CMD {
   async saveCacheToDB() {
     if (this.txsCache.length > 0) {
       await this.txRepo.bulkInsert(...this.txsCache);
-      this.logger.info(`saved ${this.txsCache.length} txs`);
+      this.log.info(`saved ${this.txsCache.length} txs`);
     }
     if (this.logEventCache.length > 0) {
       await this.logEventRepo.bulkInsert(...this.logEventCache);
-      this.logger.info(`saved ${this.logEventCache.length} logEvents`);
+      this.log.info(`saved ${this.logEventCache.length} logEvents`);
     }
     if (this.logTransferCache.length > 0) {
       await this.logTransferRepo.bulkInsert(...this.logTransferCache);
-      this.logger.info(`saved ${this.logTransferCache.length} logTransfers`);
+      this.log.info(`saved ${this.logTransferCache.length} logTransfers`);
     }
     if (this.committeesCache.length > 0) {
       await this.committeeRepo.bulkInsert(...this.committeesCache);
-      this.logger.info(`saved ${this.committeesCache.length} committees`);
+      this.log.info(`saved ${this.committeesCache.length} committees`);
     }
 
     if (this.txDigestsCache.length > 0) {
       await this.txDigestRepo.bulkInsert(...this.txDigestsCache);
-      this.logger.info(`saved ${this.txDigestsCache.length} tx digests`);
+      this.log.info(`saved ${this.txDigestsCache.length} tx digests`);
     }
     if (this.movementsCache.length > 0) {
       await this.movementRepo.bulkInsert(...this.movementsCache);
-      this.logger.info(`saved ${this.movementsCache.length} movements`);
+      this.log.info(`saved ${this.movementsCache.length} movements`);
     }
     if (this.boundsCache.length > 0) {
       await this.boundRepo.bulkInsert(...this.boundsCache);
-      this.logger.info(`saved ${this.boundsCache.length} bounds`);
+      this.log.info(`saved ${this.boundsCache.length} bounds`);
     }
     if (this.unboundsCache.length > 0) {
       await this.unboundRepo.bulkInsert(...this.unboundsCache);
-      this.logger.info(`saved ${this.unboundsCache.length} unbounds`);
+      this.log.info(`saved ${this.unboundsCache.length} unbounds`);
     }
 
     if (this.contractsCache.length > 0) {
       await this.contractRepo.bulkInsert(...this.contractsCache);
-      this.logger.info(`saved ${this.contractsCache.length} contracts`);
+      this.log.info(`saved ${this.contractsCache.length} contracts`);
     }
     await this.accountCache.saveToDB();
     await this.tokenBalanceCache.saveToDB();
@@ -442,9 +444,9 @@ export class PosCMD extends CMD {
       await this.updateHead(last.number, last.hash);
 
       if (first.number === last.number) {
-        this.logger.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
+        this.log.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
       } else {
-        this.logger.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
+        this.log.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
       }
     }
     await this.handleRebasing();
@@ -456,7 +458,7 @@ export class PosCMD extends CMD {
       return await this.headRepo.create(this.name, num, hash);
     } else {
       let head = await this.headRepo.findByKey(this.name);
-      this.logger.info({ num: num }, 'update head');
+      this.log.info({ num: num }, 'update head');
       // head = await this.headRepo.update(this.name, res.block.number, res.block.hash);
       head.num = num;
       head.hash = hash;
@@ -509,7 +511,7 @@ export class PosCMD extends CMD {
         c.decimals = erc20.decimals;
       }
     }
-    console.log('found contract: ', c);
+    this.log.info(c, 'found contract: ');
     this.contractsCache.push(c);
   }
 
@@ -577,7 +579,7 @@ export class PosCMD extends CMD {
       try {
         decoded = ERC20.Transfer.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding ERC20 transfer event');
+        this.log.warn('error decoding ERC20 transfer event');
         return;
       }
 
@@ -627,7 +629,7 @@ export class PosCMD extends CMD {
       try {
         decoded = ERC721.Transfer.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding ERC721 transfer event');
+        this.log.warn('error decoding ERC721 transfer event');
         return;
       }
 
@@ -668,7 +670,7 @@ export class PosCMD extends CMD {
       try {
         decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding ERC1155 transfer event');
+        this.log.warn('error decoding ERC1155 transfer event');
         return;
       }
       const from = decoded.from.toLowerCase();
@@ -696,7 +698,7 @@ export class PosCMD extends CMD {
       try {
         decoded = ERC1155.TransferBatch.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding transfer event');
+        this.log.warn('error decoding transfer event');
         return;
       }
       let nftTransfers: NFTTransfer[] = [];
@@ -821,21 +823,21 @@ export class PosCMD extends CMD {
 
       // save call digests with data
       if (clause.data && clause.data.length >= 10) {
-        // console.log('data', clause.data);
+        // this.log.info('data', clause.data);
         const isSE = ScriptEngine.IsScriptEngineData(clause.data);
-        // console.log('clause.to: ', clause.to);
+        // this.log.info('clause.to: ', clause.to);
         const token = clause.token;
         let signature = '';
         if (isSE) {
           const decoded = ScriptEngine.decodeScriptData(clause.data);
-          // console.log('decoded: ', decoded);
+          // this.log.info('decoded: ', decoded);
           signature = decoded.action;
         } else {
           signature = clause.data.substring(0, 10);
         }
         const key = sha1({ num: blockConcise.number, hash: tx.id, from: tx.origin, to: clause.to || ZeroAddress });
         if (key in visitedClause) {
-          // console.log('Skip clause for duplicate data: ', clause);
+          // this.log.info('Skip clause for duplicate data: ', clause);
           continue;
         }
         visitedClause[key] = true;
@@ -866,7 +868,7 @@ export class PosCMD extends CMD {
           try {
             decoded = ERC20.Transfer.decode(evt.data, evt.topics);
           } catch (e) {
-            console.log('error decoding ERC20 transfer event');
+            this.log.info('error decoding ERC20 transfer event');
             continue;
           }
 
@@ -983,7 +985,7 @@ export class PosCMD extends CMD {
                   vmError.reason = decoded;
                 }
               } catch {
-                this.logger.error(`decode Error(string) failed for tx: ${tx.id} at clause ${clauseIndex}`);
+                this.log.error(`decode Error(string) failed for tx: ${tx.id} at clause ${clauseIndex}`);
               }
             } else if (tracer.output.indexOf(panicErrorSelector) === 0) {
               try {
@@ -992,10 +994,10 @@ export class PosCMD extends CMD {
                   vmError.reason = decoded;
                 }
               } catch {
-                this.logger.error(`decode Panic(uint256) failed for tx: ${tx.id} at clause ${clauseIndex}`);
+                this.log.error(`decode Panic(uint256) failed for tx: ${tx.id} at clause ${clauseIndex}`);
               }
             } else {
-              this.logger.error(`unknown revert data format for tx: ${tx.id} at clause ${clauseIndex}`);
+              this.log.error(`unknown revert data format for tx: ${tx.id} at clause ${clauseIndex}`);
             }
           }
           break;
@@ -1043,7 +1045,7 @@ export class PosCMD extends CMD {
             }
           }
         } catch (e) {
-          this.logger.error(`failed to re-organize logs(${tx.id}),err: ${(e as Error).toString()}`);
+          this.log.error({ err: e }, `failed to re-organize logs(${tx.id})`);
           let logIndex = 0;
           output.transfers = [];
           output.events = [];
@@ -1085,7 +1087,7 @@ export class PosCMD extends CMD {
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
     txIndex: number
   ): Promise<void> {
-    console.log(`start to process tx ${tx.id}`);
+    this.log.info(`start to process tx ${tx.id}`);
     const blockConcise = { number: blk.number, hash: blk.id, timestamp: blk.timestamp };
 
     // update movement
@@ -1162,11 +1164,11 @@ export class PosCMD extends CMD {
     };
 
     this.txsCache.push(txModel);
-    this.logger.info({ hash: txModel.hash }, 'processed tx');
+    this.log.info({ hash: txModel.hash }, 'processed tx');
   }
 
   async processBlock(blk: Pos.ExpandedBlock): Promise<void> {
-    // this.logger.info({ number: blk.number }, 'start to process block');
+    // this.log.info({ number: blk.number }, 'start to process block');
     const blockConcise: BlockConcise = { ...blk, hash: blk.id, timestamp: blk.timestamp };
 
     let score = 0;
@@ -1197,10 +1199,10 @@ export class PosCMD extends CMD {
     // add block reward beneficiary account
     if (actualReward.isGreaterThan(0)) {
       if (this.beneficiaryCache === ZeroAddress || this.beneficiaryCache === '0x') {
-        console.log(`Add block reward ${actualReward.toFixed()} to ${blk.beneficiary}`);
+        this.log.info(`Add block reward ${actualReward.toFixed()} to ${blk.beneficiary}`);
         await this.accountCache.plus(blk.beneficiary, Token.MTR, actualReward, blockConcise);
       } else {
-        console.log(`Add block reward ${actualReward.toFixed()} to ${this.beneficiaryCache}`);
+        this.log.info(`Add block reward ${actualReward.toFixed()} to ${this.beneficiaryCache}`);
         await this.accountCache.plus(this.beneficiaryCache, Token.MTR, actualReward, blockConcise);
       }
     }
@@ -1240,7 +1242,7 @@ export class PosCMD extends CMD {
         members,
       };
       await this.committeesCache.push(committee);
-      console.log(`update committee for epoch ${blk.qc.epochID}`);
+      this.log.info(`update committee for epoch ${blk.qc.epochID}`);
 
       if (blk.qc.epochID > 0) {
         const prevEndBlock = await this.getBlockFromREST(blk.lastKBlockHeight);
@@ -1276,7 +1278,7 @@ export class PosCMD extends CMD {
       qc: { ...blk.qc },
       powBlocks,
     };
-    this.logger.info({ number: blk.number, txCount: blk.transactions.length }, 'processed PoS block');
+    this.log.info({ number: blk.number, txCount: blk.transactions.length }, 'processed PoS block');
     this.blocksCache.push(block);
   }
 
@@ -1293,7 +1295,7 @@ export class PosCMD extends CMD {
 
   private async handleRebasing() {
     for (const tokenAddr of this.rebasingsCache) {
-      console.log(`Handling rebasing events on ${tokenAddr}`);
+      this.log.info(`Handling rebasing events on ${tokenAddr}`);
       const bals = await this.tokenBalanceRepo.findByTokenAddress(tokenAddr);
       for (const bal of bals) {
         const res = await this.pos.explain(
@@ -1305,7 +1307,9 @@ export class PosCMD extends CMD {
         const decoded = ERC20.balanceOf.decode(res[0].data);
         const chainBal = decoded['0'];
         if (!bal.balance.isEqualTo(chainBal)) {
-          console.log(`Update  ${bal.tokenAddress} with balance ${chainBal}, originally was ${bal.balance.toFixed(0)}`);
+          this.log.info(
+            `Update  ${bal.tokenAddress} with balance ${chainBal}, originally was ${bal.balance.toFixed(0)}`
+          );
           bal.balance = new BigNumber(chainBal);
           await bal.save();
         }
@@ -1315,7 +1319,7 @@ export class PosCMD extends CMD {
 
   protected async processGenesis() {
     const genesis = await this.pos.getBlock(0, 'regular');
-    this.logger.info({ number: genesis.number, hash: genesis.id }, 'process genesis');
+    this.log.info({ number: genesis.number, hash: genesis.id }, 'process genesis');
 
     for (const addr of getPreAllocAccount(this.network)) {
       const chainAcc = await this.pos.getAccount(addr, genesis.id);
@@ -1342,7 +1346,7 @@ export class PosCMD extends CMD {
           0
         );
       }
-      this.logger.info(
+      this.log.info(
         { accountName: acct.name, address: addr, MTR: acct.mtrBalance.toFixed(), MTRG: acct.mtrgBalance.toFixed() },
         `saving genesis account`
       );
@@ -1352,76 +1356,76 @@ export class PosCMD extends CMD {
 
   printCache() {
     for (const item of this.blocksCache) {
-      console.log('----------------------------------------');
-      console.log('BLOCK');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('BLOCK');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
 
     for (const item of this.txsCache) {
-      console.log('----------------------------------------');
-      console.log('TX');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('TX');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
 
     for (const item of this.movementsCache) {
-      console.log('----------------------------------------');
-      console.log('MOVEMENT');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('MOVEMENT');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
     for (const item of this.txDigestsCache) {
-      console.log('----------------------------------------');
-      console.log('TX DIGEST');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('TX DIGEST');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
     for (const item of this.boundsCache) {
-      console.log('----------------------------------------');
-      console.log('BOUND');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('BOUND');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
     for (const item of this.unboundsCache) {
-      console.log('----------------------------------------');
-      console.log('UNBOUND');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('UNBOUND');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
     for (const item of this.rebasingsCache) {
-      console.log('----------------------------------------');
-      console.log('REBASING');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('REBASING');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
     for (const item of this.contractsCache) {
-      console.log('----------------------------------------');
-      console.log('CONTRACT');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('CONTRACT');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
     for (const item of this.accountCache.list()) {
-      console.log('----------------------------------------');
-      console.log('ACCOUT');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('ACCOUT');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
     for (const item of this.tokenBalanceCache.list()) {
-      console.log('----------------------------------------');
-      console.log('TOKEN BALNCE');
-      console.log('----------------------------------------');
-      console.log(item);
-      console.log('----------------------------------------\n');
+      this.log.info('----------------------------------------');
+      this.log.info('TOKEN BALNCE');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
     }
   }
 }

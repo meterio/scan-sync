@@ -4,8 +4,7 @@ require('./utils/validateEnv');
 
 import { Network, connectDB, disconnectDB, parseNetwork } from '@meterio/scan-db/dist';
 // other imports
-import * as Logger from 'bunyan';
-
+import pino from 'pino';
 import * as pkg from '../package.json';
 import { CMD } from './cmd/cmd';
 import { MetricCMD } from './cmd/metric.cmd';
@@ -14,7 +13,11 @@ import { PowCMD } from './cmd/pow.cmd';
 import { ScriptEngineCMD } from './cmd/scriptEngine.cmd';
 import { printUsage } from './utils/usage';
 
-const log = Logger.createLogger({ name: 'main' });
+const log = pino({
+  transport: {
+    target: 'pino-pretty',
+  },
+});
 
 const parsed = parseNetwork(process.argv[2]);
 if (!parsed) {
@@ -67,7 +70,7 @@ switch (process.argv[3]) {
     await connectDB(network, standby);
     await cmd.start();
   } catch (e) {
-    console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);
+    log.error({ err: e }, `start error`);
     process.exit(-1);
   }
 })();

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 
 import { HeadRepo, Network, PowBlock, PowBlockRepo, PowTxRepo } from '@meterio/scan-db/dist';
-import * as Logger from 'bunyan';
+import pino from 'pino';
 
 import { Pow } from '../utils/pow-rpc';
 import { InterruptedError, sleep } from '../utils/utils';
@@ -16,7 +16,6 @@ export class PowCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
   private name = 'pow';
-  private logger = Logger.createLogger({ name: this.name });
   private powBlockRepo = new PowBlockRepo();
   private powTxRepo = new PowTxRepo();
   private headRepo = new HeadRepo();
@@ -24,11 +23,16 @@ export class PowCMD extends CMD {
 
   constructor(net: Network) {
     super();
+    this.log = pino({
+      transport: {
+        target: 'pino-pretty',
+      },
+    }).child({ cmd: 'pow' });
     this.pow = new Pow(net);
   }
 
   public async start() {
-    this.logger.info('start');
+    this.log.info('start');
     this.loop();
     return;
   }
@@ -37,7 +41,7 @@ export class PowCMD extends CMD {
     this.shutdown = true;
 
     return new Promise((resolve) => {
-      this.logger.info('shutting down......');
+      this.log.info('shutting down......');
       this.ev.on('closed', resolve);
     });
   }
@@ -89,10 +93,10 @@ export class PowCMD extends CMD {
         for (const blk of futureBlocks) {
           for (const txHash of blk.tx) {
             await this.powTxRepo.delete(txHash);
-            this.logger.info({ txHash }, 'deleted tx in blocks higher than head');
+            this.log.info({ txHash }, 'deleted tx in blocks higher than head');
           }
           await this.powBlockRepo.delete(blk.hash);
-          this.logger.info({ height: blk.height, hash: blk.hash }, 'deleted block higher than head ');
+          this.log.info({ height: blk.height, hash: blk.hash }, 'deleted block higher than head ');
         }
         const info = await this.pow.getBlockchainInfo();
         const bestNum = info.blocks;
@@ -103,7 +107,7 @@ export class PowCMD extends CMD {
         } else {
           fastforward = true;
         }
-        this.logger.info(
+        this.log.info(
           { best: bestNum, head: headNum },
           `start import PoW block from height ${headNum + 1} to ${tgtNum}`
         );
@@ -114,7 +118,7 @@ export class PowCMD extends CMD {
           }
           const blk = await this.getBlockFromRPC(num);
           await this.processBlock(blk);
-          this.logger.info({ height: blk.height, hash: blk.hash }, 'imported PoW block');
+          this.log.info({ height: blk.height, hash: blk.hash }, 'imported PoW block');
 
           if (!head) {
             head = await this.headRepo.create(this.name, blk.height, blk.hash);
@@ -127,7 +131,7 @@ export class PowCMD extends CMD {
         }
       } catch (e) {
         if (!(e instanceof InterruptedError)) {
-          this.logger.error(this.name + 'loop: ' + (e as Error).stack);
+          this.log.error({ err: e }, 'error in loop');
         } else {
           if (this.shutdown) {
             this.ev.emit('closed');

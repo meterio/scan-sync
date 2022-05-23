@@ -20,7 +20,7 @@ import {
   getNetworkConstants,
 } from '@meterio/scan-db/dist';
 import { toChecksumAddress } from '@meterio/devkit/dist/cry';
-import Logger from 'bunyan';
+import pino from 'pino';
 
 import { GetNetworkConfig, LockedMeterAddrs, LockedMeterGovAddrs, MetricName } from '../const';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
@@ -50,7 +50,6 @@ export class MetricCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
   private name = 'metric';
-  private logger = Logger.createLogger({ name: this.name });
   private pos: Pos;
   private pow: Pow;
   private network: Network;
@@ -70,6 +69,11 @@ export class MetricCMD extends CMD {
 
   constructor(net: Network) {
     super();
+    this.log = pino({
+      transport: {
+        target: 'pino-pretty',
+      },
+    }).child({ cmd: 'metric' });
     this.pow = new Pow(net);
     this.pos = new Pos(net);
     this.network = net;
@@ -81,7 +85,7 @@ export class MetricCMD extends CMD {
 
   public async start() {
     await this.beforeStart();
-    this.logger.info('start');
+    this.log.info('start');
     this.loop();
     return;
   }
@@ -90,14 +94,14 @@ export class MetricCMD extends CMD {
     this.shutdown = true;
 
     return new Promise((resolve) => {
-      this.logger.info('shutting down......');
+      this.log.info('shutting down......');
       this.ev.on('closed', resolve);
     });
   }
 
   private async updatePowInfo(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('update PoW info');
+      this.log.info('update PoW info');
       const mining = await this.pow.getMiningInfo();
       if (!!mining) {
         await this.cache.update(MetricName.DIFFICULTY, mining.difficulty);
@@ -108,7 +112,7 @@ export class MetricCMD extends CMD {
       try {
         const curCoef = await this.pos.getCurCoef();
         // const coefStorage = await this.pos.getStorage(ParamsAddress, KeyPowPoolCoef);
-        // console.log('Coef Storage:', coefStorage);
+        // this.log.info('Coef Storage:', coefStorage);
         // if (!!coefStorage && coefStorage.value) {
         if (!!curCoef) {
           const coef = parseInt(curCoef.toString());
@@ -120,7 +124,7 @@ export class MetricCMD extends CMD {
         }
       } catch (e) {}
 
-      console.log(`efficiency: ${efficiency.toFixed()}`);
+      this.log.info(`efficiency: ${efficiency.toFixed()}`);
       const btcHashrate = this.cache.get(MetricName.BTC_HASHRATE);
       const btcPrice = this.cache.get(MetricName.BTC_PRICE);
       const rewardPerDay = new BigNumber(efficiency).dividedBy(10).times(24);
@@ -130,15 +134,16 @@ export class MetricCMD extends CMD {
         .times(btcPrice)
         .dividedBy(btcHashrate)
         .dividedBy(rewardPerDay);
-      console.log(`rewardPerDay: ${rewardPerDay.toFixed()}, cost parity: ${costParity}`);
+      this.log.info(`rewardPerDay: ${rewardPerDay.toFixed()}, cost parity: ${costParity}`);
       await this.cache.update(MetricName.COST_PARITY, costParity.toFixed());
       await this.cache.update(MetricName.REWARD_PER_DAY, rewardPerDay.toFixed());
+      this.log.info('done update PoW info');
     }
   }
 
   private async updatePosInfo(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('update PoS info');
+      this.log.info('update PoS info');
       const blk = await this.pos.getBlock('best', 'regular');
       if (!!blk) {
         const seq = blk.number - blk.lastKBlockHeight;
@@ -155,6 +160,7 @@ export class MetricCMD extends CMD {
           await this.cache.update(MetricName.EPOCH, String(epoch));
         }
       }
+      this.log.info('done update PoS info');
     }
   }
 
@@ -162,18 +168,17 @@ export class MetricCMD extends CMD {
     const exist = await this.alertRepo.existMsg(network, epoch, number, channel, msg);
     if (!exist) {
       try {
-        console.log(network);
         await this.alertRepo.create({ network, epoch, number, channel, msg });
         await postToSlackChannel({ text: msg });
       } catch (e) {
-        console.log('could not send alert', e);
+        this.log.error({ err: e }, 'could not send alert');
       }
     }
   }
 
   private async alertIfNetworkHalt(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('check if network halted');
+      this.log.info('check if network halted');
       const bestBlock = await this.pos.getBlock('best', 'regular');
       const recentBlks = await this.blockRepo.findRecent();
       if (recentBlks && recentBlks.length > 0) {
@@ -181,25 +186,23 @@ export class MetricCMD extends CMD {
         if (head.number !== bestBlock.number) {
           return;
         }
-        console.log('head: ', head.number);
         const now = Math.floor(Date.now() / 1000);
-        console.log('now', now);
-        console.log(head.timestamp);
-        console.log(now - head.timestamp);
         if (now - head.timestamp > 120) {
           // alert
           const netName = Network[this.network];
           const channel = 'slack';
           const msg = `network ${netName} halted for over 2 minutes at epoch:${head.epoch} and number:${head.number}`;
           await this.checkOrSendAlert(netName, head.epoch, head.number, channel, msg);
+          this.log.info(msg, `alert sent`);
         }
       }
+      this.log.info('done check if network halted');
     }
   }
 
   private async updateValidatorRewards(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('update validate rewards');
+      this.log.info('update validate rewards');
       const rwds = await this.pos.getValidatorRewards();
       if (!!rwds) {
         const updated = await this.cache.update(MetricName.VALIDATOR_REWARDS, JSON.stringify(rwds));
@@ -207,15 +210,16 @@ export class MetricCMD extends CMD {
           return;
         }
       }
+      this.log.info('done update validate rewards');
     }
   }
 
   private async updateBitcoinInfo(index: number, interval: number) {
     if (index % interval === 0) {
       //blockchain.info/q/hashrate
-      console.log('update Bitcoin info');
+      this.log.info('update Bitcoin info');
       const stats = await this.blockchainInfo.http<any>('GET', 'stats');
-      console.log('BTC Hashrate:', stats.hash_rate);
+      this.log.info('BTC Hashrate:', stats.hash_rate);
       if (!!stats) {
         this.cache.update(MetricName.BTC_HASHRATE, String(stats.hash_rate));
       }
@@ -224,22 +228,23 @@ export class MetricCMD extends CMD {
       });
 
       if (!!price && price.bitcoin) {
-        console.log('BTC Price', price.bitcoin);
+        this.log.info('BTC Price', price.bitcoin);
         this.cache.update(MetricName.BTC_PRICE, String(price.bitcoin.usd));
       }
+      this.log.info('done update Bitcoin info');
     }
   }
 
   private async updateMarketPrice(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('update market price');
+      this.log.info('update market price');
       const config = GetNetworkConfig(this.network);
 
       if (typeof config.coingeckoEnergy === 'string') {
         const price = await this.coingecko.http<any>('GET', 'simple/price', {
           query: { ids: `${config.coingeckoEnergy}`, vs_currencies: 'usd', include_24hr_change: 'true' },
         });
-        console.log(`Got energy price: ${price}`);
+        this.log.info(`Got energy price: ${price}`);
         if (!!price && config.coingeckoEnergy in price) {
           const m = price[config.coingeckoEnergy];
           const percent20h = Math.floor(parseFloat(m.usd_24h_change) * 100) / 100;
@@ -250,7 +255,7 @@ export class MetricCMD extends CMD {
         this.cache.update(MetricName.MTR_PRICE, String(config.coingeckoEnergy));
         this.cache.update(MetricName.MTR_PRICE_CHANGE, `0%`);
       } else {
-        console.log('invalid type for coingeckoEnergy');
+        this.log.info('invalid type for coingeckoEnergy');
       }
 
       if (typeof config.coingeckoBalance === 'string') {
@@ -267,14 +272,15 @@ export class MetricCMD extends CMD {
         this.cache.update(MetricName.MTRG_PRICE, String(config.coingeckoBalance));
         this.cache.update(MetricName.MTRG_PRICE_CHANGE, `0%`);
       } else {
-        console.log('invalid type for coingeckoBalance');
+        this.log.info('invalid type for coingeckoBalance');
       }
+      this.log.info('done update market price');
     }
   }
 
   private async updateAuctionInfo(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('update auction info');
+      this.log.info('update auction info');
       const present = await this.pos.getPresentAuction();
       const summaries = await this.pos.getAuctionSummaries();
       if (!!present) {
@@ -283,12 +289,13 @@ export class MetricCMD extends CMD {
       if (!!summaries) {
         await this.cache.update(MetricName.AUCTION_SUMMARIES, JSON.stringify(summaries));
       }
+      this.log.info('done update auction info');
     }
   }
 
   private async updateInvalidNodes(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('update invalid nodes');
+      this.log.info('update invalid nodes');
       try {
         let invalidNodes = [];
         const validators = await this.validatorRepo.findAll();
@@ -298,12 +305,11 @@ export class MetricCMD extends CMD {
           try {
             probe = await this.pos.probe(v.ipAddress);
           } catch (e) {
-            console.log(e);
-            console.log(`could not probe ${v.ipAddress}`);
+            this.log.error({ err: e }, `could not probe ${v.ipAddress}`);
             invalidNodes.push({ ...base, reason: 'could not probe' });
             continue;
           }
-          console.log(`got probe for ${v.ipAddress}`);
+          this.log.info(`got probe for ${v.ipAddress}`);
           if (!(probe.isCommitteeMember && probe.isPacemakerRunning)) {
             invalidNodes.push({ ...base, reason: 'in committee without pacemaker running' });
             continue;
@@ -317,18 +323,18 @@ export class MetricCMD extends CMD {
             invalidNodes.push({ ...base, reason: 'fall behind' });
           }
         }
-        console.log('update invalid nodes');
         await this.cache.update(MetricName.INVALID_NODES, JSON.stringify(invalidNodes));
         await this.cache.update(MetricName.INVALID_NODES_COUNT, `${invalidNodes.length}`);
       } catch (e) {
-        console.log('could not query pos height: ', e);
+        this.log.info({ err: e }, 'could not query pos height');
       }
+      this.log.info('done update invalid nodes');
     }
   }
 
   private async updateSlashingInfo(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('update slashing info');
+      this.log.info('update slashing info');
       let updated = false;
       const stats = await this.pos.getValidatorStats();
       if (!!stats) {
@@ -354,16 +360,17 @@ export class MetricCMD extends CMD {
             }
           }
         } catch (e) {
-          console.log('could not update penalty points');
+          this.log.error({ err: e }, 'could not update penalty points');
         }
       }
+      this.log.info('done update slashing info');
     }
   }
 
   private async updateStakingInfo(index: number, interval: number) {
     // update staking/slashing every 5 minutes
     if (index % interval === 0) {
-      console.log('update staking info');
+      this.log.info('update staking info');
       let cUpdated = false,
         jUpdated = false,
         bUpdated = false,
@@ -406,7 +413,7 @@ export class MetricCMD extends CMD {
             statMap[stat.address] = stat.totalPoints;
           }
         } catch (e) {
-          console.log('could not parse stats');
+          this.log.error({ err: e }, 'could not parse stats');
         }
 
         let vs: { [key: string]: Validator } = {}; // address -> validator object
@@ -486,13 +493,14 @@ export class MetricCMD extends CMD {
         await this.bucketRepo.deleteAll();
         await this.bucketRepo.bulkInsert(...bkts);
       }
+      this.log.info('done update staking info');
     }
   }
 
   private async updateCirculationAndRank(index: number, interval: number) {
     if (index % interval === 0) {
       // Update circulation
-      console.log('update circulation and rank');
+      this.log.info('update circulation and rank');
       const bucketStr = this.cache.get(MetricName.BUCKETS);
       const buckets = JSON.parse(bucketStr);
       let totalStaked = new BigNumber(0);
@@ -566,24 +574,25 @@ export class MetricCMD extends CMD {
           await this.accountRepo.updateMTRGRank(a.address, i + 1);
         }
       }
+      this.log.info('done update circulation and rank');
     }
   }
 
   private async updateVerifiedContracts(index: number, interval: number) {
     if (index % interval === 0) {
-      console.log('UPDATE VERIFIED CONTRACT');
+      this.log.info('update verified contract');
       const netConsts = getNetworkConstants(this.network);
       const chainId = netConsts.chainId;
       if (!chainId) {
-        console.log('could not get correct chainId to check verified contracts');
+        this.log.info('could not get correct chainId to check verified contracts');
         return;
       }
 
       const res = await axios.get(`${SOURCIFY_SERVER_API}/files/contracts/${chainId}`);
       const addresses = res.data.full.map((s) => s.toLowerCase()).concat(res.data.partial.map((s) => s.toLowerCase()));
-      console.log(addresses);
+      this.log.info(addresses, 'sourcify verified addresses');
       const unverified = await this.contractRepo.findUnverifiedContracts(addresses);
-      console.log('unverified: ', unverified);
+      this.log.info(unverified, 'known unverified: ');
 
       for (const c of unverified) {
         const addr = toChecksumAddress(c.address);
@@ -624,18 +633,19 @@ export class MetricCMD extends CMD {
               fragments.push({ name, signature, abi, type: 'event' });
             }
 
-            console.log('fragments: ', fragments);
+            this.log.info('fragments: ', fragments);
 
             await this.abiFragmentRepo.bulkUpsert(...fragments);
           }
         }
-        console.log(
+        this.log.info(
           'contract files: ',
           contractFiles.map((c) => ({ name: c.name, path: c.path }))
         );
         await this.contractFileRepo.bulkUpsert(...contractFiles);
         await c.save();
       }
+      this.log.info('done update verified contract');
     }
   }
 
@@ -695,7 +705,7 @@ export class MetricCMD extends CMD {
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {
         if (!(e instanceof InterruptedError)) {
-          this.logger.error(this.name + 'loop: ' + (e as Error).stack);
+          this.log.error({ err: e }, `error in loop`);
         } else {
           if (this.shutdown) {
             this.ev.emit('closed');

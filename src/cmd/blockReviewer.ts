@@ -10,11 +10,10 @@ import {
   Network,
   TxRepo,
 } from '@meterio/scan-db/dist';
-import * as Logger from 'bunyan';
+import pino, { Logger } from 'pino';
 
 import { InterruptedError, Pos, sleep } from '../utils';
 import { CMD } from './cmd';
-import { time } from 'console';
 
 const FASTFORWARD_INTERVAL = 500;
 const NORMAL_INTERVAL = 2000;
@@ -37,7 +36,11 @@ export abstract class TxBlockReviewer extends CMD {
 
   constructor(net: Network) {
     super();
-    this.logger = Logger.createLogger({ name: this.name });
+    this.log = pino({
+      transport: {
+        target: 'pino-pretty',
+      },
+    });
     this.network = net;
     this.pos = new Pos(net);
   }
@@ -151,8 +154,7 @@ export abstract class TxBlockReviewer extends CMD {
         }
       } catch (e) {
         if (!(e instanceof InterruptedError)) {
-          this.logger.error(this.name + 'loop: ' + (e as Error).stack);
-          console.log('Error happened:', e);
+          this.log.error({ err: e }, `Error during loop`);
           break;
         } else {
           if (this.shutdown) {
