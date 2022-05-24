@@ -78,7 +78,7 @@ export abstract class TxBlockReviewer extends CMD {
 
   public async start() {
     await this.beforeStart();
-    this.logger.info(`${this.name}: start`);
+    this.log.info(`${this.name}: start`);
     await this.loop();
     return;
   }
@@ -87,7 +87,7 @@ export abstract class TxBlockReviewer extends CMD {
     this.shutdown = true;
 
     return new Promise((resolve) => {
-      this.logger.info('shutting down......');
+      this.log.info('shutting down......');
       this.ev.on('closed', resolve);
     });
   }
@@ -124,7 +124,7 @@ export abstract class TxBlockReviewer extends CMD {
         if (headNum > endNum) {
           continue;
         }
-        this.logger.info(`start review PoS block from number ${headNum} to ${endNum} (best:${localBestNum})`);
+        this.log.info(`start review PoS block from number ${headNum} to ${endNum} (best:${localBestNum})`);
 
         let num = headNum;
         for (;;) {
