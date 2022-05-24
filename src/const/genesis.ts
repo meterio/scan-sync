@@ -60,6 +60,7 @@ const mainnetKnown = {
   '0x78e6f3af2bf71afa209c6e81b161c6a41d2da79d': 'Foundation Ops',
   '0xc1a76f84d977e8d424a8eb09ce6adf029d38b91d': 'Bilaxy',
   '0x6f04787447975b40d29611833711117ed9de155f': 'mxc',
+  '0xd70933ed0737805b7522ecf2e77f6f236eda9c79': 'kucoin',
 
   // system contract
   '0x687a6294d0d6d63e751a059bf1ca68e4ae7b13e2': 'MTR system contract',
