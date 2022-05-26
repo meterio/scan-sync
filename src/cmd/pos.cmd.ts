@@ -128,7 +128,7 @@ export class PosCMD extends CMD {
       transport: {
         target: 'pino-pretty',
       },
-    }).child({ cmd: 'pos' });
+    });
     this.pos = new Pos(net);
     this.network = net;
     this.mtrSysToken = getSysContractToken(this.network, Token.MTR);

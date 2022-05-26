@@ -18,7 +18,10 @@ import {
   ContractFile,
   ContractFileRepo,
   getNetworkConstants,
+  ContractType,
+  Token,
 } from '@meterio/scan-db/dist';
+import { ERC20 } from '@meterio/devkit/dist';
 import { toChecksumAddress } from '@meterio/devkit/dist/cry';
 import pino from 'pino';
 
@@ -44,8 +47,9 @@ const every5m = (60 * 5) / (SAMPLING_INTERVAL / 1000); // count of index in 5 mi
 const every10m = (60 * 10) / (SAMPLING_INTERVAL / 1000); // count of index in 10 minutes
 const every20m = (60 * 20) / (SAMPLING_INTERVAL / 1000); // count of index in 20 minutes
 const every30m = (60 * 30) / (SAMPLING_INTERVAL / 1000); // count of index in 30 minutes
-const every2h = (2 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 4 hours
+const every2h = (2 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 2 hours
 const every4h = (4 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 4 hours
+const every6h = (6 * 60 * 60) / (SAMPLING_INTERVAL / 1000); // count of index in 6 hours
 export class MetricCMD extends CMD {
   private shutdown = false;
   private ev = new EventEmitter();
@@ -73,7 +77,7 @@ export class MetricCMD extends CMD {
       transport: {
         target: 'pino-pretty',
       },
-    }).child({ cmd: 'metric' });
+    });
     this.pow = new Pow(net);
     this.pos = new Pos(net);
     this.network = net;
@@ -303,7 +307,11 @@ export class MetricCMD extends CMD {
           let probe: Pos.ProbeInfo;
           const base = { name: v.name, ip: v.ipAddress, pubKey: v.pubKey };
           try {
-            probe = await this.pos.probe(v.ipAddress);
+            const result = await Promise.race<Pos.ProbeInfo | void>([this.pos.probe(v.ipAddress), sleep(1000)]);
+            if (!result) {
+              throw new Error('timed out');
+            }
+            probe = result;
           } catch (e) {
             this.log.error({ err: e }, `could not probe ${v.ipAddress}`);
             invalidNodes.push({ ...base, reason: 'could not probe' });
@@ -649,6 +657,37 @@ export class MetricCMD extends CMD {
     }
   }
 
+  private async adjustTotalSupply(index: number, interval: number) {
+    if (index % interval === 0) {
+      const contracts = await this.contractRepo.findByType(ContractType.ERC20);
+      console.log(`start checking ${contracts.length} contracts...`);
+      let updateCount = 0;
+      for (const p of contracts) {
+        try {
+          const ret = await this.pos.explain(
+            { clauses: [{ to: p.address, value: '0x0', data: ERC20.totalSupply.encode(), token: Token.MTR }] },
+            'best'
+          );
+          const decoded = ERC20.totalSupply.decode(ret[0].data);
+          const amount = decoded['0'];
+          let updated = false;
+          if (!p.totalSupply.isEqualTo(amount)) {
+            console.log(`Update total supply for token ${p.symbol} from ${p.totalSupply.toFixed(0)} to ${amount}`);
+            p.totalSupply = new BigNumber(amount);
+            updated = true;
+          }
+          if (updated) {
+            updateCount++;
+            await p.save();
+          }
+        } catch (e) {
+          console.log('ignore error: ', e);
+        }
+      }
+      console.log(`Updated ${updateCount} token contracts`);
+    }
+  }
+
   public async loop() {
     let index = 0;
 
@@ -701,6 +740,9 @@ export class MetricCMD extends CMD {
 
         // update validator rewards
         await this.updateValidatorRewards(index, every5m);
+
+        // adjust total supply
+        await this.adjustTotalSupply(index, every6h);
 
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {
