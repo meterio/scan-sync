@@ -52,17 +52,19 @@ MONGO_SSL_CA=
 dotenv -e env.prod scan-sync main pos
 ```
 
-## Usage with Typescript
+## Usage Typescript, Run with source code
 
 ```
 ts-node main.ts [Network] [Task]
 
-Network: [main|test|main-standby|test-standby|verse-mainverse-test]
+Network: [main|test|main-standby|test-standby|verse-main|verse-test]
 Task: [pos|pow|metric|scriptengine]
 ```
 
-## Daemon
+## Usage Daemon, Run with binary
 
-```
+```bash
+// notice Network & Task
+
 nohup dotenv -e env.prod scan-sync main pos >> ~/pos-sync.log 2>&1 &
 ```
