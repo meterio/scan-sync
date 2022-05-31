@@ -72,6 +72,7 @@ const FASTFORWARD_INTERVAL = 300; // 0.3 second gap between each loop
 const NORMAL_INTERVAL = 2000; // 2 seconds gap between each loop
 const PRELOAD_WINDOW = 100;
 const LOOP_WINDOW = 100;
+const RECOVERY_INTERVAL = 5 * 60 * 1000; // 5 min for recovery
 
 const revertReasonSelector = '0x' + cry.keccak256('Error(string)').toString('hex').slice(0, 8);
 const panicErrorSelector = '0x' + cry.keccak256('Panic(uint256)').toString('hex').slice(0, 8);
@@ -362,7 +363,8 @@ export class PosCMD extends CMD {
             await this.processBlock(blk);
           } catch (e) {
             this.log.error({ err: e }, `Error happened during block processing for:`, blk.number);
-            await sleep(NORMAL_INTERVAL);
+            this.log.error(`sleep for ${RECOVERY_INTERVAL / 1000 / 60} mintues, hope it will recover`);
+            await sleep(RECOVERY_INTERVAL);
             throw new InterruptedError();
           }
 
@@ -388,8 +390,9 @@ export class PosCMD extends CMD {
           this.log.info('quit loop');
           break;
         } else {
-          this.log.error({ err: e }, 'Error happened: ', e);
-          break;
+          this.log.error({ err: e }, 'Error happened in loop: ', e);
+          this.log.error(`sleep for ${RECOVERY_INTERVAL / 1000 / 60} minutes, hope it will resolve`);
+          await sleep(RECOVERY_INTERVAL);
         }
       }
     }
