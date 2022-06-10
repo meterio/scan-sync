@@ -44,7 +44,7 @@ export class ScriptEngineCMD extends TxBlockReviewer {
       transport: {
         target: 'pino-pretty',
       },
-    }).child({ cmd: 'se' });
+    });
     this.name = 'scriptengine';
   }
 

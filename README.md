@@ -42,6 +42,8 @@ MONGO_PATH=127.0.0.1:27017/scandb
 MONGO_PWD=scan
 MONGO_USER=scan
 MONGO_SSL_CA=
+
+# look at .env.sample
 ```
 
 3. Run sync
@@ -50,17 +52,19 @@ MONGO_SSL_CA=
 dotenv -e env.prod scan-sync main pos
 ```
 
-## Usage with Typescript
+## Usage Typescript, Run with source code
 
 ```
 ts-node main.ts [Network] [Task]
 
-Network: [main|test]
-Task: [pos|pow|balance|erc20|committee]
+Network: [main|test|main-standby|test-standby|verse-main|verse-test]
+Task: [pos|pow|metric|scriptengine]
 ```
 
-## Daemon
+## Usage Daemon, Run with binary
 
-```
+```bash
+// notice Network & Task
+
 nohup dotenv -e env.prod scan-sync main pos >> ~/pos-sync.log 2>&1 &
 ```

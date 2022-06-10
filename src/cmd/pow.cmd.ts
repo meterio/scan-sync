@@ -27,7 +27,7 @@ export class PowCMD extends CMD {
       transport: {
         target: 'pino-pretty',
       },
-    }).child({ cmd: 'pow' });
+    });
     this.pow = new Pow(net);
   }
 
