@@ -43,8 +43,6 @@ export const getAccountName = (net, addr) => {
 // "address", "name", "release epoch"
 const mainnetKnown = {
   '0x46b77531b74ff31882c4636a35547535818e0baa': 'Foundation Growth Reserve Indefinitely Locked',
-  '0x2fa2d56e312c47709537acb198446205736022aa': 'Locked Batch 1',
-  '0x08ebea6584b3d9bf6fbcacf1a1507d00a61d95b7': 'Locked Batch 2',
   '0x045df1ef32d6db371f1857bb60551ef2e43abb1e': 'Locked Batch 3',
   '0xbb8fca96089572f08736062b9c7da651d00011d0': 'Locked Batch 4',
   '0xab22ab75f8c42b6969c5d226f39aeb7be35bf24b': 'Locked Batch 5',
