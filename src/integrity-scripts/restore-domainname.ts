@@ -27,30 +27,49 @@ const run = async () => {
   console.log('all names ', allNames);
   const accountList = await accountRepo.findByNameList(allNames);
   console.log('get accouns by all names counts', accountList.length);
-  const existentNames = []
+
+  const existentNames: string[] = []
+  const aliases: { [address: string]: string[] } = {}
   for (const a of accountList) {
-    existentNames.push(a.name);
+    console.log({ name: a.name, alias: a.alias })
+    const alias = []
+    if (a.alias) {
+      alias.push(...a.alias);
+    }
+    existentNames.push(a.name, ...alias);
+    aliases[a.address] = [...alias, a.name]
   }
   console.log('existentNames', existentNames);
-  const saveToDB = []
+  console.log('aliases', aliases);
+
+  const willUpdateData = {}
   for (const name of allNames) {
     if (!(existentNames.includes(name))) {
       const address = await contract.getAddress(name);
+      const lowerCaseAddr = String(address).toLowerCase();
+      if (Object.keys(aliases).includes(lowerCaseAddr)) {
+        willUpdateData[lowerCaseAddr] = {
+          name,
+          alias: aliases[lowerCaseAddr]
+        }
+      } else {
+        willUpdateData[lowerCaseAddr] = {
+          name,
+          alias: []
+        }
+      }
+
       console.log(`name ${name} => ${address}`)
-      saveToDB.push({
-        name,
-        address
-      })
     } else {
       console.log(`name ${name} exsit, skip`)
     }
   }
 
-  console.log('saveToDB', saveToDB);
+  console.log('willUpdateData', willUpdateData);
 
-  for (const s of saveToDB) {
-    await accountRepo.updateName(s.address, s.name);
-    console.log(`saved ${s.address}: ${s.name}`)
+  for (const address in willUpdateData) {
+    await accountRepo.updateName(address, willUpdateData[address].name, willUpdateData[address].alias);
+    console.log(`saved ${address}: ${willUpdateData[address].name} ${willUpdateData[address].alias}`)
   }
 }
 
