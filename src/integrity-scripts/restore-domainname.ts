@@ -34,7 +34,7 @@ const run = async () => {
   console.log('existentNames', existentNames);
   const saveToDB = []
   for (const name of allNames) {
-    if (!(name in existentNames)) {
+    if (!(existentNames.includes(name))) {
       const address = await contract.getAddress(name);
       console.log(`name ${name} => ${address}`)
       saveToDB.push({
