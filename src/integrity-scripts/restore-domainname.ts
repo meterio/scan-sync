@@ -24,21 +24,33 @@ const run = async () => {
   await checkNetworkWithDB(network);
 
   const allNames = await contract.getAllNames();
-  // console.log('all names ', allNames);
-  const m: { [key: string]: string } = {}
+  console.log('all names ', allNames);
+  const accountList = await accountRepo.findByNameList(allNames);
+  console.log('get accouns by all names counts', accountList.length);
+  const existentNames = []
+  for (const a of accountList) {
+    existentNames.push(a.name);
+  }
+  console.log('existentNames', existentNames);
+  const saveToDB = []
   for (const name of allNames) {
-    const address = await contract.getAddress(name);
-    // console.log(`name ${name} => ${address}`)
-    m[address.toLowerCase()] = name;
+    if (!(name in existentNames)) {
+      const address = await contract.getAddress(name);
+      console.log(`name ${name} => ${address}`)
+      saveToDB.push({
+        name,
+        address
+      })
+    } else {
+      console.log(`name ${name} exsit, skip`)
+    }
   }
 
-  console.log('account name map', m);
-  const accountList = await accountRepo.findByAddressList(Object.keys(m));
-  for (const a of accountList) {
-    if (a.name !== m[a.address]) {
-      await accountRepo.updateName(a.address, m[a.address]);
-      console.log(`saved ${a.address}: ${m[a.address]}`)
-    }
+  console.log('saveToDB', saveToDB);
+
+  for (const s of saveToDB) {
+    await accountRepo.updateName(s.address, s.name);
+    console.log(`saved ${s.address}: ${s.name}`)
   }
 }
 
