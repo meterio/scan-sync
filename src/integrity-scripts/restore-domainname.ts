@@ -47,15 +47,22 @@ const run = async () => {
     if (!(existentNames.includes(name))) {
       const address = await contract.getAddress(name);
       const lowerCaseAddr = String(address).toLowerCase();
-      if (Object.keys(aliases).includes(lowerCaseAddr)) {
+      if (Object.keys(willUpdateData).includes(lowerCaseAddr)) {
         willUpdateData[lowerCaseAddr] = {
           name,
-          alias: aliases[lowerCaseAddr]
+          alias: [willUpdateData[lowerCaseAddr].name, ...willUpdateData[lowerCaseAddr].alias]
         }
       } else {
-        willUpdateData[lowerCaseAddr] = {
-          name,
-          alias: []
+        if (Object.keys(aliases).includes(lowerCaseAddr)) {
+          willUpdateData[lowerCaseAddr] = {
+            name,
+            alias: aliases[lowerCaseAddr]
+          }
+        } else {
+          willUpdateData[lowerCaseAddr] = {
+            name,
+            alias: []
+          }
         }
       }
 
