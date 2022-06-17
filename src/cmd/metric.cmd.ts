@@ -25,13 +25,14 @@ import { ERC20 } from '@meterio/devkit/dist';
 import { toChecksumAddress } from '@meterio/devkit/dist/cry';
 import pino from 'pino';
 
-import { GetNetworkConfig, LockedMeterAddrs, LockedMeterGovAddrs, MetricName } from '../const';
+import { GetNetworkConfig, LockedMeterAddrs, LockedMeterGovAddrs, MetricName, MeterMainnetDomains } from '../const';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { MetricCache } from '../types';
 import { postToSlackChannel } from '../utils/slack';
 import { CMD } from './cmd';
 import axios from 'axios';
 import { EventFragment, FormatTypes, FunctionFragment, Interface } from 'ethers/lib/utils';
+import { ethers } from 'ethers';
 
 const SAMPLING_INTERVAL = 3000;
 
@@ -126,7 +127,7 @@ export class MetricCMD extends CMD {
             .dividedBy(2 ** 32);
           await this.cache.update(MetricName.COEF, efficiency.toFixed());
         }
-      } catch (e) {}
+      } catch (e) { }
 
       this.log.info(`efficiency: ${efficiency.toFixed()}`);
       const btcHashrate = this.cache.get(MetricName.BTC_HASHRATE);
@@ -688,11 +689,79 @@ export class MetricCMD extends CMD {
     }
   }
 
+  private async updateDomainname(index: number, interval: number) {
+    if (index % interval === 0) {
+      if (this.network === Network.MainNet) {
+        const MAINNET_JSON_RPC = 'https://rpc.meter.io';
+        const MAINNET_CONTRACT_ADDR = '0x7fd85de6312bdbd8d4f625f7b80a254777c00b17';
+
+        const SIGNER = new ethers.providers.JsonRpcProvider(MAINNET_JSON_RPC).getSigner();
+        const contract = new ethers.Contract(MAINNET_CONTRACT_ADDR, MeterMainnetDomains, SIGNER);
+
+        const allNames = await contract.getAllNames();
+        console.log('all names counts', allNames.length);
+        const accountList = await this.accountRepo.findByNameList(allNames);
+        console.log('get accouns by all names counts', accountList.length);
+
+        const existentNames: string[] = []
+        const aliases: { [address: string]: string[] } = {}
+        for (const a of accountList) {
+          console.log({ name: a.name, alias: a.alias })
+          const alias = []
+          if (a.alias) {
+            alias.push(...a.alias);
+          }
+          existentNames.push(a.name, ...alias);
+          aliases[a.address] = [...alias, a.name]
+        }
+        // console.log('existentNames', existentNames);
+        // console.log('aliases', aliases);
+
+        const willUpdateData = {}
+        for (const name of allNames) {
+          if (!(existentNames.includes(name))) {
+            const address = await contract.getAddress(name);
+            const lowerCaseAddr = String(address).toLowerCase();
+            if (Object.keys(willUpdateData).includes(lowerCaseAddr)) {
+              willUpdateData[lowerCaseAddr] = {
+                name,
+                alias: [willUpdateData[lowerCaseAddr].name, ...willUpdateData[lowerCaseAddr].alias]
+              }
+            } else {
+              if (Object.keys(aliases).includes(lowerCaseAddr)) {
+                willUpdateData[lowerCaseAddr] = {
+                  name,
+                  alias: aliases[lowerCaseAddr]
+                }
+              } else {
+                willUpdateData[lowerCaseAddr] = {
+                  name,
+                  alias: []
+                }
+              }
+            }
+
+            console.log(`name ${name} => ${address}`)
+          } else {
+            console.log(`name ${name} exsit, skip`)
+          }
+        }
+
+        console.log('willUpdateData', willUpdateData);
+
+        for (const address in willUpdateData) {
+          await this.accountRepo.updateName(address, willUpdateData[address].name, willUpdateData[address].alias);
+          console.log(`saved ${address}: ${willUpdateData[address].name} ${willUpdateData[address].alias}`)
+        }
+      }
+    }
+  }
+
   public async loop() {
     let index = 0;
 
     const config = GetNetworkConfig(this.network);
-    for (;;) {
+    for (; ;) {
       try {
         if (this.shutdown) {
           throw new InterruptedError();
@@ -743,6 +812,9 @@ export class MetricCMD extends CMD {
 
         // adjust total supply
         await this.adjustTotalSupply(index, every6h);
+
+        // update domainnames
+        await this.updateDomainname(index, every20m);
 
         index = (index + 1) % every24h; // clear up 24hours
       } catch (e) {
