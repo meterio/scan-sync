@@ -105,6 +105,7 @@ export class PosCMD extends CMD {
 
   private mtrSysToken: TokenBasic;
   private mtrgSysToken: TokenBasic;
+  private mtrgV2SysToken: TokenBasic;
 
   // cache
   private blocksCache: Block[] = [];
@@ -134,6 +135,7 @@ export class PosCMD extends CMD {
     this.network = net;
     this.mtrSysToken = getSysContractToken(this.network, Token.MTR);
     this.mtrgSysToken = getSysContractToken(this.network, Token.MTRG);
+    this.mtrgV2SysToken = getSysContractToken(this.network, Token.MTRGV2);
     this.tokenBalanceCache = new TokenBalanceCache(net);
     const posConfig = GetNetworkConfig(net);
     this.web3 = meterify(new Web3(), posConfig.posUrl);
@@ -606,7 +608,10 @@ export class PosCMD extends CMD {
         movement.token = Token.MTR;
         await this.accountCache.minus(from, Token.MTR, amount, blockConcise);
         await this.accountCache.plus(to, Token.MTR, amount, blockConcise);
-      } else if (!!this.mtrgSysToken && evt.address.toLowerCase() === this.mtrgSysToken.address) {
+      } else if (
+        (!!this.mtrgSysToken && evt.address.toLowerCase() === this.mtrgSysToken.address) ||
+        (!!this.mtrgV2SysToken && evt.address.toLowerCase() === this.mtrgV2SysToken.address)
+      ) {
         // MTRG: convert system contract event into system transfer
         movement.token = Token.MTRG;
         await this.accountCache.minus(from, Token.MTRG, amount, blockConcise);
@@ -819,7 +824,8 @@ export class PosCMD extends CMD {
       // skip handling of clause if it's a sys contract call
       if (
         (!!this.mtrSysToken && clause.to === this.mtrSysToken.address) ||
-        (!!this.mtrgSysToken && clause.to === this.mtrgSysToken.address)
+        (!!this.mtrgSysToken && clause.to === this.mtrgSysToken.address) ||
+        (!!this.mtrgV2SysToken && clause.to === this.mtrgV2SysToken.address)
       ) {
         continue;
       }
@@ -885,7 +891,9 @@ export class PosCMD extends CMD {
           };
           const amount = new BigNumber(decoded.value);
           const isMTRSysContract = !!this.mtrSysToken && evt.address.toLowerCase() === this.mtrSysToken.address;
-          const isMTRGSysContract = !!this.mtrgSysToken && evt.address.toLowerCase() === this.mtrgSysToken.address;
+          const isMTRGSysContract =
+            (!!this.mtrgSysToken && evt.address.toLowerCase() === this.mtrgSysToken.address) ||
+            (!!this.mtrgV2SysToken && evt.address.toLowerCase() === this.mtrgV2SysToken.address);
 
           if (isMTRSysContract || isMTRGSysContract) {
             // ### Handle sys contract transfer events

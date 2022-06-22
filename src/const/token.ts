@@ -19,6 +19,13 @@ const MTRGSystemContract = {
   decimals: 18,
 };
 
+const MTRGV2SystemContract = {
+  token: Token.MTRGV2,
+  address: '0x5729cb3716a315d0bde3b5e489163bf8b9659436'.toLowerCase(),
+  name: 'Meter Governance ERC20 V2',
+  decimals: 18,
+};
+
 class TokenRegistry {
   private registry = new Map<Token, TokenBasic>();
   public add(tb: TokenBasic) {
@@ -43,6 +50,7 @@ const knownTokens = new Map<Network, TokenRegistry>();
 
 mainnet.add(MTRSystemContract);
 mainnet.add(MTRGSystemContract);
+mainnet.add(MTRGV2SystemContract);
 
 testnet.add({ ...MTRSystemContract, address: '0x4cb6cef87d8cadf966b455e8bd58fff32aba49d1' });
 testnet.add({ ...MTRGSystemContract, address: '0x8a419ef4941355476cf04933e90bf3bbf2f73814' });
