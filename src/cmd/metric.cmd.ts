@@ -33,6 +33,7 @@ import { CMD } from './cmd';
 import axios from 'axios';
 import { EventFragment, FormatTypes, FunctionFragment, Interface } from 'ethers/lib/utils';
 import { ethers } from 'ethers';
+import PromisePool from '@supercharge/promise-pool/dist';
 
 const SAMPLING_INTERVAL = 3000;
 
@@ -127,7 +128,7 @@ export class MetricCMD extends CMD {
             .dividedBy(2 ** 32);
           await this.cache.update(MetricName.COEF, efficiency.toFixed());
         }
-      } catch (e) { }
+      } catch (e) {}
 
       this.log.info(`efficiency: ${efficiency.toFixed()}`);
       const btcHashrate = this.cache.get(MetricName.BTC_HASHRATE);
@@ -304,34 +305,41 @@ export class MetricCMD extends CMD {
       try {
         let invalidNodes = [];
         const validators = await this.validatorRepo.findAll();
-        for (const v of validators) {
-          let probe: Pos.ProbeInfo;
-          const base = { name: v.name, ip: v.ipAddress, pubKey: v.pubKey };
-          try {
-            const result = await Promise.race<Pos.ProbeInfo | void>([this.pos.probe(v.ipAddress), sleep(1000)]);
-            if (!result) {
-              throw new Error('timed out');
+        await PromisePool.withConcurrency(10)
+          .for(validators)
+          .process(async (v, index, pool) => {
+            let probe: Pos.ProbeInfo;
+            const base = { name: v.name, ip: v.ipAddress, pubKey: v.pubKey };
+            try {
+              const result = await Promise.race<Pos.ProbeInfo | void>([this.pos.probe(v.ipAddress), sleep(1000)]);
+              if (!result) {
+                throw new Error('timed out');
+              }
+              probe = result;
+            } catch (e) {
+              this.log.error({ err: e }, `could not probe ${v.ipAddress}`);
+              invalidNodes.push({ ...base, reason: 'could not probe' });
+              return;
             }
-            probe = result;
-          } catch (e) {
-            this.log.error({ err: e }, `could not probe ${v.ipAddress}`);
-            invalidNodes.push({ ...base, reason: 'could not probe' });
-            continue;
-          }
-          this.log.info(`got probe for ${v.ipAddress}`);
-          if (!(probe.isCommitteeMember && probe.isPacemakerRunning)) {
-            invalidNodes.push({ ...base, reason: 'in committee without pacemaker running' });
-            continue;
-          }
-          if (!probe.pubkeyValid) {
-            invalidNodes.push({ ...base, reason: 'invalid pubkey' });
-            continue;
-          }
-          const headHeight = Number(this.cache.get(MetricName.POS_BEST));
-          if (probe.chain && probe.chain.bestBlock && headHeight - probe.chain.bestBlock.number > 3) {
-            invalidNodes.push({ ...base, reason: 'fall behind' });
-          }
-        }
+            this.log.info(`got probe for ${v.ipAddress}`);
+            if (!(probe.isCommitteeMember && probe.isPacemakerRunning)) {
+              invalidNodes.push({ ...base, reason: 'in committee without pacemaker running' });
+              return;
+            }
+            if (!probe.pubkeyValid) {
+              invalidNodes.push({ ...base, reason: 'invalid pubkey' });
+              return;
+            }
+            if (probe.pow && probe.pow.PoolSize <= 1) {
+              invalidNodes.push({ ...base, reason: `invalid powpool size ${probe.pow.PoolSize} <=1` });
+              return;
+            }
+            const headHeight = Number(this.cache.get(MetricName.POS_BEST));
+            if (probe.chain && probe.chain.bestBlock && headHeight - probe.chain.bestBlock.number > 3) {
+              invalidNodes.push({ ...base, reason: 'fall behind' });
+            }
+          });
+
         await this.cache.update(MetricName.INVALID_NODES, JSON.stringify(invalidNodes));
         await this.cache.update(MetricName.INVALID_NODES_COUNT, `${invalidNodes.length}`);
       } catch (e) {
@@ -693,7 +701,7 @@ export class MetricCMD extends CMD {
     let index = 0;
 
     const config = GetNetworkConfig(this.network);
-    for (; ;) {
+    for (;;) {
       try {
         if (this.shutdown) {
           throw new InterruptedError();
