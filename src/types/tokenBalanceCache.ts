@@ -128,7 +128,7 @@ export class TokenBalanceCache {
   }
 
   public async plus(addrStr: string, tokenAddr: string, amount: string | BigNumber, blockConcise: BlockConcise) {
-    if (new BigNumber(amount).isLessThanOrEqualTo(0)) {
+    if (addrStr === ZeroAddress || new BigNumber(amount).isLessThanOrEqualTo(0)) {
       return;
     }
     await this.setDefault(addrStr, tokenAddr, blockConcise);
@@ -145,6 +145,9 @@ export class TokenBalanceCache {
   }
 
   public async plusNFT(addrStr: string, tokenAddr: string, nftDeltas: NFTBalance[], blockConcise: BlockConcise) {
+    if (addrStr === ZeroAddress) {
+      return;
+    }
     await this.setDefault(addrStr, tokenAddr, blockConcise);
     const key = `${addrStr}_${tokenAddr}`.toLowerCase();
     console.log(
@@ -174,24 +177,28 @@ export class TokenBalanceCache {
 
   public async saveToDB() {
     const count = Object.keys(this.bals).length;
+    const nftCount = Object.keys(this.nfts).length;
     if (count > 0) {
-      console.log(`saving ${count} NFTBalances to DB`);
+      console.log(`saving ${count} NFTBalances`);
       for (const key in this.nfts) {
         if (key in this.bals) {
           this.bals[key].nftBalances = this.nfts[key];
+          console.log(`get ${key} with ${this.nfts[key].length} nft balances`);
         }
       }
       await Promise.all(
         Object.values(this.bals).map((b) => {
-          console.log(`addr: ${b.address} tokenAddr: ${b.tokenAddress} : ${printDelta(b.nftBalances)}`);
           b.nftBalances = b.nftBalances.map((b) => ({ tokenId: b.tokenId, value: b.value }));
+          const count = b.nftBalances.length;
           if (b.balance.isLessThanOrEqualTo(0) && b.nftBalances.length <= 0) {
             return this.tokenBalanceRepo.deleteByID(b.address, b.tokenAddress);
           } else {
+            console.log(`saving tokenBalance for addr: ${b.address} tokenAddr: ${b.tokenAddress} with ${count} nfts`);
             return b.save();
           }
         })
       );
+      console.log(`saved ${count} NFTBalances to DB`);
     }
   }
 

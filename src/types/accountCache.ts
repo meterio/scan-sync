@@ -176,8 +176,8 @@ export class AccountCache {
   public async saveToDB() {
     const count = Object.keys(this.accts).length;
     if (count > 0) {
-      console.log(`saving ${count} accounts to DB`);
       await Promise.all(Object.values(this.accts).map((a) => a.save()));
+      console.log(`saved ${count} accounts to DB`);
     }
   }
 

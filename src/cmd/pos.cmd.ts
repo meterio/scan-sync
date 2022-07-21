@@ -445,8 +445,10 @@ export class PosCMD extends CMD {
       const first = this.blocksCache[0];
       const last = this.blocksCache[this.blocksCache.length - 1];
       await this.blockRepo.bulkInsert(...this.blocksCache);
+      this.log.info(`saved ${this.blocksCache.length} blocks`);
       // update head
       await this.updateHead(last.number, last.hash);
+      this.log.info(`updated head to ${last.number}`);
 
       if (first.number === last.number) {
         this.log.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
@@ -454,7 +456,9 @@ export class PosCMD extends CMD {
         this.log.info({ first: first.number, last: last.number }, `saved ${last.number - first.number + 1} blocks`);
       }
     }
+    this.log.info('handling rebasing');
     await this.handleRebasing();
+    this.log.info('done handling rebasing');
   }
 
   async updateHead(num, hash): Promise<Head> {
@@ -1289,7 +1293,7 @@ export class PosCMD extends CMD {
       qc: { ...blk.qc },
       powBlocks,
     };
-    this.log.info({ number: blk.number, txCount: blk.transactions.length }, 'processed PoS block');
+    this.log.info({ txCount: blk.transactions.length }, `processed PoS block ${blk.number}`);
     this.blocksCache.push(block);
   }
 
