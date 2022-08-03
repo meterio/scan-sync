@@ -1,4 +1,5 @@
-import { BigNumber, Network, parseNetwork } from '@meterio/scan-db/dist';
+import { BigNumber, Network, parseNetwork, Tx } from '@meterio/scan-db/dist';
+import { ScriptEngine } from '@meterio/devkit';
 
 import { UNIT_WEI } from '../const';
 
@@ -84,6 +85,11 @@ export const getNetworkFromCli = () => {
 
 export const isHex = (str: string): boolean => {
   return /^[a-f0-9]+$/i.test(str.toLowerCase());
+};
+
+export const isTraceable = (data: string) => {
+  // has data and not script engine data
+  return data.length > 0 && data !== '0x' && !ScriptEngine.IsScriptEngineData(data);
 };
 
 WaitNextTickError.prototype.name = 'WaitNextTickError';
