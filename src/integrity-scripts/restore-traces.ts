@@ -11,12 +11,11 @@ import {
   Contract,
   TraceOutput,
 } from '@meterio/scan-db/dist';
-import { prototype } from '../const';
+import { prototype, ZeroAddress } from '../const';
 import { Keccak } from 'sha3';
 
 import { checkNetworkWithDB, getNetworkFromCli, isTraceable, Pos } from '../utils';
 import { Document } from 'mongoose';
-import PromisePool from '@supercharge/promise-pool/dist';
 
 const run = async () => {
   const { network, standby } = getNetworkFromCli();
@@ -30,19 +29,20 @@ const run = async () => {
 
   const posHead = await headRepo.findByKey('pos');
   const best = posHead.num;
-  const step = 100000;
-  let updatedTxCache: (Tx & Document<any, any, any>)[] = [];
-  let updatedContractCache: (Contract & Document<any, any, any>)[] = [];
+  const step = 5000;
 
-  for (let i = 0; i < best; i += step) {
+  for (let i = 3400000; i < best; i += step) {
     const start = i;
     const end = i + step - 1 > best ? best : i + step - 1;
 
-    const txs = await txRepo.findInBlockRangeSortAsc(start, end);
+    const txs = await txRepo.findUserTxsInBlockRangeSortAsc(start, end);
     console.log(`searching for txs in blocks [${start}, ${end}]`);
     for (const tx of txs) {
-      if (tx.traces.length > 0) {
+      console.log('processing tx: ', tx.hash);
+
+      if (tx.traces.length > 0 || tx.origin === ZeroAddress) {
         // skip tx with traces
+        console.log('traces exists or origin is 0x00..00, skip tx: ', tx.hash);
         continue;
       }
 
@@ -52,6 +52,10 @@ const run = async () => {
         if (isTraceable(tx.clauses[clauseIndex].data)) {
           tracer = await pos.traceClause(tx.block.hash, tx.hash, clauseIndex);
           traces.push({ json: JSON.stringify(tracer), clauseIndex });
+        } else {
+          // if it's not traceable, it's not likely it's a contract creation tx
+          console.log(`clause ${clauseIndex} not traceable, skip`);
+          continue;
         }
 
         // try to find contract creation event
@@ -65,7 +69,8 @@ const run = async () => {
               // find creationInput in tracing
               let q = [tracer];
               let creationInputHash = '';
-              while (q.length) {
+              console.log(`analyze traces of clause ${clauseIndex} on tx ${tx.hash}`);
+              while (q.length > 0) {
                 const node = q.shift();
                 if (node.calls) {
                   for (const c of node.calls) {
@@ -92,48 +97,28 @@ const run = async () => {
                     contract.status = 'match';
                     contract.verifiedFrom = verifiedContract.address;
                     contract.creationInputHash = creationInputHash;
-                    console.log(`plan to update contract ${contract.address} with code-match verification`);
-                    updatedContractCache.push(contract);
-                    continue;
+                    console.log(`update contract ${contract.address} with code-match verification`);
+                    await contract.save();
                   }
                 }
 
                 if (contract.creationInputHash !== creationInputHash) {
                   contract.creationInputHash = creationInputHash;
-                  console.log(`plan to update contract ${contract.address} with new creationInputHash`);
-                  updatedContractCache.push(contract);
+                  console.log(`update contract ${contract.address} with new creationInputHash`);
+                  await contract.save();
                 }
               }
             }
           }
         }
+        console.log('processed tx: ', tx.hash);
       }
 
       if (traces.length > 0) {
         tx.traces = traces;
-        console.log(`plan to update tx ${tx.hash} with ${traces.length} traces`);
-        updatedTxCache.push(tx);
+        console.log(`update tx ${tx.hash} with ${traces.length} traces`);
+        await tx.save();
       }
-    }
-
-    if (updatedTxCache.length > 0) {
-      console.log(`updated ${updatedTxCache.length} txs with traces`);
-      await PromisePool.withConcurrency(4)
-        .for(updatedTxCache)
-        .process((doc) => {
-          return doc.save();
-        });
-      updatedTxCache = [];
-    }
-
-    if (updatedContractCache.length > 0) {
-      console.log(`updated ${updatedContractCache.length} contracts with creationInputHash`);
-      await PromisePool.withConcurrency(4)
-        .for(updatedContractCache)
-        .process((doc) => {
-          return doc.save();
-        });
-      updatedContractCache = [];
     }
   }
 };
