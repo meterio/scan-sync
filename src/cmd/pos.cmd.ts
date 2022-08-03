@@ -45,6 +45,7 @@ import {
 import { BigNumber } from '@meterio/scan-db/dist';
 import { sha1 } from 'object-hash';
 import pino from 'pino';
+import { Keccak } from 'sha3';
 
 import {
   BoundEvent,
@@ -58,7 +59,7 @@ import {
   ParamsAddress,
 } from '../const';
 import { Pos, fromWei, isHex } from '../utils';
-import { InterruptedError, sleep } from '../utils/utils';
+import { InterruptedError, isTraceable, sleep } from '../utils/utils';
 import { CMD } from './cmd';
 import { newIterator, LogItem } from '../utils/log-traverser';
 import { AccountCache, TokenBalanceCache } from '../types';
@@ -475,7 +476,13 @@ export class PosCMD extends CMD {
     }
   }
 
-  async handleContractCreation(evt: Flex.Meter.Event, txHash: string, blockConcise: BlockConcise) {
+  async handleContractCreation(
+    evt: Flex.Meter.Event,
+    txHash: string,
+    blockConcise: BlockConcise,
+    clauseIndex: number,
+    clauseData: string
+  ) {
     if (!evt.topics || evt.topics[0] !== prototype.$Master.signature) {
       return;
     }
@@ -490,6 +497,46 @@ export class PosCMD extends CMD {
     const decoded = prototype.$Master.decode(evt.data, evt.topics);
     const master = decoded.newMaster;
 
+    let verified = false;
+    let verifiedFrom = '';
+    let status = '';
+    let creationInputHash = '';
+
+    if (isTraceable(clauseData)) {
+      try {
+        const tracer = await this.pos.traceClause(blockConcise.hash, txHash, clauseIndex);
+
+        // find creationInput in tracing
+        let q = [tracer];
+        while (q.length) {
+          const node = q.shift();
+          if (node.calls) {
+            for (const c of node.calls) {
+              q.push(c);
+            }
+          }
+          if ((node.type === 'CREATE' || node.type === 'CREATE2') && node.to === evt.address) {
+            const creationInput = node.input;
+            const hash = new Keccak(256);
+            hash.update(creationInput.replace('0x', ''));
+            creationInputHash = hash.digest('hex');
+            break;
+          }
+        }
+
+        // code-match verification
+        // if verified contract is found by the same input data, recognize the newly deployed contract as verified
+        const verifiedContract = await this.contractRepo.findVerifiedContractsWithCreationInputHash(creationInputHash);
+        if (verifiedContract) {
+          verified = true;
+          status = 'match';
+          verifiedFrom = verifiedContract.address;
+        }
+      } catch (e) {
+        this.log.error({ err: e }, 'could not get tracing ');
+      }
+    }
+
     let c: Contract = {
       type: ContractType.Unknown,
       name: '',
@@ -501,11 +548,15 @@ export class PosCMD extends CMD {
       holdersCount: new BigNumber(0),
       transfersCount: new BigNumber(0),
       creationTxHash: txHash,
+      creationInputHash,
       master,
       code,
+      status,
       verified: false,
+      verifiedFrom,
       firstSeen: blockConcise,
     };
+
     const e721_1155 = await this.pos.fetchERC721AndERC1155Data(evt.address, blockConcise.hash);
     if (e721_1155 && (e721_1155.supports721 || e721_1155.supports1155)) {
       c.type = e721_1155.supports721 ? ContractType.ERC721 : ContractType.ERC1155;
@@ -1041,10 +1092,18 @@ export class PosCMD extends CMD {
         events: [],
         transfers: [],
       };
+      var tracer: Pos.CallTracerOutput;
+      if (isTraceable(tx.clauses[clauseIndex].data)) {
+        try {
+          tracer = await this.pos.traceClause(blockConcise.hash, tx.id, clauseIndex);
+          traces.push({ json: JSON.stringify(tracer), clauseIndex });
+        } catch (e) {
+          this.log.error({ err: e }, 'failed to get tracing');
+        }
+      }
+
       if (o.events.length && o.transfers.length) {
         try {
-          const tracer = await this.pos.traceClause(blockConcise.hash, tx.id, clauseIndex);
-          traces.push({ json: JSON.stringify(tracer), clauseIndex });
           let logIndex = 0;
           for (const item of newIterator(tracer, o.events, o.transfers)) {
             if (item.type === 'event') {
@@ -1124,7 +1183,7 @@ export class PosCMD extends CMD {
         }
 
         // ### Handle contract creation
-        await this.handleContractCreation(evt, tx.id, blockConcise);
+        await this.handleContractCreation(evt, tx.id, blockConcise, clauseIndex, tx.clauses[clauseIndex].data);
 
         // ### Handle staking bound event
         await this.handleBound(evt, tx.id, clauseIndex, logIndex, blockConcise);
