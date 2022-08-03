@@ -492,10 +492,13 @@ export class Pos {
   }
 
   public async traceClause(blockID: string, txHash: string, clauseIndex = 0) {
-    const result = await this.httpPost<Pos.CallTracerOutput>('debug/tracers', {
+    const blockIDHex = blockID.replace('0x', '');
+    const txHashHex = txHash.replace('0x', '');
+    const data = {
       name: 'call',
-      target: `${blockID}/${txHash}/${clauseIndex}`,
-    });
+      target: `${blockIDHex}/${txHashHex}/${clauseIndex}`,
+    };
+    const result = await this.httpPost<Pos.CallTracerOutput>('debug/tracers', data);
     return result;
   }
 

@@ -50,7 +50,7 @@ const run = async () => {
       for (const [clauseIndex, clause] of tx.clauses.entries()) {
         let tracer: Pos.CallTracerOutput;
         if (isTraceable(tx.clauses[clauseIndex].data)) {
-          tracer = await pos.traceClause(tx.block.hash, tx.id, clauseIndex);
+          tracer = await pos.traceClause(tx.block.hash, tx.hash, clauseIndex);
           traces.push({ json: JSON.stringify(tracer), clauseIndex });
         }
 
