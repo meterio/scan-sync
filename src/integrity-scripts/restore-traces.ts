@@ -31,14 +31,14 @@ const run = async () => {
   const best = posHead.num;
   const step = 5000;
 
-  for (let i = 3400000; i < best; i += step) {
+  for (let i = 0; i < best; i += step) {
     const start = i;
     const end = i + step - 1 > best ? best : i + step - 1;
 
     const txs = await txRepo.findUserTxsInBlockRangeSortAsc(start, end);
     console.log(`searching for txs in blocks [${start}, ${end}]`);
     for (const tx of txs) {
-      console.log('processing tx: ', tx.hash);
+      console.log(`blk:${tx.block.number}, processing tx ${tx.hash}`);
 
       if (tx.traces.length > 0 || tx.origin === ZeroAddress) {
         // skip tx with traces
