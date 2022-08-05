@@ -58,6 +58,7 @@ const run = async () => {
               method: signature,
               reverted: tx.reverted,
               clauseIndexs: [clauseIndex],
+              txIndex: tx.txIndex,
               seq: 0,
             });
             const digests = await txDigestRepo.findByBlockNum(tx.block.number);
