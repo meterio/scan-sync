@@ -14,8 +14,9 @@ import {
 import { prototype, ZeroAddress } from '../const';
 import { Keccak } from 'sha3';
 
-import { checkNetworkWithDB, getNetworkFromCli, isTraceable, Pos } from '../utils';
+import { checkNetworkWithDB, getNetworkFromCli, isTraceable, Pos, sleep } from '../utils';
 import { Document } from 'mongoose';
+import { createCipheriv } from 'crypto';
 
 const run = async () => {
   const { network, standby } = getNetworkFromCli();
@@ -50,8 +51,21 @@ const run = async () => {
       for (const [clauseIndex, clause] of tx.clauses.entries()) {
         let tracer: Pos.CallTracerOutput;
         if (isTraceable(tx.clauses[clauseIndex].data)) {
-          tracer = await pos.traceClause(tx.block.hash, tx.hash, clauseIndex);
-          traces.push({ json: JSON.stringify(tracer), clauseIndex });
+          try {
+            tracer = await pos.traceClause(tx.block.hash, tx.hash, clauseIndex);
+            traces.push({ json: JSON.stringify(tracer), clauseIndex });
+          } catch (e) {
+            console.log('error getting 1st trace for tx:', tx.hash, 'sleep for 5 seconds');
+            await sleep(5000);
+            try {
+              tracer = await pos.traceClause(tx.block.hash, tx.hash, clauseIndex);
+              traces.push({ json: JSON.stringify(tracer), clauseIndex });
+            } catch (e) {
+              console.log('error getting 2nd trace for tx: ', tx.hash);
+              console.log('skip this tx for now');
+              continue;
+            }
+          }
         } else {
           // if it's not traceable, it's not likely it's a contract creation tx
           console.log(`clause ${clauseIndex} not traceable, skip`);
