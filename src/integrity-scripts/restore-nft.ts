@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { ERC721, ERC1155, abi } from '@meterio/devkit';
+import { ERC721, ERC721ABI, ERC1155, ERC1155ABI, abi } from '@meterio/devkit';
 import {
   HeadRepo,
   connectDB,
@@ -20,7 +20,6 @@ import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s
 
 import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
 import { GetNetworkConfig, ZeroAddress } from '../const';
-import { Document } from 'mongoose';
 
 // Set the AWS Region
 const REGION = 'ap-southeast-1';
@@ -28,15 +27,6 @@ const ALBUM_BUCKET_NAME = 'nft-image.meter';
 const S3_WEBSITE_BASE = 'nft-image.meter.io';
 const INFURA_IPFS_PREFIX = 'https://metersync.infura-ipfs.io/ipfs/';
 
-const TOKEN_URI_ABI = [
-  {
-    inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
-    name: 'tokenURI',
-    outputs: [{ internalType: 'string', name: '', type: 'string' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
 const URI_ABI = [
   {
     inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
@@ -53,12 +43,13 @@ const s3 = new S3Client({
 
 const convertables = ['ipfs://', 'https://gateway.pinata.cloud/ipfs/'];
 const convertUrl = (uri) => {
-  const proxyUrl = String(uri).replace('ipfs://', INFURA_IPFS_PREFIX);
+  let url = uri;
   for (const conv of convertables) {
-    if (proxyUrl.startsWith(conv)) {
-      return proxyUrl.replace(conv, INFURA_IPFS_PREFIX);
+    if (url.startsWith(conv)) {
+      return url.replace(conv, INFURA_IPFS_PREFIX);
     }
   }
+  return url;
 };
 
 const findMintedERC1155InRange = async (
@@ -94,10 +85,10 @@ const findMintedERC1155InRange = async (
       continue;
     }
     const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-    const contract = new ethers.Contract(tokenAddress, URI_ABI, provider);
-    const tokenURI = '';
+    const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
+    let tokenURI = '';
     try {
-      await contract.uri(tokenId);
+      tokenURI = await contract.uri(tokenId);
     } catch (e) {
       console.log(`error getting tokenURI on ERC1155 [${tokenId}] on ${tokenAddress}`);
     }
@@ -136,9 +127,9 @@ const findMintedERC1155InRange = async (
       }
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const contract = new ethers.Contract(tokenAddress, URI_ABI, provider);
-      const tokenURI = '';
+      let tokenURI = '';
       try {
-        await contract.uri(id);
+        tokenURI = await contract.uri(id);
       } catch (e) {
         console.log(`error getting tokenURI on ERC1155 [${id}] on ${tokenAddress}`);
       }
@@ -191,10 +182,10 @@ const findMintedERC721InRange = async (
       continue;
     }
     const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-    const contract = new ethers.Contract(tokenAddress, TOKEN_URI_ABI, provider);
-    const tokenURI = '';
+    const contract = new ethers.Contract(tokenAddress, [ERC721ABI.tokenURI], provider);
+    let tokenURI = '';
     try {
-      await contract.tokenURI(tokenId);
+      tokenURI = await contract.tokenURI(tokenId);
     } catch (e) {
       console.log(`error getting tokenURI on ERC721 [${tokenId}] on ${tokenAddress}`);
     }
@@ -232,7 +223,7 @@ const run = async () => {
     const minted721 = await findMintedERC721InRange(network, start, end, evtRepo, nftRepo);
     const minted1155 = await findMintedERC1155InRange(network, start, end, evtRepo, nftRepo);
     if (minted721.length > 0) {
-      console.log(`save minted ${minted1155.length} ERC721 tokens`);
+      console.log(`save minted ${minted721.length} ERC721 tokens`);
       nftRepo.bulkInsert(...minted721);
     }
 
@@ -242,18 +233,18 @@ const run = async () => {
     }
     const minted = minted721.concat(minted1155);
 
-    console.log(`------------------------------------------------------`);
-    console.log(`Start to update info/cache media for ${minted.length} nfts`);
-    console.log(`------------------------------------------------------`);
-    await PromisePool.withConcurrency(20)
-      .for(minted)
-      .process(async (nft, index, pool) => {
-        try {
-          await updateNFTInfo(nft, nftRepo);
-        } catch (e) {
-          console.log(`${index + 1}/${minted.length}| Error: ${e.message} for [${nft.tokenId}] of ${nft.address} `);
-        }
-      });
+    if (minted.length > 0) {
+      console.log(`Start to update info for ${minted.length} nfts`);
+      await PromisePool.withConcurrency(4)
+        .for(minted)
+        .process(async (nft, index, pool) => {
+          try {
+            await updateNFTInfo(nft, nftRepo);
+          } catch (e) {
+            console.log(`${index + 1}/${minted.length}| Error: ${e.message} for [${nft.tokenId}] of ${nft.address} `);
+          }
+        });
+    }
   }
 };
 
@@ -283,6 +274,11 @@ const uploadToAlbum = async (albumName, photoName, imageArraybuffer) => {
 };
 
 const updateNFTInfo = async (nft: NFT, nftRepo: NFTRepo) => {
+  console.log(`update info for ${nft.type}:${nft.address}[${nft.tokenId}] with tokenURI: ${nft.tokenURI}`);
+  if (!nft.tokenURI || nft.tokenURI == '') {
+    console.log('SKIPPED due to empty tokenURI');
+    return;
+  }
   const url = convertUrl(nft.tokenURI);
   try {
     const tokenJSONRes = await axios.get(url);
@@ -293,8 +289,10 @@ const updateNFTInfo = async (nft: NFT, nftRepo: NFTRepo) => {
         return Buffer.from(mediaURI.split(';base64').pop(), 'base64');
       }
       const downURI = convertUrl(mediaURI);
+      console.log(`download media from ${downURI}`);
       const res = await axios.get(downURI, { responseType: 'arraybuffer' });
       const mediaType = res.headers['content-type'];
+      console.log(`media type: ${mediaType}`);
 
       const uploaded = exist(nft.address, nft.tokenId);
       if (!uploaded) {
@@ -304,7 +302,7 @@ const updateNFTInfo = async (nft: NFT, nftRepo: NFTRepo) => {
       await nftRepo.updateInfo(nft.address, nft.tokenId, tokenJSON, mediaType, cachedMediaURI);
     }
   } catch (e) {
-    console.log(`error updating info for [${nft.tokenId}] on ${nft.address}: ${e}`);
+    console.log(`error updating info for ${nft.type}[${nft.tokenId}] on ${nft.address}: ${e}`);
   }
 };
 
