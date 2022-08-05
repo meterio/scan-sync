@@ -12,10 +12,14 @@ export const UNIT_WEI = 1e18;
 const {
   TESTNET_RESTFUL_ENDPOINT,
   TESTNET_POW_RPC_HOST,
+  TESTNET_RPC_ENDPOINT,
   MAINNET_RESTFUL_ENDPOINT,
   MAINNET_POW_RPC_HOST,
+  MAINNET_RPC_ENDPOINT,
   VERSE_RESTFUL_ENDPOINT,
   VERSE_TEST_RESTFUL_ENDPOINT,
+  VERSE_RPC_ENDPOINT,
+  VERSE_TEST_RPC_ENDPOINT,
 } = process.env;
 
 const TESTNET_POW_RPC_PORT = 8332;
@@ -35,6 +39,7 @@ export const GetNetworkConfig = (net: Network) => {
         host: MAINNET_POW_RPC_HOST,
         port: MAINNET_POW_RPC_PORT,
         posUrl: MAINNET_RESTFUL_ENDPOINT,
+        rpcUrl: MAINNET_RPC_ENDPOINT,
 
         powEnabled: true,
         auctionEnabled: true,
@@ -50,6 +55,7 @@ export const GetNetworkConfig = (net: Network) => {
         host: TESTNET_POW_RPC_HOST,
         port: TESTNET_POW_RPC_PORT,
         posUrl: TESTNET_RESTFUL_ENDPOINT,
+        rpcUrl: TESTNET_RPC_ENDPOINT,
 
         powEnabled: true,
         auctionEnabled: true,
@@ -61,18 +67,20 @@ export const GetNetworkConfig = (net: Network) => {
     case Network.VerseMain: {
       return {
         posUrl: VERSE_RESTFUL_ENDPOINT,
+        rpcUrl: VERSE_RPC_ENDPOINT,
 
         powEnabled: false,
         auctionEnabled: false,
         sourcifyEnabled: false,
 
-        coingeckoEnergy: 'meter-stable',
+        coingeckoEnergy: 'stp-network',
         coingeckoBalance: 1,
       };
     }
     case Network.VerseTest: {
       return {
         posUrl: VERSE_TEST_RESTFUL_ENDPOINT,
+        rpcUrl: VERSE_TEST_RPC_ENDPOINT,
 
         powEnabled: false,
         auctionEnabled: false,
