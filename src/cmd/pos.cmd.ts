@@ -869,7 +869,8 @@ export class PosCMD extends CMD {
 
   protected updateTxDigests(
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
-    blockConcise: BlockConcise
+    blockConcise: BlockConcise,
+    txIndex: number
   ) {
     let transferDigestMap: { [key: string]: TxDigest } = {}; // key: sha1(from,to) -> val: txDigest object
     let callDigests: TxDigest[] = [];
@@ -917,6 +918,7 @@ export class PosCMD extends CMD {
             method: signature,
             reverted: tx.reverted,
             clauseIndexs: [clauseIndex],
+            txIndex,
             seq: 0,
           });
         }
@@ -943,6 +945,7 @@ export class PosCMD extends CMD {
             from: decoded.from.toLowerCase(),
             to: decoded.to.toLowerCase(),
             reverted: tx.reverted,
+            txIndex,
           };
           const amount = new BigNumber(decoded.value);
           const isMTRSysContract = !!this.mtrSysToken && evt.address.toLowerCase() === this.mtrSysToken.address;
@@ -992,6 +995,7 @@ export class PosCMD extends CMD {
             method: 'Transfer',
             reverted: tx.reverted,
             clauseIndexs: [],
+            txIndex,
             seq: 0,
           };
         }
@@ -1169,7 +1173,7 @@ export class PosCMD extends CMD {
 
     await this.updateLogs(tx, blockConcise);
 
-    this.updateTxDigests(tx, blockConcise);
+    this.updateTxDigests(tx, blockConcise, txIndex);
 
     // prepare events and outputs
     for (const [clauseIndex, o] of tx.outputs.entries()) {
