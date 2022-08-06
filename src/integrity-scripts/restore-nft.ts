@@ -25,17 +25,8 @@ import { GetNetworkConfig, ZeroAddress } from '../const';
 const REGION = 'ap-southeast-1';
 const ALBUM_BUCKET_NAME = 'nft-image.meter';
 const S3_WEBSITE_BASE = 'nft-image.meter.io';
-const INFURA_IPFS_PREFIX = 'https://metersync.infura-ipfs.io/ipfs/';
-
-const URI_ABI = [
-  {
-    inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    name: 'uri',
-    outputs: [{ internalType: 'string', name: '', type: 'string' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
+// const INFURA_IPFS_PREFIX = 'https://metersync.infura-ipfs.io/ipfs/';
+const INFURA_IPFS_PREFIX = 'https://metersync.mypinata.cloud/ipfs/';
 
 const s3 = new S3Client({
   region: REGION,
@@ -100,6 +91,7 @@ const findMintedERC1155InRange = async (
       minter: to,
       block: evt.block,
       creationTxHash: evt.txHash,
+      status: 'new',
     });
   }
 
@@ -126,7 +118,7 @@ const findMintedERC1155InRange = async (
         continue;
       }
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-      const contract = new ethers.Contract(tokenAddress, URI_ABI, provider);
+      const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
       let tokenURI = '';
       try {
         tokenURI = await contract.uri(id);
@@ -141,6 +133,7 @@ const findMintedERC1155InRange = async (
         minter: to,
         block: evt.block,
         creationTxHash: evt.txHash,
+        status: 'new',
       });
     }
   }
@@ -198,6 +191,7 @@ const findMintedERC721InRange = async (
       minter: to,
       block: evt.block,
       creationTxHash: evt.txHash,
+      status: 'new',
     });
   }
   return minted;
@@ -241,7 +235,7 @@ const run = async () => {
           try {
             await updateNFTInfo(nft, nftRepo);
           } catch (e) {
-            console.log(`${index + 1}/${minted.length}| Error: ${e.message} for [${nft.tokenId}] of ${nft.address} `);
+            console.log(`${index + 1}/${minted.length}| [${nft.tokenId}] of ${nft.address} Error: ${e.message}`);
           }
         });
     }
@@ -280,29 +274,49 @@ const updateNFTInfo = async (nft: NFT, nftRepo: NFTRepo) => {
     return;
   }
   const url = convertUrl(nft.tokenURI);
-  try {
-    const tokenJSONRes = await axios.get(url);
-    if (tokenJSONRes && tokenJSONRes.data) {
-      const tokenJSON = JSON.stringify(tokenJSONRes.data);
-      const mediaURI = String(tokenJSONRes.data.image);
-      if (mediaURI.includes(';base64')) {
-        return Buffer.from(mediaURI.split(';base64').pop(), 'base64');
-      }
+  console.log(`download token json from ${url}`);
+  const tokenJSONRes = await axios.get(url);
+  if (tokenJSONRes && tokenJSONRes.data) {
+    let tokenJSON = '';
+    try {
+      tokenJSON = JSON.stringify(tokenJSONRes.data);
+    } catch (e) {
+      await nftRepo.updateStatus(nft.address, nft.tokenId, 'invalid');
+      return;
+    }
+    if (!tokenJSONRes.data.image) {
+      await nftRepo.updateStatus(nft.address, nft.tokenId, 'invalid');
+      return;
+    }
+
+    const mediaURI = String(tokenJSONRes.data.image);
+    let mediaType: string;
+    let reader: any;
+    if (mediaURI.includes(';base64')) {
+      reader = Buffer.from(mediaURI.split(';base64').pop(), 'base64');
+      mediaType = 'base64';
+    } else {
       const downURI = convertUrl(mediaURI);
       console.log(`download media from ${downURI}`);
       const res = await axios.get(downURI, { responseType: 'arraybuffer' });
-      const mediaType = res.headers['content-type'];
-      console.log(`media type: ${mediaType}`);
-
-      const uploaded = exist(nft.address, nft.tokenId);
-      if (!uploaded) {
-        await uploadToAlbum(nft.address, nft.tokenId, res.data);
+      if (res.status !== 200) {
+        await nftRepo.updateStatus(nft.address, nft.tokenId, 'uncached');
+        return;
       }
-      const cachedMediaURI = `https://${S3_WEBSITE_BASE}/${nft.address}/${nft.tokenId}`;
-      await nftRepo.updateInfo(nft.address, nft.tokenId, tokenJSON, mediaType, cachedMediaURI);
+      reader = res.data;
+      mediaType = res.headers['content-type'];
     }
-  } catch (e) {
-    console.log(`error updating info for ${nft.type}[${nft.tokenId}] on ${nft.address}: ${e}`);
+
+    const uploaded = exist(nft.address, nft.tokenId);
+    const cachedMediaURI = `https://${S3_WEBSITE_BASE}/${nft.address}/${nft.tokenId}`;
+    if (!uploaded) {
+      await uploadToAlbum(nft.address, nft.tokenId, reader);
+      console.log(`uploaded ${mediaURI} to ${cachedMediaURI}`);
+    }
+    await nftRepo.updateInfo(nft.address, nft.tokenId, tokenJSON, mediaType, cachedMediaURI);
+    await nftRepo.updateStatus(nft.address, nft.tokenId, 'cached');
+  } else {
+    await nftRepo.updateStatus(nft.address, nft.tokenId, 'invalid');
   }
 };
 

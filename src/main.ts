@@ -8,6 +8,7 @@ import pino from 'pino';
 import * as pkg from '../package.json';
 import { CMD } from './cmd/cmd';
 import { MetricCMD } from './cmd/metric.cmd';
+import { NFTCMD } from './cmd/nft.cmd';
 import { PosCMD } from './cmd/pos.cmd';
 import { PowCMD } from './cmd/pow.cmd';
 import { ScriptEngineCMD } from './cmd/scriptEngine.cmd';
@@ -33,6 +34,9 @@ switch (process.argv[3]) {
     break;
   case 'pow':
     cmd = new PowCMD(network);
+    break;
+  case 'nft':
+    cmd = new NFTCMD(network);
     break;
   case 'metric':
     cmd = new MetricCMD(network);
