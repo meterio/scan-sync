@@ -118,26 +118,17 @@ export class NFTCMD extends CMD {
         }
         const minted = minted721.concat(minted1155);
         // remove duplicates from minted tokens by (address, tokenId)
-        let distinct = [];
-        let visited = {};
-        for (const m of minted) {
-          const key = `${m.address}_${m.tokenId}`;
-          if (key in visited) {
-            continue;
-          }
-          distinct.push(m);
-        }
 
-        if (distinct.length > 0) {
-          console.log(`Start to update info for ${distinct.length} nfts`);
+        if (minted.length > 0) {
+          console.log(`Start to update info for ${minted.length} nfts`);
           await PromisePool.withConcurrency(4)
-            .for(distinct)
+            .for(minted)
             .process(async (nft, index, pool) => {
               try {
                 await this.updateNFTInfo(nft);
               } catch (e) {
                 console.log(
-                  `${index + 1}/${distinct.length}| Error: ${e.message} for [${nft.tokenId}] of ${nft.address} `
+                  `${index + 1}/${minted.length}| Error: ${e.message} for [${nft.tokenId}] of ${nft.address} `
                 );
               }
             });
@@ -192,6 +183,7 @@ export class NFTCMD extends CMD {
     const singles = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferSingle.signature, start, end);
     console.log(`searching for ERC1155 singles in blocks [${start}, ${end}]`);
     let minted: NFT[] = [];
+    let visited = {};
     for (const evt of singles) {
       let decoded: abi.Decoded;
       try {
@@ -204,10 +196,17 @@ export class NFTCMD extends CMD {
       const to = decoded.to.toLowerCase();
       const tokenId = decoded.id;
       const tokenAddress = evt.address.toLowerCase();
+      const key = `${tokenAddress}_${tokenId}`;
 
       if (from !== ZeroAddress) {
         continue;
       }
+      if (key in visited) {
+        console.log(`skip: mint ERC1155 token [${tokenId}] on ${tokenAddress} at ${evt.txHash} due to duplication`);
+        continue;
+      }
+      visited[key] = true;
+
       console.log(`mint ERC1155 token [${tokenId}] on ${tokenAddress} at ${evt.txHash}`);
       const exist = await this.nftRepo.exist(tokenAddress, tokenId);
       if (exist) {
@@ -247,9 +246,16 @@ export class NFTCMD extends CMD {
       const to = decoded.to.toLowerCase();
       const tokenAddress = evt.address.toLowerCase();
       for (const [i, id] of decoded.ids.entries()) {
+        const key = `${tokenAddress}_${id}`;
         if (from !== ZeroAddress) {
           continue;
         }
+        if (key in visited) {
+          console.log(`skip: mint ERC1155 token [${id}] on ${tokenAddress} at ${evt.txHash} due to duplication`);
+          continue;
+        }
+        visited[key] = true;
+
         console.log(`mint ERC1155 token [${id}] on ${tokenAddress} at ${evt.txHash}`);
         const exist = await this.nftRepo.exist(tokenAddress, id);
         if (exist) {
@@ -284,6 +290,7 @@ export class NFTCMD extends CMD {
     const transferEvts = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC721.Transfer.signature, start, end);
     console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
     let minted: NFT[] = [];
+    let visited = {};
     for (const evt of transferEvts) {
       let decoded: abi.Decoded;
       try {
@@ -296,10 +303,15 @@ export class NFTCMD extends CMD {
       const to = decoded.to.toLowerCase();
       const tokenAddress = evt.address.toLowerCase();
       const tokenId = new BigNumber(decoded.tokenId).toFixed();
+      const key = `${tokenAddress}_${tokenId}`;
 
       if (from !== ZeroAddress) {
         continue;
       }
+      if (key in visited) {
+        console.log(`skip: mint ERC721 token [${tokenId}] on ${tokenAddress} at ${evt.txHash} due to duplication`);
+      }
+      visited[key] = true;
 
       console.log(`mint ERC721 token [${tokenId}] on ${tokenAddress} at ${evt.txHash}`);
       const exist = await this.nftRepo.exist(tokenAddress, tokenId);
