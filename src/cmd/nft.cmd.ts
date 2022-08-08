@@ -21,7 +21,7 @@ const ALBUM_BUCKET_NAME = 'nft-image.meter';
 const S3_WEBSITE_BASE = 'nft-image.meter.io';
 // const INFURA_IPFS_PREFIX = 'https://metersync.infura-ipfs.io/ipfs/';
 const INFURA_IPFS_PREFIX = 'https://metersync.mypinata.cloud/ipfs/';
-const convertables = ['ipfs://', 'https://gateway.pinata.cloud/ipfs/'];
+const convertables = ['ipfs://', 'https://gateway.pinata.cloud/ipfs/', 'https://ipfs.io/ipfs/'];
 
 const s3 = new S3Client({
   region: REGION,
