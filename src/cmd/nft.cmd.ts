@@ -55,6 +55,8 @@ export class NFTCMD extends CMD {
 
   public async start() {
     this.log.info(`${this.name}: start`);
+    // const cached = await this.isCached('0xc345e76a77c6287df132b3554e8cbbb4d9e91fa4', '1804');
+    // console.log('cached: ', cached);
     this.loop();
     return;
   }
@@ -373,6 +375,7 @@ export class NFTCMD extends CMD {
     };
     try {
       const data = await s3.send(new PutObjectCommand(uploadParams));
+      console.log(`uploaded file to ${key}`);
     } catch (err) {
       throw new Error('error uploading your photo: ' + err.message);
     }
@@ -418,7 +421,7 @@ export class NFTCMD extends CMD {
         mediaType = res.headers['content-type'];
       }
 
-      const uploaded = this.isCached(nft.address, nft.tokenId);
+      const uploaded = await this.isCached(nft.address, nft.tokenId);
       const cachedMediaURI = `https://${S3_WEBSITE_BASE}/${nft.address}/${nft.tokenId}`;
       if (!uploaded) {
         await this.uploadToAlbum(nft.address, nft.tokenId, reader);
@@ -426,7 +429,7 @@ export class NFTCMD extends CMD {
       }
       nft.tokenJSON = tokenJSON;
       nft.mediaType = mediaType;
-      nft.mediaURI = mediaURI;
+      nft.mediaURI = cachedMediaURI;
       nft.status = 'cached';
     } else {
       nft.status = 'invalid';
