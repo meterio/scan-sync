@@ -17,13 +17,13 @@ const run = async () => {
 
   const pos = await headRepo.findByKey('pos');
   const best = pos.num;
-  const step = 100000;
+  const step = 10000;
 
   for (let i = 0; i < best; i += step) {
     const start = i;
     const end = i + step - 1 > best ? best : i + step - 1;
 
-    const digests = await txDigestRepo.findInRange(start, end);
+    const digests = await txDigestRepo.findInRangeWithoutTxIndex(start, end);
     for (const d of digests) {
       const tx = await txRepo.findByHash(d.txHash);
       if (tx) {
