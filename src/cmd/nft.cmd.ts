@@ -23,6 +23,8 @@ const S3_WEBSITE_BASE = 'nft-image.meter.io';
 const INFURA_IPFS_PREFIX = 'https://metersync.mypinata.cloud/ipfs/';
 const convertables = ['ipfs://', 'https://gateway.pinata.cloud/ipfs/', 'https://ipfs.io/ipfs/'];
 
+const BASE64_ENCODED_JSON = 'base64 encoded json';
+
 const s3 = new S3Client({
   region: REGION,
 });
@@ -222,10 +224,17 @@ export class NFTCMD extends CMD {
       } catch (e) {
         console.log(`error getting tokenURI on ERC1155 [${tokenId}] on ${tokenAddress}`);
       }
+      let tokenJSON = {};
+      if (tokenURI.startsWith('data:application/json;base64,')) {
+        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
+        tokenJSON = JSON.parse(content);
+        tokenURI = BASE64_ENCODED_JSON;
+      }
       minted.push({
         address: tokenAddress,
         tokenId,
         tokenURI,
+        tokenJSON: JSON.stringify(tokenJSON),
         type: 'ERC1155',
         minter: to,
         block: evt.block,
@@ -271,10 +280,17 @@ export class NFTCMD extends CMD {
         } catch (e) {
           console.log(`error getting tokenURI on ERC1155 [${id}] on ${tokenAddress}`);
         }
+        let tokenJSON = {};
+        if (tokenURI.startsWith('data:application/json;base64,')) {
+          const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
+          tokenJSON = JSON.parse(content);
+          tokenURI = BASE64_ENCODED_JSON;
+        }
         minted.push({
           address: tokenAddress,
           tokenId: id,
           tokenURI,
+          tokenJSON: JSON.stringify(tokenJSON),
           type: 'ERC1155',
           minter: to,
           block: evt.block,
@@ -328,11 +344,18 @@ export class NFTCMD extends CMD {
       } catch (e) {
         console.log(`error getting tokenURI on ERC721 [${tokenId}] on ${tokenAddress}`);
       }
+      let tokenJSON = {};
+      if (tokenURI.startsWith('data:application/json;base64,')) {
+        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
+        tokenJSON = JSON.parse(content);
+        tokenURI = BASE64_ENCODED_JSON;
+      }
 
       minted.push({
         address: tokenAddress,
         tokenId,
         tokenURI,
+        tokenJSON: JSON.stringify(tokenJSON),
         type: 'ERC721',
         minter: to,
         block: evt.block,
@@ -385,54 +408,62 @@ export class NFTCMD extends CMD {
     console.log(`update info for ${nft.type}:${nft.address}[${nft.tokenId}] with tokenURI: ${nft.tokenURI}`);
     if (!nft.tokenURI || nft.tokenURI == '') {
       console.log('SKIPPED due to empty tokenURI');
+      nft.status = 'invalid';
       return;
     }
-    const url = this.convertUrl(nft.tokenURI);
-    console.log(`download token json from ${url}`);
-    const tokenJSONRes = await axios.get(url);
-    if (tokenJSONRes && tokenJSONRes.data) {
-      let tokenJSON = '';
-      try {
-        tokenJSON = JSON.stringify(tokenJSONRes.data);
-      } catch (e) {
-        nft.status = 'invalid';
-        return;
-      }
-      if (!tokenJSONRes.data.image) {
-        nft.status = 'invalid';
-        return;
-      }
+    let { tokenURI, tokenJSON } = nft;
 
-      const mediaURI = String(tokenJSONRes.data.image);
-      let mediaType: string;
-      let reader: any;
-      if (mediaURI.includes(';base64')) {
-        reader = Buffer.from(mediaURI.split(';base64').pop(), 'base64');
-        mediaType = 'base64';
-      } else {
-        const downURI = this.convertUrl(mediaURI);
-        console.log(`download media from ${downURI}`);
-        const res = await axios.get(downURI, { responseType: 'arraybuffer' });
-        if (res.status !== 200) {
-          nft.status = 'uncached';
+    if (tokenURI !== BASE64_ENCODED_JSON) {
+      const url = this.convertUrl(nft.tokenURI);
+      console.log(`download token json from ${url}`);
+      const tokenJSONRes = await axios.get(url);
+      if (tokenJSONRes && tokenJSONRes.data) {
+        try {
+          tokenJSON = JSON.stringify(tokenJSONRes.data);
+        } catch (e) {
+          nft.status = 'invalid';
           return;
         }
-        reader = res.data;
-        mediaType = res.headers['content-type'];
+      } else {
+        nft.status = 'invalid';
+        return;
       }
-
-      const uploaded = await this.isCached(nft.address, nft.tokenId);
-      const cachedMediaURI = `https://${S3_WEBSITE_BASE}/${nft.address}/${nft.tokenId}`;
-      if (!uploaded) {
-        await this.uploadToAlbum(nft.address, nft.tokenId, reader);
-        console.log(`uploaded ${mediaURI} to ${cachedMediaURI}`);
-      }
-      nft.tokenJSON = tokenJSON;
-      nft.mediaType = mediaType;
-      nft.mediaURI = cachedMediaURI;
-      nft.status = 'cached';
-    } else {
-      nft.status = 'invalid';
     }
+    let mediaURI = '';
+    try {
+      const decoded = JSON.parse(tokenJSON);
+      mediaURI = String(decoded.image);
+    } catch (e) {
+      console.log('could not decode tokenJSON');
+      nft.status = 'invalid';
+      return;
+    }
+    let mediaType: string;
+    let reader: any;
+    if (mediaURI.includes(';base64')) {
+      reader = Buffer.from(mediaURI.split(';base64').pop(), 'base64');
+      mediaType = 'base64';
+    } else {
+      const downURI = this.convertUrl(mediaURI);
+      console.log(`download media from ${downURI}`);
+      const res = await axios.get(downURI, { responseType: 'arraybuffer' });
+      if (res.status !== 200) {
+        nft.status = 'uncached';
+        return;
+      }
+      reader = res.data;
+      mediaType = res.headers['content-type'];
+    }
+
+    const uploaded = await this.isCached(nft.address, nft.tokenId);
+    const cachedMediaURI = `https://${S3_WEBSITE_BASE}/${nft.address}/${nft.tokenId}`;
+    if (!uploaded) {
+      await this.uploadToAlbum(nft.address, nft.tokenId, reader);
+      console.log(`uploaded ${mediaURI} to ${cachedMediaURI}`);
+    }
+    nft.tokenJSON = tokenJSON;
+    nft.mediaType = mediaType;
+    nft.mediaURI = cachedMediaURI;
+    nft.status = 'cached';
   }
 }
