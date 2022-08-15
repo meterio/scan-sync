@@ -157,6 +157,8 @@ export class NFTCMD extends CMD {
           await this.nftCache.transfer1155(tokenAddress, id, from, to, value);
           continue;
         }
+        const tokenStr = `${tokenAddress}[${id}:${value}]`;
+        console.log(`found mint ERC1155 ${tokenStr} at ${evt.txHash}`);
 
         const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
         const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
@@ -164,7 +166,7 @@ export class NFTCMD extends CMD {
         try {
           tokenURI = await contract.uri(id);
         } catch (e) {
-          console.log(`error getting tokenURI on ERC1155 [${id}] on ${tokenAddress}`);
+          console.log(`error getting tokenURI for ERC1155 ${tokenStr}`);
         }
         let tokenJSON = {};
         if (tokenURI.startsWith('data:application/json;base64,')) {
@@ -205,21 +207,23 @@ export class NFTCMD extends CMD {
       const from = decoded.from.toLowerCase();
       const to = decoded.to.toLowerCase();
       const tokenId = decoded.id;
+      const value = new BigNumber(decoded.value.toString()).toNumber();
       const tokenAddress = evt.address.toLowerCase();
+      const tokenStr = `${tokenAddress}[${tokenId}:${value}]`;
 
       if (from !== ZeroAddress) {
         await this.nftCache.transfer1155(tokenAddress, tokenId, from, to, 1);
         continue;
       }
 
-      console.log(`mint ERC1155 token [${tokenId}] on ${tokenAddress} at ${evt.txHash}`);
+      console.log(`found mint ERC1155 ${tokenStr} at ${evt.txHash}`);
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
       let tokenURI = '';
       try {
         tokenURI = await contract.uri(tokenId);
       } catch (e) {
-        console.log(`error getting tokenURI on ERC1155 [${tokenId}] on ${tokenAddress}`);
+        console.log(`error getting tokenURI for ERC1155 ${tokenStr}`);
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {
@@ -231,7 +235,7 @@ export class NFTCMD extends CMD {
         address: tokenAddress,
         tokenId,
         tokenURI,
-        value: 1,
+        value,
         tokenJSON: JSON.stringify(tokenJSON),
         type: 'ERC1155',
         minter: to,
@@ -261,20 +265,21 @@ export class NFTCMD extends CMD {
       const to = decoded.to.toLowerCase();
       const tokenAddress = evt.address.toLowerCase();
       const tokenId = new BigNumber(decoded.tokenId).toFixed();
+      const tokenStr = `${tokenAddress}[${tokenId}]`;
 
       if (from !== ZeroAddress) {
         await this.nftCache.transfer721(tokenAddress, tokenId, from, to);
         continue;
       }
 
-      console.log(`mint ERC721 token [${tokenId}] on ${tokenAddress} at ${evt.txHash}`);
+      console.log(`found mint ERC721 ${tokenStr} at ${evt.txHash}`);
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const contract = new ethers.Contract(tokenAddress, [ERC721ABI.tokenURI], provider);
       let tokenURI = '';
       try {
         tokenURI = await contract.tokenURI(tokenId);
       } catch (e) {
-        console.log(`error getting tokenURI on ERC721 [${tokenId}] on ${tokenAddress}`);
+        console.log(`error getting tokenURI for ERC721 ${tokenStr}`);
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {

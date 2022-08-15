@@ -29,12 +29,13 @@ export class NFTCache {
   }
 
   private key721(tokenAddress, tokenId: string): string {
-    return `${tokenId}@${tokenAddress}`;
+    return `${tokenAddress}[${tokenId}]`;
   }
 
   private key1155(tokenAddress, tokenId, owner: string): string {
-    return `${tokenId}@${tokenAddress}_${owner}`;
+    return `${tokenAddress}[${tokenId}]_${owner}`;
   }
+
   public async mint721(nft: NFT) {
     if (nft.type !== 'ERC721') {
       return;
@@ -194,6 +195,20 @@ export class NFTCache {
             console.log(`${index + 1}/${mintedCount}| Error: ${e.message} for [${nft.tokenId}] of ${nft.address} `);
           }
         });
+      let visited = {};
+      for (const m of Object.values(this.minted)) {
+        const vkey = `${m.address}_${m.tokenId}_${m.creationTxHash}`;
+        if (vkey in visited) {
+          console.log(`ERROR: duplicate key: ${vkey}`);
+        } else {
+          console.log(`visit: ${vkey}`);
+          visited[vkey] = true;
+        }
+        const found = await this.repo.findByIDWithTxHash(m.address, m.tokenId, m.creationTxHash);
+        if (found) {
+          console.log(`DUPLICATE KEY IN DB: ${vkey}`);
+        }
+      }
       await this.repo.bulkInsert(...Object.values(this.minted));
       console.log(`saved ${mintedCount} minted NFTs to DB`);
     }
