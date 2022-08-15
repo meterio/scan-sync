@@ -7,27 +7,15 @@ import { CMD } from './cmd';
 import { ERC1155ABI, ERC721ABI, ERC1155, ERC721, abi } from '@meterio/devkit';
 import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
-import axios from 'axios';
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import PromisePool from '@supercharge/promise-pool/dist';
+import { Document } from 'mongoose';
+import { NFTCache } from '../types/nftCache';
 
 const FASTFORWARD_INTERVAL = 300; // 0.3 second gap between each loop
 const NORMAL_INTERVAL = 2000; // 2 seconds gap between each loop
 const LOOP_WINDOW = 10000;
 const RECOVERY_INTERVAL = 5 * 60 * 1000; // 5 min for recovery
 // Set the AWS Region
-const REGION = 'ap-southeast-1';
-const ALBUM_BUCKET_NAME = 'nft-image.meter';
-const S3_WEBSITE_BASE = 'nft-image.meter.io';
-// const INFURA_IPFS_PREFIX = 'https://metersync.infura-ipfs.io/ipfs/';
-const INFURA_IPFS_PREFIX = 'https://metersync.mypinata.cloud/ipfs/';
-const convertables = ['ipfs://', 'https://gateway.pinata.cloud/ipfs/', 'https://ipfs.io/ipfs/'];
-
 const BASE64_ENCODED_JSON = 'base64 encoded json';
-
-const s3 = new S3Client({
-  region: REGION,
-});
 
 export class NFTCMD extends CMD {
   private shutdown = false;
@@ -39,7 +27,7 @@ export class NFTCMD extends CMD {
   private evtRepo = new LogEventRepo();
   private blockRepo = new BlockRepo();
 
-  private nftsCache: NFT[] = [];
+  private nftCache: NFTCache;
 
   constructor(net: Network) {
     super();
@@ -51,24 +39,17 @@ export class NFTCMD extends CMD {
     });
 
     this.network = net;
-
-    this.cleanCache();
+    this.nftCache = new NFTCache(this.network);
   }
 
   public async start() {
     this.log.info(`${this.name}: start`);
-    // const cached = await this.isCached('0xc345e76a77c6287df132b3554e8cbbb4d9e91fa4', '1804');
-    // console.log('cached: ', cached);
     this.loop();
     return;
   }
 
   public stop() {
     this.shutdown = true;
-  }
-
-  private cleanCache() {
-    this.nftsCache = [];
   }
 
   public async cleanUpIncompleteData(head: Head) {
@@ -109,38 +90,13 @@ export class NFTCMD extends CMD {
         );
         // begin import round from headNum+1 to tgtNum
 
-        const minted721 = await this.findMintedERC721InRange(this.network, headNum, endNum);
-        const minted1155 = await this.findMintedERC1155InRange(this.network, headNum, endNum);
-        if (minted721.length > 0) {
-          console.log(`save minted ${minted721.length} ERC721 tokens`);
-          this.nftsCache.push(...minted721);
-        }
+        await this.scanERC721InRange(this.network, headNum, endNum);
+        await this.scanERC1155SinglesInRange(this.network, headNum, endNum);
+        await this.scanERC1155BatchsInRange(this.network, headNum, endNum);
 
-        if (minted1155.length > 0) {
-          console.log(`save minted ${minted1155.length} ERC1155 tokens`);
-          this.nftsCache.push(...minted1155);
-        }
-        const minted = minted721.concat(minted1155);
-        // remove duplicates from minted tokens by (address, tokenId)
-
-        if (minted.length > 0) {
-          console.log(`Start to update info for ${minted.length} nfts`);
-          await PromisePool.withConcurrency(4)
-            .for(minted)
-            .process(async (nft, index, pool) => {
-              try {
-                await this.updateNFTInfo(nft);
-              } catch (e) {
-                console.log(
-                  `${index + 1}/${minted.length}| Error: ${e.message} for [${nft.tokenId}] of ${nft.address} `
-                );
-              }
-            });
-        }
-
-        await this.saveCacheToDB();
+        await this.nftCache.saveToDB();
         await this.updateHead(endBlock.number, endBlock.hash);
-        this.cleanCache();
+        await this.nftCache.clean();
 
         if (fastforward) {
           // fastforward mode, save blocks/txs with bulk insert
@@ -161,13 +117,6 @@ export class NFTCMD extends CMD {
     }
   }
 
-  async saveCacheToDB() {
-    if (this.nftsCache.length > 0) {
-      await this.nftRepo.bulkInsert(...this.nftsCache);
-      this.log.info(`saved ${this.nftsCache.length} nfts`);
-    }
-  }
-
   async updateHead(num, hash): Promise<Head> {
     const exist = await this.headRepo.exists(this.name);
     if (!exist) {
@@ -182,66 +131,12 @@ export class NFTCMD extends CMD {
     }
   }
 
-  async findMintedERC1155InRange(network: Network, start, end: number): Promise<NFT[]> {
+  async scanERC1155BatchsInRange(
+    network: Network,
+    start,
+    end: number
+  ): Promise<{ minted: NFT[]; updated: (NFT & Document)[] }> {
     const config = GetNetworkConfig(network);
-    const singles = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferSingle.signature, start, end);
-    console.log(`searching for ERC1155 singles in blocks [${start}, ${end}]`);
-    let minted: NFT[] = [];
-    let visited = {};
-    for (const evt of singles) {
-      let decoded: abi.Decoded;
-      try {
-        decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
-      } catch (e) {
-        console.log('error decoding transfer event');
-        continue;
-      }
-      const from = decoded.from.toLowerCase();
-      const to = decoded.to.toLowerCase();
-      const tokenId = decoded.id;
-      const tokenAddress = evt.address.toLowerCase();
-      const key = `${tokenAddress}_${tokenId}`;
-
-      if (from !== ZeroAddress) {
-        continue;
-      }
-      if (key in visited) {
-        console.log(`skip: mint ERC1155 token [${tokenId}] on ${tokenAddress} at ${evt.txHash} due to duplication`);
-        continue;
-      }
-      visited[key] = true;
-
-      console.log(`mint ERC1155 token [${tokenId}] on ${tokenAddress} at ${evt.txHash}`);
-      const exist = await this.nftRepo.exist(tokenAddress, tokenId);
-      if (exist) {
-        continue;
-      }
-      const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-      const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
-      let tokenURI = '';
-      try {
-        tokenURI = await contract.uri(tokenId);
-      } catch (e) {
-        console.log(`error getting tokenURI on ERC1155 [${tokenId}] on ${tokenAddress}`);
-      }
-      let tokenJSON = {};
-      if (tokenURI.startsWith('data:application/json;base64,')) {
-        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
-        tokenJSON = JSON.parse(content);
-        tokenURI = BASE64_ENCODED_JSON;
-      }
-      minted.push({
-        address: tokenAddress,
-        tokenId,
-        tokenURI,
-        tokenJSON: JSON.stringify(tokenJSON),
-        type: 'ERC1155',
-        minter: to,
-        block: evt.block,
-        creationTxHash: evt.txHash,
-        status: 'new',
-      });
-    }
 
     console.log(`searching for ERC1155 batches in blocks [${start}, ${end}]`);
     const batchs = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferBatch.signature, start, end);
@@ -257,21 +152,12 @@ export class NFTCMD extends CMD {
       const to = decoded.to.toLowerCase();
       const tokenAddress = evt.address.toLowerCase();
       for (const [i, id] of decoded.ids.entries()) {
-        const key = `${tokenAddress}_${id}`;
+        const value = Number(decoded.values[i]);
         if (from !== ZeroAddress) {
+          await this.nftCache.transfer1155(tokenAddress, id, from, to, value);
           continue;
         }
-        if (key in visited) {
-          console.log(`skip: mint ERC1155 token [${id}] on ${tokenAddress} at ${evt.txHash} due to duplication`);
-          continue;
-        }
-        visited[key] = true;
 
-        console.log(`mint ERC1155 token [${id}] on ${tokenAddress} at ${evt.txHash}`);
-        const exist = await this.nftRepo.exist(tokenAddress, id);
-        if (exist) {
-          continue;
-        }
         const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
         const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
         let tokenURI = '';
@@ -286,29 +172,83 @@ export class NFTCMD extends CMD {
           tokenJSON = JSON.parse(content);
           tokenURI = BASE64_ENCODED_JSON;
         }
-        minted.push({
+        const nft: NFT = {
           address: tokenAddress,
           tokenId: id,
           tokenURI,
+          value,
           tokenJSON: JSON.stringify(tokenJSON),
           type: 'ERC1155',
           minter: to,
+          owner: to,
           block: evt.block,
           creationTxHash: evt.txHash,
           status: 'new',
-        });
+        };
+        await this.nftCache.mint1155(nft);
       }
     }
-    return minted;
   }
 
-  async findMintedERC721InRange(network: Network, start, end: number): Promise<NFT[]> {
+  async scanERC1155SinglesInRange(network: Network, start, end: number): Promise<void> {
+    const config = GetNetworkConfig(network);
+    const singles = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferSingle.signature, start, end);
+    console.log(`searching for ERC1155 singles in blocks [${start}, ${end}]`);
+    for (const evt of singles) {
+      let decoded: abi.Decoded;
+      try {
+        decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
+      } catch (e) {
+        console.log('error decoding transfer event');
+        continue;
+      }
+      const from = decoded.from.toLowerCase();
+      const to = decoded.to.toLowerCase();
+      const tokenId = decoded.id;
+      const tokenAddress = evt.address.toLowerCase();
+
+      if (from !== ZeroAddress) {
+        await this.nftCache.transfer1155(tokenAddress, tokenId, from, to, 1);
+        continue;
+      }
+
+      console.log(`mint ERC1155 token [${tokenId}] on ${tokenAddress} at ${evt.txHash}`);
+      const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
+      const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
+      let tokenURI = '';
+      try {
+        tokenURI = await contract.uri(tokenId);
+      } catch (e) {
+        console.log(`error getting tokenURI on ERC1155 [${tokenId}] on ${tokenAddress}`);
+      }
+      let tokenJSON = {};
+      if (tokenURI.startsWith('data:application/json;base64,')) {
+        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
+        tokenJSON = JSON.parse(content);
+        tokenURI = BASE64_ENCODED_JSON;
+      }
+      const nft: NFT = {
+        address: tokenAddress,
+        tokenId,
+        tokenURI,
+        value: 1,
+        tokenJSON: JSON.stringify(tokenJSON),
+        type: 'ERC1155',
+        minter: to,
+        owner: to,
+        block: evt.block,
+        creationTxHash: evt.txHash,
+        status: 'new',
+      };
+      await this.nftCache.mint1155(nft);
+    }
+  }
+
+  async scanERC721InRange(network: Network, start, end: number): Promise<void> {
     const config = GetNetworkConfig(network);
 
     const transferEvts = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC721.Transfer.signature, start, end);
     console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
-    let minted: NFT[] = [];
-    let visited = {};
     for (const evt of transferEvts) {
       let decoded: abi.Decoded;
       try {
@@ -321,21 +261,13 @@ export class NFTCMD extends CMD {
       const to = decoded.to.toLowerCase();
       const tokenAddress = evt.address.toLowerCase();
       const tokenId = new BigNumber(decoded.tokenId).toFixed();
-      const key = `${tokenAddress}_${tokenId}`;
 
       if (from !== ZeroAddress) {
+        await this.nftCache.transfer721(tokenAddress, tokenId, from, to);
         continue;
       }
-      if (key in visited) {
-        console.log(`skip: mint ERC721 token [${tokenId}] on ${tokenAddress} at ${evt.txHash} due to duplication`);
-      }
-      visited[key] = true;
 
       console.log(`mint ERC721 token [${tokenId}] on ${tokenAddress} at ${evt.txHash}`);
-      const exist = await this.nftRepo.exist(tokenAddress, tokenId);
-      if (exist) {
-        continue;
-      }
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const contract = new ethers.Contract(tokenAddress, [ERC721ABI.tokenURI], provider);
       let tokenURI = '';
@@ -351,119 +283,20 @@ export class NFTCMD extends CMD {
         tokenURI = BASE64_ENCODED_JSON;
       }
 
-      minted.push({
+      const nft: NFT = {
         address: tokenAddress,
         tokenId,
+        value: 1,
         tokenURI,
         tokenJSON: JSON.stringify(tokenJSON),
         type: 'ERC721',
         minter: to,
+        owner: to,
         block: evt.block,
         creationTxHash: evt.txHash,
         status: 'new',
-      });
+      };
+      await this.nftCache.mint721(nft);
     }
-    return minted;
-  }
-
-  convertUrl(uri: string): string {
-    let url = uri;
-    for (const conv of convertables) {
-      if (url.startsWith(conv)) {
-        return url.replace(conv, INFURA_IPFS_PREFIX);
-      }
-    }
-    return url;
-  }
-
-  async isCached(tokenAddress: string, tokenId: string): Promise<Boolean> {
-    try {
-      const res = await s3.send(
-        new HeadObjectCommand({ Bucket: ALBUM_BUCKET_NAME, Key: `${tokenAddress}/${tokenId}` })
-      );
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // upload token image to album
-  async uploadToAlbum(albumName, photoName, imageArraybuffer) {
-    const key = albumName + '/' + photoName;
-    const uploadParams = {
-      Bucket: ALBUM_BUCKET_NAME,
-      Key: key,
-      Body: imageArraybuffer,
-      ACL: 'public-read',
-    };
-    try {
-      const data = await s3.send(new PutObjectCommand(uploadParams));
-      console.log(`uploaded file to ${key}`);
-    } catch (err) {
-      throw new Error('error uploading your photo: ' + err.message);
-    }
-  }
-
-  async updateNFTInfo(nft: NFT) {
-    console.log(`update info for ${nft.type}:${nft.address}[${nft.tokenId}] with tokenURI: ${nft.tokenURI}`);
-    if (!nft.tokenURI || nft.tokenURI == '') {
-      console.log('SKIPPED due to empty tokenURI');
-      nft.status = 'invalid';
-      return;
-    }
-    let { tokenURI, tokenJSON } = nft;
-
-    if (tokenURI !== BASE64_ENCODED_JSON) {
-      const url = this.convertUrl(nft.tokenURI);
-      console.log(`download token json from ${url}`);
-      const tokenJSONRes = await axios.get(url);
-      if (tokenJSONRes && tokenJSONRes.data) {
-        try {
-          tokenJSON = JSON.stringify(tokenJSONRes.data);
-        } catch (e) {
-          nft.status = 'invalid';
-          return;
-        }
-      } else {
-        nft.status = 'invalid';
-        return;
-      }
-    }
-    let mediaURI = '';
-    try {
-      const decoded = JSON.parse(tokenJSON);
-      mediaURI = String(decoded.image);
-    } catch (e) {
-      console.log('could not decode tokenJSON');
-      nft.status = 'invalid';
-      return;
-    }
-    let mediaType: string;
-    let reader: any;
-    if (mediaURI.includes(';base64')) {
-      reader = Buffer.from(mediaURI.split(';base64').pop(), 'base64');
-      mediaType = 'base64';
-    } else {
-      const downURI = this.convertUrl(mediaURI);
-      console.log(`download media from ${downURI}`);
-      const res = await axios.get(downURI, { responseType: 'arraybuffer' });
-      if (res.status !== 200) {
-        nft.status = 'uncached';
-        return;
-      }
-      reader = res.data;
-      mediaType = res.headers['content-type'];
-    }
-
-    const uploaded = await this.isCached(nft.address, nft.tokenId);
-    const cachedMediaURI = `https://${S3_WEBSITE_BASE}/${nft.address}/${nft.tokenId}`;
-    if (!uploaded) {
-      await this.uploadToAlbum(nft.address, nft.tokenId, reader);
-      console.log(`uploaded ${mediaURI} to ${cachedMediaURI}`);
-    }
-    nft.tokenJSON = tokenJSON;
-    nft.mediaType = mediaType;
-    nft.mediaURI = cachedMediaURI;
-    nft.status = 'cached';
   }
 }
