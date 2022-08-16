@@ -41,6 +41,7 @@ export class NFTCache {
       return;
     }
 
+    console.log(`Mint ERC721 ${nft.address}[${nft.tokenId}] to ${nft.owner}`);
     const key = this.key721(nft.address, nft.tokenId);
     if (key in this.minted) {
       console.log(`[SKIP] mint cache-existed ERC721 ${key}`);
@@ -53,7 +54,9 @@ export class NFTCache {
       }
     }
 
+    console.log(`MINTED: ${key} in mint721`);
     this.minted[key] = nft;
+    console.log(JSON.stringify(this.minted[key]));
   }
 
   public async mint1155(nft: NFT) {
@@ -61,6 +64,7 @@ export class NFTCache {
       return;
     }
 
+    console.log(`Mint ERC1155 ${nft.address}[${nft.tokenId}:${nft.value}] to ${nft.owner}`);
     const key = this.key1155(nft.address, nft.tokenId, nft.owner);
     if (key in this.minted) {
       const existed = this.minted[key];
@@ -75,12 +79,15 @@ export class NFTCache {
       }
     }
 
+    console.log(`MINTED ${key} in mint1155`);
     this.minted[key] = nft;
+    console.log(JSON.stringify(this.minted[key]));
   }
 
   public async transfer721(tokenAddress: string, tokenId: string, from: string, to: string) {
     const key = this.key721(tokenAddress, tokenId);
 
+    console.log(`Transfer ERC721 ${tokenAddress}[${tokenId}] from ${from} to ${to}`);
     if (key in this.updated) {
       const nft = this.updated[key];
       if (nft.type !== 'ERC721') {
@@ -122,8 +129,9 @@ export class NFTCache {
   }
 
   public async transfer1155(tokenAddress: string, tokenId: string, from: string, to: string, value: number) {
-    const key = `${tokenId}@${tokenAddress}_${from}`;
+    const key = this.key1155(tokenAddress, tokenId, from);
 
+    console.log(`Transfer ERC1155 ${tokenAddress}[${tokenId}:${value}] from ${from} to ${to}`);
     if (key in this.updated) {
       const nft = this.updated[key];
       if (nft.type !== 'ERC1155') {
@@ -136,7 +144,9 @@ export class NFTCache {
         nft.owner = to;
       } else {
         const mintedKey = this.key1155(tokenAddress, tokenId, to);
+        console.log(`MINTED ${key} in transfer1155 with key in upadted`);
         this.minted[mintedKey] = { ...(nft as NFT), owner: to, value };
+        console.log(JSON.stringify(this.minted[mintedKey]));
         nft.value -= value;
       }
       return;
@@ -154,7 +164,9 @@ export class NFTCache {
         nft.owner = to;
       } else {
         const mintedKey = this.key1155(tokenAddress, tokenId, to);
+        console.log(`MINTED ${key} in transfer1155 with key in minted`);
         this.minted[mintedKey] = { ...(nft as NFT), owner: to, value };
+        console.log(JSON.stringify(this.minted[mintedKey]));
         nft.value -= value;
       }
       return;
@@ -173,7 +185,9 @@ export class NFTCache {
         this.updated[key] = nft;
       } else {
         const mintedKey = this.key1155(tokenAddress, tokenId, to);
+        console.log(`MINTED ${key} in transfer1155`);
         this.minted[mintedKey] = { ...(nft as NFT), owner: to, value };
+        console.log(JSON.stringify(this.minted[mintedKey]));
         nft.value -= value;
         this.updated[key] = nft;
       }
@@ -198,6 +212,11 @@ export class NFTCache {
       let visited = {};
       for (const m of Object.values(this.minted)) {
         const vkey = `${m.address}_${m.tokenId}_${m.creationTxHash}`;
+        if (!m.address) {
+          console.log('vkey: ', vkey);
+          console.log(JSON.stringify(m));
+        }
+
         if (vkey in visited) {
           console.log(`ERROR: duplicate key: ${vkey}`);
         } else {

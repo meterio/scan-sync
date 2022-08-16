@@ -140,7 +140,7 @@ export class NFTCMD extends CMD {
       try {
         decoded = ERC1155.TransferBatch.decode(evt.data, evt.topics);
       } catch (e) {
-        this.log.error({ err: e }, 'error decoding TransferBatch event');
+        this.log.warn('error decoding TransferBatch event');
         continue;
       }
       const from = decoded.from.toLowerCase();
@@ -197,7 +197,7 @@ export class NFTCMD extends CMD {
       try {
         decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
       } catch (e) {
-        this.log.error({ err: e }, 'error decoding TransferSingle event');
+        this.log.warn('error decoding TransferSingle event');
         continue;
       }
       const from = decoded.from.toLowerCase();
@@ -255,7 +255,7 @@ export class NFTCMD extends CMD {
       try {
         decoded = ERC721.Transfer.decode(evt.data, evt.topics);
       } catch (e) {
-        this.log.error({ err: e }, `error decoding Transfer event`);
+        this.log.warn(`error decoding Transfer event`);
         continue;
       }
 
