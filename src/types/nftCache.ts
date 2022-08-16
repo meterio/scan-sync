@@ -2,6 +2,7 @@ import { BigNumber, Token, AccountRepo, Account, BlockConcise, Network, NFT, NFT
 import axios from 'axios';
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import PromisePool from '@supercharge/promise-pool/dist';
+import { Document } from 'mongoose';
 
 // Set the AWS Region
 const REGION = 'ap-southeast-1';
@@ -20,7 +21,7 @@ const s3 = new S3Client({
 class NotEnoughBalance extends Error {}
 export class NFTCache {
   private minted: { [key: string]: NFT } = {};
-  private updated: { [key: string]: NFT & { save() } } = {};
+  private updated: { [key: string]: NFT & Document<any, any, any> } = {};
   private repo = new NFTRepo();
   private network: Network;
 
@@ -145,7 +146,7 @@ export class NFTCache {
       } else {
         const mintedKey = this.key1155(tokenAddress, tokenId, to);
         console.log(`MINTED ${key} in transfer1155 with key in upadted`);
-        this.minted[mintedKey] = { ...(nft as NFT), owner: to, value };
+        this.minted[mintedKey] = { ...nft.toJSON(), owner: to, value };
         console.log(JSON.stringify(this.minted[mintedKey]));
         nft.value -= value;
       }
@@ -165,7 +166,7 @@ export class NFTCache {
       } else {
         const mintedKey = this.key1155(tokenAddress, tokenId, to);
         console.log(`MINTED ${key} in transfer1155 with key in minted`);
-        this.minted[mintedKey] = { ...(nft as NFT), owner: to, value };
+        this.minted[mintedKey] = { ...nft, owner: to, value };
         console.log(JSON.stringify(this.minted[mintedKey]));
         nft.value -= value;
       }
@@ -186,7 +187,7 @@ export class NFTCache {
       } else {
         const mintedKey = this.key1155(tokenAddress, tokenId, to);
         console.log(`MINTED ${key} in transfer1155`);
-        this.minted[mintedKey] = { ...(nft as NFT), owner: to, value };
+        this.minted[mintedKey] = { ...nft.toJSON(), owner: to, value };
         console.log(JSON.stringify(this.minted[mintedKey]));
         nft.value -= value;
         this.updated[key] = nft;
