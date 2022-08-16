@@ -224,9 +224,9 @@ export class NFTCache {
           console.log(`visit: ${vkey}`);
           visited[vkey] = true;
         }
-        const found = await this.repo.findByIDWithTxHash(m.address, m.tokenId, m.creationTxHash);
+        const found = await this.repo.findByIDWithOwner(m.address, m.tokenId, m.owner);
         if (found) {
-          console.log(`DUPLICATE KEY IN DB: ${vkey}`);
+          console.log(`DUPLICATE KEY IN DB: addr:${m.address}, id:${m.tokenId}, owner:${m.owner}`);
         }
       }
       await this.repo.bulkInsert(...Object.values(this.minted));
