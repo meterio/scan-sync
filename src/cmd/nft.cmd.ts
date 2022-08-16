@@ -123,7 +123,7 @@ export class NFTCMD extends CMD {
       return await this.headRepo.create(this.name, num, hash);
     } else {
       let head = await this.headRepo.findByKey(this.name);
-      this.log.info({ num: num }, 'update head');
+      this.log.info(`update head to ${num}`);
       // head = await this.headRepo.update(this.name, res.block.number, res.block.hash);
       head.num = num;
       head.hash = hash;
@@ -131,34 +131,30 @@ export class NFTCMD extends CMD {
     }
   }
 
-  async scanERC1155BatchsInRange(
-    network: Network,
-    start,
-    end: number
-  ): Promise<{ minted: NFT[]; updated: (NFT & Document)[] }> {
+  async scanERC1155BatchsInRange(network: Network, start, end: number): Promise<void> {
     const config = GetNetworkConfig(network);
-
-    console.log(`searching for ERC1155 batches in blocks [${start}, ${end}]`);
     const batchs = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferBatch.signature, start, end);
+    this.log.info({ count: batchs.length }, `searching ERC1155 batchs in blocks [${start}, ${end})`);
     for (const evt of batchs) {
       let decoded: abi.Decoded;
       try {
         decoded = ERC1155.TransferBatch.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding transfer event');
-        return;
+        this.log.error({ err: e }, 'error decoding TransferBatch event');
+        continue;
       }
       const from = decoded.from.toLowerCase();
       const to = decoded.to.toLowerCase();
       const tokenAddress = evt.address.toLowerCase();
       for (const [i, id] of decoded.ids.entries()) {
         const value = Number(decoded.values[i]);
+        const tokenStr = `${tokenAddress}[${id}:${value}]`;
         if (from !== ZeroAddress) {
+          this.log.info({ txHash: evt.txHash }, `handle transfer ERC1155 ${tokenStr}`);
           await this.nftCache.transfer1155(tokenAddress, id, from, to, value);
           continue;
         }
-        const tokenStr = `${tokenAddress}[${id}:${value}]`;
-        console.log(`found mint ERC1155 ${tokenStr} at ${evt.txHash}`);
+        this.log.info({ txHash: evt.txHash }, `handle mint ERC1155 ${tokenStr}`);
 
         const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
         const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
@@ -166,7 +162,7 @@ export class NFTCMD extends CMD {
         try {
           tokenURI = await contract.uri(id);
         } catch (e) {
-          console.log(`error getting tokenURI for ERC1155 ${tokenStr}`);
+          this.log.error({ err: e }, `error getting tokenURI for ERC1155 ${tokenStr}`);
         }
         let tokenJSON = {};
         if (tokenURI.startsWith('data:application/json;base64,')) {
@@ -195,13 +191,13 @@ export class NFTCMD extends CMD {
   async scanERC1155SinglesInRange(network: Network, start, end: number): Promise<void> {
     const config = GetNetworkConfig(network);
     const singles = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC1155.TransferSingle.signature, start, end);
-    console.log(`searching for ERC1155 singles in blocks [${start}, ${end}]`);
+    this.log.info({ count: singles.length }, `searching ERC1155 singles in blocks [${start}, ${end})`);
     for (const evt of singles) {
       let decoded: abi.Decoded;
       try {
         decoded = ERC1155.TransferSingle.decode(evt.data, evt.topics);
       } catch (e) {
-        console.log('error decoding transfer event');
+        this.log.error({ err: e }, 'error decoding TransferSingle event');
         continue;
       }
       const from = decoded.from.toLowerCase();
@@ -212,18 +208,19 @@ export class NFTCMD extends CMD {
       const tokenStr = `${tokenAddress}[${tokenId}:${value}]`;
 
       if (from !== ZeroAddress) {
+        this.log.info({ txHash: evt.txHash }, `handle transfer ERC1155 ${tokenStr}`);
         await this.nftCache.transfer1155(tokenAddress, tokenId, from, to, 1);
         continue;
       }
 
-      console.log(`found mint ERC1155 ${tokenStr} at ${evt.txHash}`);
+      this.log.info({ txHash: evt.txHash }, `handle mint ERC1155 ${tokenStr}`);
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const contract = new ethers.Contract(tokenAddress, [ERC1155ABI.URI], provider);
       let tokenURI = '';
       try {
         tokenURI = await contract.uri(tokenId);
       } catch (e) {
-        console.log(`error getting tokenURI for ERC1155 ${tokenStr}`);
+        this.log.error({ err: e }, `error getting tokenURI for ERC1155 ${tokenStr}`);
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {
@@ -252,12 +249,13 @@ export class NFTCMD extends CMD {
     const config = GetNetworkConfig(network);
 
     const transferEvts = await this.evtRepo.findByTopic0InBlockRangeSortAsc(ERC721.Transfer.signature, start, end);
-    console.log(`searching for ERC721 transfers in blocks [${start}, ${end}]`);
+    this.log.info({ count: transferEvts.length }, `searching ERC721 transfers in blocks [${start}, ${end})`);
     for (const evt of transferEvts) {
       let decoded: abi.Decoded;
       try {
         decoded = ERC721.Transfer.decode(evt.data, evt.topics);
       } catch (e) {
+        this.log.error({ err: e }, `error decoding Transfer event`);
         continue;
       }
 
@@ -268,18 +266,19 @@ export class NFTCMD extends CMD {
       const tokenStr = `${tokenAddress}[${tokenId}]`;
 
       if (from !== ZeroAddress) {
+        this.log.info({ txHash: evt.txHash }, `handle transfer ERC721 ${tokenStr}`);
         await this.nftCache.transfer721(tokenAddress, tokenId, from, to);
         continue;
       }
 
-      console.log(`found mint ERC721 ${tokenStr} at ${evt.txHash}`);
+      this.log.info({ txHash: evt.txHash }, `handle mint ERC721 ${tokenStr}`);
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const contract = new ethers.Contract(tokenAddress, [ERC721ABI.tokenURI], provider);
       let tokenURI = '';
       try {
         tokenURI = await contract.tokenURI(tokenId);
       } catch (e) {
-        console.log(`error getting tokenURI for ERC721 ${tokenStr}`);
+        this.log.error({ err: e }, `error getting tokenURI for ERC721 ${tokenStr}`);
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {

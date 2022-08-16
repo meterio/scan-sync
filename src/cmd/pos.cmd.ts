@@ -714,8 +714,8 @@ export class PosCMD extends CMD {
         logIndex,
       };
 
-      await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-      await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+      // await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+      // await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
 
       this.movementsCache.push(movement);
     }
@@ -751,8 +751,8 @@ export class PosCMD extends CMD {
         clauseIndex,
         logIndex,
       };
-      await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-      await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+      // await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+      // await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
       this.movementsCache.push(movement);
     }
 
@@ -782,8 +782,8 @@ export class PosCMD extends CMD {
         clauseIndex,
         logIndex,
       };
-      await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
-      await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
+      // await this.tokenBalanceCache.minusNFT(from, evt.address, nftTransfers, blockConcise);
+      // await this.tokenBalanceCache.plusNFT(to, evt.address, nftTransfers, blockConcise);
 
       this.movementsCache.push(movement);
     }
