@@ -3,6 +3,7 @@ import axios from 'axios';
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import PromisePool from '@supercharge/promise-pool/dist';
 import { Document } from 'mongoose';
+import { ZeroAddress } from '../const';
 
 // Set the AWS Region
 const REGION = 'ap-southeast-1';
@@ -239,7 +240,14 @@ export class NFTCache {
         .for(Object.keys(this.updated))
         .process(async (key, index) => {
           const u = this.updated[key];
-          await u.save();
+          if (u.owner === ZeroAddress) {
+            // Burnt
+            console.log(`burned token: ${u.type} ${u.address}[${u.tokenId}:${u.value}] id:${u._id}`);
+            await u.delete();
+          } else {
+            // Update
+            await u.save();
+          }
         });
       console.log(`saved ${updatedCount} updated NFTs to DB`);
     }
