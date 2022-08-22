@@ -1,6 +1,12 @@
 import { BigNumber, Token, AccountRepo, Account, BlockConcise, Network, NFT, NFTRepo } from '@meterio/scan-db/dist';
 import axios from 'axios';
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+  CopyObjectCommand,
+  CopyObjectCommandInput,
+} from '@aws-sdk/client-s3';
 import PromisePool from '@supercharge/promise-pool/dist';
 import { Document } from 'mongoose';
 import { ZeroAddress } from '../const';
@@ -263,7 +269,7 @@ export class NFTCache {
     return url;
   }
 
-  async isCached(tokenAddress: string, tokenId: string): Promise<Boolean> {
+  public async isCached(tokenAddress: string, tokenId: string): Promise<Boolean> {
     try {
       const res = await s3.send(
         new HeadObjectCommand({ Bucket: ALBUM_BUCKET_NAME, Key: `${tokenAddress}/${tokenId}` })
@@ -275,17 +281,38 @@ export class NFTCache {
   }
 
   // upload token image to album
-  async uploadToAlbum(albumName, photoName, imageArraybuffer) {
+  public async uploadToAlbum(albumName, photoName, imageArraybuffer, mediaType) {
     const key = albumName + '/' + photoName;
     const uploadParams = {
       Bucket: ALBUM_BUCKET_NAME,
       Key: key,
       Body: imageArraybuffer,
       ACL: 'public-read',
+      ContentType: mediaType,
     };
     try {
       const data = await s3.send(new PutObjectCommand(uploadParams));
       console.log(`uploaded file to ${key}`);
+    } catch (err) {
+      throw new Error('error uploading your photo: ' + err.message);
+    }
+  }
+
+  /**
+   * @param key https://nft-image.meter.io/0xfb5222679a578498e2f515ba339422443b329a73/8140
+   */
+  public async updateContentType(mediaURI, mediaType: string) {
+    const key = mediaURI.replace('https://nft-image.meter.io/', '');
+    const copyInput = {
+      CopySource: mediaURI,
+      Bucket: ALBUM_BUCKET_NAME,
+      Key: key,
+      ACL: 'public-read',
+      ContentType: mediaType,
+    } as CopyObjectCommandInput;
+    try {
+      const data = await s3.send(new CopyObjectCommand(copyInput));
+      console.log(`update ${key} with content-type ${mediaType}`);
     } catch (err) {
       throw new Error('error uploading your photo: ' + err.message);
     }
@@ -328,8 +355,8 @@ export class NFTCache {
     let mediaType: string;
     let reader: any;
     if (mediaURI.includes(';base64')) {
-      reader = Buffer.from(mediaURI.split(';base64').pop(), 'base64');
-      mediaType = 'base64';
+      reader = Buffer.from(mediaURI.split(';base64,').pop(), 'base64');
+      mediaType = mediaURI.split(';base64').shift().replace('data:', '');
     } else {
       const downURI = this.convertUrl(mediaURI);
       console.log(`download media from ${downURI}`);
@@ -345,7 +372,7 @@ export class NFTCache {
     const uploaded = await this.isCached(nft.address, nft.tokenId);
     const cachedMediaURI = `https://${S3_WEBSITE_BASE}/${nft.address}/${nft.tokenId}`;
     if (!uploaded) {
-      await this.uploadToAlbum(nft.address, nft.tokenId, reader);
+      await this.uploadToAlbum(nft.address, nft.tokenId, reader, mediaType);
       console.log(`uploaded ${mediaURI} to ${cachedMediaURI}`);
     }
     nft.tokenJSON = tokenJSON;
