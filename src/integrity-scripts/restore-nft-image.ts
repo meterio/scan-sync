@@ -172,9 +172,7 @@ const run = async () => {
       console.log('sleep 4s');
       await sleep(1000 * 4);
     } catch (e) {
-      console.log(
-        `${totalIndex}/${total}| Error: ${e.message} for [${t.tokenId}] of ${t.tokenAddress} `
-      );
+      console.log(`${totalIndex}/${total}| Error: ${e.message} for [${t.tokenId}] of ${t.tokenAddress} `);
       console.log('sleep 60s');
       await sleep(1000 * 60);
       continue;

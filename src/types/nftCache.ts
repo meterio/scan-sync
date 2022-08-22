@@ -10,6 +10,7 @@ import {
 import PromisePool from '@supercharge/promise-pool/dist';
 import { Document } from 'mongoose';
 import { ZeroAddress } from '../const';
+import { URL } from 'url';
 
 // Set the AWS Region
 const REGION = 'ap-southeast-1';
@@ -302,13 +303,14 @@ export class NFTCache {
    * @param key https://nft-image.meter.io/0xfb5222679a578498e2f515ba339422443b329a73/8140
    */
   public async updateContentType(mediaURI, mediaType: string) {
-    const key = mediaURI.replace('https://nft-image.meter.io/', '');
+    const key = new URL(mediaURI).pathname.slice(1);
     const copyInput = {
-      CopySource: mediaURI,
+      CopySource: `${ALBUM_BUCKET_NAME}/${key}`,
       Bucket: ALBUM_BUCKET_NAME,
       Key: key,
       ACL: 'public-read',
       ContentType: mediaType,
+      MetadataDirective: 'REPLACE',
     } as CopyObjectCommandInput;
     try {
       const data = await s3.send(new CopyObjectCommand(copyInput));

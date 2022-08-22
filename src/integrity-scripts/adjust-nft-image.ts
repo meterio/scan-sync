@@ -25,6 +25,7 @@ const run = async () => {
     const end = i + step - 1 > best ? best : i + step - 1;
 
     const nfts = await nftRepo.findInRange(start, end);
+    console.log(`Found ${nfts.length} nfts in blocks [${start}, ${end}]`);
     for (const nft of nfts) {
       try {
         if (nft.mediaType === 'base64') {
@@ -42,7 +43,7 @@ const run = async () => {
           console.log('NFT has an empty media type');
         }
       } catch (e) {
-        console.log(`could not process nft: [${nft.tokenId}]@${nft.address}`);
+        console.log(`could not process nft: [${nft.tokenId}]@${nft.address} with error: ${e}`);
       }
     }
   }
