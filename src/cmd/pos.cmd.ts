@@ -552,7 +552,7 @@ export class PosCMD extends CMD {
       master,
       code,
       status,
-      verified: false,
+      verified,
       verifiedFrom,
       firstSeen: blockConcise,
     };
