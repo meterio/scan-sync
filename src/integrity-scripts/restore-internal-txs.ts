@@ -56,12 +56,14 @@ const run = async () => {
             const node = item[0];
             const suffix = item[1];
 
+            const name = node.type.toLowerCase() + '_' + suffix;
             const signature = node.input.substring(0, 10);
             if (['CALL', 'CREATE', 'CREATE2'].includes(node.type)) {
               internalTxs.push({
                 txHash: tx.hash,
                 block: tx.block,
                 txIndex: tx.txIndex,
+                name,
                 from: node.from,
                 to: node.to || ZeroAddress,
                 value: node.value ? new BigNumber(node.value) : new BigNumber(0),

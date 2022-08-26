@@ -1235,13 +1235,14 @@ export class PosCMD extends CMD {
 
           const node = item[0];
           const suffix = item[1];
-
+          const name = node.type.toLowerCase() + '_' + suffix;
           const signature = node.input.substring(0, 10);
           if (['CALL', 'CREATE', 'CREATE2'].includes(node.type)) {
             this.internalTxCache.push({
               txHash: tx.id,
               block: blockConcise,
               txIndex: txIndex,
+              name,
               from: node.from,
               to: node.to || ZeroAddress,
               value: node.value ? new BigNumber(node.value) : new BigNumber(0),
