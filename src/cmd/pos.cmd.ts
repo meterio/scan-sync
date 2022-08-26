@@ -41,6 +41,8 @@ import {
   LogEventRepo,
   LogTransfer,
   LogTransferRepo,
+  InternalTxRepo,
+  InternalTx,
 } from '@meterio/scan-db/dist';
 import { BigNumber } from '@meterio/scan-db/dist';
 import { sha1 } from 'object-hash';
@@ -98,6 +100,7 @@ export class PosCMD extends CMD {
   private tokenBalanceRepo = new TokenBalanceRepo();
   private logEventRepo = new LogEventRepo();
   private logTransferRepo = new LogTransferRepo();
+  private internalTxRepo = new InternalTxRepo();
 
   private metricRepo = new MetricRepo(); // readonly
 
@@ -123,6 +126,7 @@ export class PosCMD extends CMD {
   private beneficiaryCache = ZeroAddress;
   private logEventCache: LogEvent[] = [];
   private logTransferCache: LogTransfer[] = [];
+  private internalTxCache: InternalTx[] = [];
 
   constructor(net: Network) {
     super();
@@ -172,6 +176,7 @@ export class PosCMD extends CMD {
 
     this.logEventCache = [];
     this.logTransferCache = [];
+    this.internalTxCache = [];
   }
 
   private async getBlockFromREST(num: number) {
@@ -282,6 +287,7 @@ export class PosCMD extends CMD {
     const txDigest = await this.txDigestRepo.deleteAfter(blockNum);
     const movement = await this.movementRepo.deleteAfter(blockNum);
     const contract = await this.contractRepo.deleteAfter(blockNum);
+    const internalTxs = await this.internalTxRepo.deleteAfter(blockNum);
     const accts = await this.accountRepo.findLastUpdateAfter(blockNum);
     for (const acct of accts) {
       await this.fixAccount(acct, blockNum);
@@ -312,6 +318,7 @@ export class PosCMD extends CMD {
         contract,
         accounts: accts.length,
         tokenBalance: bals.length,
+        internalTxs,
       },
       `deleted dirty data higher than head ${blockNum}`
     );
@@ -439,6 +446,10 @@ export class PosCMD extends CMD {
     if (this.contractsCache.length > 0) {
       await this.contractRepo.bulkInsert(...this.contractsCache);
       this.log.info(`saved ${this.contractsCache.length} contracts`);
+    }
+    if (this.internalTxCache.length > 0) {
+      await this.internalTxRepo.bulkInsert(...this.internalTxCache);
+      this.log.info(`saved ${this.internalTxCache.length} internalTxs`);
     }
     await this.accountCache.saveToDB();
     await this.tokenBalanceCache.saveToDB();
@@ -1211,6 +1222,47 @@ export class PosCMD extends CMD {
       traces = o.traces;
     }
 
+    // extract internal txs from traces
+    if (traces) {
+      for (const t of traces) {
+        const trace = JSON.parse(t.json);
+        let q = [[trace, '0']];
+        while (q) {
+          const item = q.shift();
+          if (!item) {
+            break;
+          }
+
+          const node = item[0];
+          const suffix = item[1];
+
+          const signature = node.input.substring(0, 10);
+          if (['CALL', 'CREATE', 'CREATE2'].includes(node.type)) {
+            this.internalTxCache.push({
+              txHash: tx.id,
+              block: blockConcise,
+              txIndex: txIndex,
+              from: node.from,
+              to: node.to || ZeroAddress,
+              value: node.value ? new BigNumber(node.value) : new BigNumber(0),
+              fee: new BigNumber(tx.paid),
+              gasUsed: node.gasUsed ? new BigNumber(node.gasUsed).toNumber() : 0,
+              clauseIndex: t.clauseIndex,
+              reverted: tx.reverted,
+              signature: signature,
+            });
+          }
+
+          if (node.calls) {
+            for (const [index, c] of node.calls.entries()) {
+              let childSuffix = suffix + '_' + index;
+              q.push([c, childSuffix]);
+            }
+          }
+        }
+      }
+    }
+
     const txModel: Tx = {
       hash: tx.id,
       block: blockConcise,
@@ -1501,6 +1553,13 @@ export class PosCMD extends CMD {
     for (const item of this.tokenBalanceCache.list()) {
       this.log.info('----------------------------------------');
       this.log.info('TOKEN BALNCE');
+      this.log.info('----------------------------------------');
+      this.log.info(item);
+      this.log.info('----------------------------------------\n');
+    }
+    for (const item of this.internalTxCache) {
+      this.log.info('----------------------------------------');
+      this.log.info('Internal Tx');
       this.log.info('----------------------------------------');
       this.log.info(item);
       this.log.info('----------------------------------------\n');
