@@ -661,6 +661,19 @@ export class MetricCMD extends CMD {
         );
         await this.contractFileRepo.bulkUpsert(...contractFiles);
         await c.save();
+        const relateds = await this.contractRepo.findUnverifiedContractsWithCreationInputHash(c.creationInputHash);
+        for (const rc of relateds) {
+          if (rc.address === c.address) {
+            continue;
+          }
+          console.log(
+            `found related existing contracts sharing the same creationInputHash, verify now for ${rc.address}`
+          );
+          rc.verified = true;
+          rc.status = 'match';
+          rc.verifiedFrom = c.address;
+          await rc.save();
+        }
       }
       this.log.info('done update verified contract');
     }
