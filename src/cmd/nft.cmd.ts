@@ -224,7 +224,7 @@ export class NFTCMD extends CMD {
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {
-        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
+        const content = Buffer.from(tokenURI.substring(29 + 1), 'base64').toString();
         tokenJSON = JSON.parse(content);
         tokenURI = BASE64_ENCODED_JSON;
       }
@@ -282,7 +282,7 @@ export class NFTCMD extends CMD {
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {
-        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
+        const content = Buffer.from(tokenURI.substring(29 + 1), 'base64').toString();
         tokenJSON = JSON.parse(content);
         tokenURI = BASE64_ENCODED_JSON;
       }
