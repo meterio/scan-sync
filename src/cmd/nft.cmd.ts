@@ -224,9 +224,13 @@ export class NFTCMD extends CMD {
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {
-        const content = Buffer.from(tokenURI.substring(29 + 1), 'base64').toString();
-        tokenJSON = JSON.parse(content);
+        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
         tokenURI = BASE64_ENCODED_JSON;
+        try {
+          tokenJSON = JSON.parse(content);
+        } catch (e) {
+          tokenJSON = JSON.parse(content.replaceAll("'", '"'));
+        }
       }
       const nft: NFT = {
         address: tokenAddress,
@@ -282,9 +286,13 @@ export class NFTCMD extends CMD {
       }
       let tokenJSON = {};
       if (tokenURI.startsWith('data:application/json;base64,')) {
-        const content = Buffer.from(tokenURI.substring(29 + 1), 'base64').toString();
-        tokenJSON = JSON.parse(content);
+        const content = Buffer.from(tokenURI.substring(29), 'base64').toString();
         tokenURI = BASE64_ENCODED_JSON;
+        try {
+          tokenJSON = JSON.parse(content);
+        } catch (e) {
+          tokenJSON = JSON.parse(content.replaceAll("'", '"'));
+        }
       }
 
       const nft: NFT = {

@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": ["es5", "es6", "dom"],
+    "lib": ["es5", "es6", "dom", "ES2021.String"],
     "resolveJsonModule": true,
     "target": "es6",
     "module": "commonjs",
@@ -12,5 +12,5 @@
     "downlevelIteration": true,
     "esModuleInterop": true
   },
-    "exclude":["node_modules"]
+  "exclude": ["node_modules"]
 }
