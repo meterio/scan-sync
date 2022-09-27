@@ -41,6 +41,9 @@ export const GetNetworkConfig = (net: Network) => {
         posUrl: MAINNET_RESTFUL_ENDPOINT,
         rpcUrl: MAINNET_RPC_ENDPOINT,
 
+        wmtrEnabled: true,
+        wmtrAddress: '0x160361ce13ec33c993b5cca8f62b6864943eb083',
+
         powEnabled: true,
         auctionEnabled: true,
         sourcifyEnabled: true,
@@ -57,6 +60,9 @@ export const GetNetworkConfig = (net: Network) => {
         posUrl: TESTNET_RESTFUL_ENDPOINT,
         rpcUrl: TESTNET_RPC_ENDPOINT,
 
+        wmtrEnabled: false,
+        wmtrAddress: '',
+
         powEnabled: true,
         auctionEnabled: true,
         sourcifyEnabled: true,
@@ -68,6 +74,9 @@ export const GetNetworkConfig = (net: Network) => {
       return {
         posUrl: VERSE_RESTFUL_ENDPOINT,
         rpcUrl: VERSE_RPC_ENDPOINT,
+
+        wmtrEnabled: false,
+        wmtrAddress: '',
 
         powEnabled: false,
         auctionEnabled: false,
@@ -81,6 +90,9 @@ export const GetNetworkConfig = (net: Network) => {
       return {
         posUrl: VERSE_TEST_RESTFUL_ENDPOINT,
         rpcUrl: VERSE_TEST_RPC_ENDPOINT,
+
+        wmtrEnabled: false,
+        wmtrAddress: '',
 
         powEnabled: false,
         auctionEnabled: false,

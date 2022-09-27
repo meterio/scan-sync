@@ -59,6 +59,8 @@ import {
   prototype,
   getAccountName,
   ParamsAddress,
+  WMTRDeposit,
+  WMTRWithdrawal,
 } from '../const';
 import { Pos, fromWei, isHex } from '../utils';
 import { InterruptedError, isTraceable, sleep } from '../utils/utils';
@@ -834,6 +836,64 @@ export class PosCMD extends CMD {
       }
     }
   }
+  async updateWMTR(
+    tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
+    blockConcise: BlockConcise
+  ): Promise<void> {
+    if (tx.reverted) {
+      return;
+    }
+    const config = GetNetworkConfig(this.network);
+    if (!config.wmtrEnabled || config.wmtrAddress === '') {
+      this.log.info('WMTR is not enabled');
+      return;
+    }
+
+    for (const [clauseIndex, o] of tx.outputs.entries()) {
+      for (const [logIndex, evt] of o.events.entries()) {
+        // handle WMTR deposit event
+        if (
+          evt.topics &&
+          evt.topics.length > 0 &&
+          evt.topics[0] === WMTRDeposit.signature &&
+          evt.address === config.wmtrAddress
+        ) {
+          let decoded: abi.Decoded;
+          try {
+            decoded = WMTRDeposit.decode(evt.data, evt.topics);
+          } catch (e) {
+            this.log.info('error decoding WMTR Deposit event');
+            continue;
+          }
+          const from = decoded.from.toLowerCase();
+          const amount = new BigNumber(decoded.amount);
+          await this.accountCache.minus(from, Token.MTR, amount, blockConcise);
+          await this.tokenBalanceCache.plus(from, evt.address, amount, blockConcise);
+        }
+
+        // handle WMTR Withdrawal event
+        if (
+          evt.topics &&
+          evt.topics.length > 0 &&
+          evt.topics[0] === WMTRWithdrawal.signature &&
+          evt.address === config.wmtrAddress
+        ) {
+          let decoded: abi.Decoded;
+          try {
+            decoded = WMTRWithdrawal.decode(evt.data, evt.topics);
+          } catch (e) {
+            this.log.info('error decoding WMTR Withdrawal event');
+            continue;
+          }
+
+          const from = decoded.from.toLowerCase();
+          const amount = new BigNumber(decoded.amount);
+          await this.tokenBalanceCache.minus(from, evt.address, amount, blockConcise);
+          await this.accountCache.plus(from, Token.MTR, amount, blockConcise);
+        }
+      }
+    }
+  }
 
   async updateMovements(
     tx: Omit<Flex.Meter.Transaction, 'meta'> & Omit<Flex.Meter.Receipt, 'meta'>,
@@ -1179,8 +1239,11 @@ export class PosCMD extends CMD {
     this.log.info(`start to process tx ${tx.id}`);
     const blockConcise = { number: blk.number, hash: blk.id, timestamp: blk.timestamp };
 
-    // update movement
+    // update movement && accounts
     await this.updateMovements(tx, blockConcise);
+
+    // update accounts with WMTR wrap
+    await this.updateWMTR(tx, blockConcise);
 
     await this.updateLogs(tx, blockConcise);
 
