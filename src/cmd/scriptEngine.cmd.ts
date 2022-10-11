@@ -1,30 +1,30 @@
 import * as devkit from '@meterio/devkit';
 import pino from 'pino';
+import { BigNumber } from 'bignumber.js';
+import { Network } from '../const';
 import {
-  AuctionDist,
-  AuctionRepo,
-  AuctionSummaryRepo,
   AuctionTx,
+  AuctionDist,
   Bid,
-  BidRepo,
   Block,
   EpochReward,
-  EpochRewardRepo,
   EpochRewardSummary,
-  EpochRewardSummaryRepo,
   Known,
-  KnownRepo,
-  Network,
-  RewardInfo,
-  Token,
   Tx,
+  RewardInfo,
+  Candidate,
+} from '../model';
+import {
+  AuctionRepo,
+  AuctionSummaryRepo,
+  BidRepo,
+  EpochRewardRepo,
+  EpochRewardSummaryRepo,
+  KnownRepo,
   ValidatorRewardRepo,
   CandidateRepo,
-  Candidate,
-  BigNumber,
-} from '@meterio/scan-db/dist';
-import { getHeapStatistics } from 'v8';
-import { GetNetworkConfig } from '../const';
+} from '../repo';
+import { GetNetworkConfig, Token } from '../const';
 
 import { TxBlockReviewer } from './blockReviewer';
 

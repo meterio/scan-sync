@@ -1,4 +1,4 @@
-import { Network } from '@meterio/scan-db/dist';
+import { Network } from '../const';
 
 import { ExecutorAddress, ExtensionAddress, ParamsAddress, PrototypeAddress } from './address';
 

@@ -2,22 +2,14 @@
 require('../utils/validateEnv');
 
 import { ScriptEngine } from '@meterio/devkit';
-import {
-  BigNumber,
-  BlockRepo,
-  EpochRewardRepo,
-  EpochRewardSummaryRepo,
-  TxRepo,
-  connectDB,
-  disconnectDB,
-  RewardInfo,
-} from '@meterio/scan-db/dist';
-
+import { BigNumber } from 'bignumber.js';
+import { connectDB, disconnectDB } from '../utils/db';
+import { BlockRepo, EpochRewardRepo, EpochRewardSummaryRepo, TxRepo } from '../repo';
 import { StakingModuleAddress } from '../const';
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
+import { checkNetworkWithDB, runWithOptions } from '../utils';
 
-const adjustEpochRewardSummary = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   await checkNetworkWithDB(network);
@@ -97,7 +89,7 @@ const adjustEpochRewardSummary = async () => {
 
 (async () => {
   try {
-    await adjustEpochRewardSummary();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

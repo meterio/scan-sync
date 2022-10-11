@@ -2,9 +2,11 @@
 require('../utils/validateEnv');
 
 import { abi } from '@meterio/devkit';
-import { BigNumber, HeadRepo, Token, TokenBalanceRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
-import { Pos, checkNetworkWithDB, getNetworkFromCli } from '../utils';
+import { BigNumber } from 'bignumber.js';
+import { connectDB, disconnectDB } from '../utils/db';
+import { Token } from '../const';
+import { HeadRepo, TokenBalanceRepo } from '../repo';
+import { Pos, checkNetworkWithDB, runWithOptions } from '../utils';
 
 const balanceOfABI: abi.Function.Definition = {
   inputs: [{ name: 'account', type: 'address' }],
@@ -15,8 +17,8 @@ const balanceOfABI: abi.Function.Definition = {
   payable: false,
 };
 
-const auditTokenBalances = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -59,7 +61,7 @@ const auditTokenBalances = async () => {
 
 (async () => {
   try {
-    await auditTokenBalances();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

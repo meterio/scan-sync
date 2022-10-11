@@ -1,10 +1,11 @@
 import { EventEmitter } from 'events';
-
-import { HeadRepo, Network, PowBlock, PowBlockRepo, PowTxRepo } from '@meterio/scan-db/dist';
+import { Network } from '../const';
+import { HeadRepo, PowBlockRepo, PowTxRepo } from '../repo';
+import { PowBlock } from '../model';
 import pino from 'pino';
 
 import { Pow } from '../utils/pow-rpc';
-import { InterruptedError, sleep } from '../utils/utils';
+import { InterruptedError, sleep } from '../utils';
 import { CMD } from './cmd';
 
 const FASTFORWARD_INTERVAL = 500;
@@ -33,7 +34,7 @@ export class PowCMD extends CMD {
 
   public async start() {
     this.log.info('start');
-    this.loop();
+    await this.loop();
     return;
   }
 

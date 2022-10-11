@@ -1,21 +1,16 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import {
-  HeadRepo,
-  connectDB,
-  disconnectDB,
-  TxRepo,
-  InternalTx,
-  InternalTxRepo,
-  BigNumber,
-} from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+import { InternalTx } from '../model';
+import { HeadRepo, TxRepo, InternalTxRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
 import { ZeroAddress } from '../const';
+import { checkNetworkWithDB, runWithOptions } from '../utils';
+import { GetBucketRequestPaymentRequest } from '@aws-sdk/client-s3';
 
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
-
-const run = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -92,7 +87,7 @@ const run = async () => {
 
 (async () => {
   try {
-    await run();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { HeadRepo, connectDB, disconnectDB, Candidate, BlockRepo, CandidateRepo } from '@meterio/scan-db/dist';
+import { Candidate } from '../model';
+import { HeadRepo, BlockRepo, CandidateRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
+import { checkNetworkWithDB, Pos, runWithOptions } from '../utils';
 
-import { checkNetworkWithDB, getNetworkFromCli, Pos } from '../utils';
-
-const run = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -43,7 +44,7 @@ const run = async () => {
 
 (async () => {
   try {
-    await run();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

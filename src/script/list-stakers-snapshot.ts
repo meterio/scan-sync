@@ -6,16 +6,15 @@ require('../utils/validateEnv');
  * including: address, balance (snapshot), tipping timestamp - first bound timestamp
  */
 import * as path from 'path';
-
-import { BigNumber, BoundRepo, UnboundRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
-import { getNetworkFromCli } from '../utils';
-import { Pos, saveCSV } from '../utils';
+import { BigNumber } from 'bignumber.js';
+import { connectDB, disconnectDB } from '../utils/db';
+import { BoundRepo, UnboundRepo } from '../repo';
+import { Pos, runWithOptions, saveCSV } from '../utils';
 
 const tippingBlockNum = 14063032;
 
-const listStakersSnapshot = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
   const pos = new Pos(network);
 
   const keyBlock = await pos.getBlock(tippingBlockNum, 'regular');
@@ -80,7 +79,7 @@ const listStakersSnapshot = async () => {
 
 (async () => {
   try {
-    await listStakersSnapshot();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

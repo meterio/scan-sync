@@ -1,22 +1,15 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import {
-  HeadRepo,
-  connectDB,
-  disconnectDB,
-  TxDigest,
-  TxRepo,
-  TxDigestRepo,
-  Token,
-  BigNumber,
-} from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+import { TxDigest } from '../model';
+import { HeadRepo, TxRepo, TxDigestRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
+import { checkNetworkWithDB, runWithOptions } from '../utils';
+import { ZeroAddress, Token } from '../const';
 
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
-import { ZeroAddress } from '../const';
-
-const run = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -83,7 +76,7 @@ const run = async () => {
 
 (async () => {
   try {
-    await run();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

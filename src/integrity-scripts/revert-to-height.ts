@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import {} from '../const';
-
+import { Network } from '../const';
 import {
   AccountRepo,
   AuctionRepo,
@@ -16,19 +15,16 @@ import {
   EpochRewardSummaryRepo,
   HeadRepo,
   MovementRepo,
-  Network,
   TxRepo,
   UnboundRepo,
-  connectDB,
-  disconnectDB,
-} from '@meterio/scan-db/dist';
-
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
+} from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
+import { checkNetworkWithDB, runWithOptions } from '../utils';
 
 const revertHeight = 4200000;
 
-const revertToHeight = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   if (network === Network.MainNet) {
     console.log('NO REVERT ALLOWED ON MAINNET!!!');
@@ -115,7 +111,7 @@ const revertToHeight = async () => {
 
 (async () => {
   try {
-    await revertToHeight();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

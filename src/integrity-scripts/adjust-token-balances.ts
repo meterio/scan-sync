@@ -2,12 +2,14 @@
 require('../utils/validateEnv');
 
 import { ERC20 } from '@meterio/devkit';
-import { BigNumber, Token, TokenBalanceRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+import { Token } from '../const';
+import { TokenBalanceRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
+import { Pos, checkNetworkWithDB, runWithOptions } from '../utils';
 
-import { Pos, checkNetworkWithDB, getNetworkFromCli } from '../utils';
-
-const auditTokenBalances = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const tokenBalanceRepo = new TokenBalanceRepo();
@@ -49,7 +51,7 @@ const auditTokenBalances = async () => {
 
 (async () => {
   try {
-    await auditTokenBalances();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

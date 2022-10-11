@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { HeadRepo, connectDB, disconnectDB, NFTRepo } from '@meterio/scan-db/dist';
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
+import { connectDB, disconnectDB } from '../utils/db';
+import { HeadRepo, NFTRepo } from '../repo';
+import { checkNetworkWithDB, runWithOptions } from '../utils';
 import { NFTCache } from '../types/nftCache';
 
-const run = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
   await connectDB(network, standby);
 
   const headRepo = new HeadRepo();
@@ -51,7 +52,7 @@ const run = async () => {
 
 (async () => {
   try {
-    await run();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

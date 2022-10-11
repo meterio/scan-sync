@@ -2,18 +2,17 @@
 require('../utils/validateEnv');
 
 import * as path from 'path';
+import { Network } from '../const';
+import { connectDB, disconnectDB } from '../utils/db';
+import { AccountRepo } from '../repo';
+import { checkNetworkWithDB, runWithOptions, saveCSV } from '../utils';
 
-import { AccountRepo, Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
-import { checkNetworkWithDB, getNetworkFromCli, saveCSV } from '../utils';
-
-const { network, standby } = getNetworkFromCli();
-
-const dumpAccounts = async (net: Network, standby: boolean) => {
-  await connectDB(net, standby);
+const runAsync = async (options) => {
+  const { network, standby } = options;
+  await connectDB(network, standby);
   const accountRepo = new AccountRepo();
   const accounts = await accountRepo.findAll();
-  await checkNetworkWithDB(net);
+  await checkNetworkWithDB(network);
 
   let accts = [];
   for (const acc of accounts) {
@@ -33,7 +32,7 @@ const dumpAccounts = async (net: Network, standby: boolean) => {
 
 (async () => {
   try {
-    await dumpAccounts(network, standby);
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

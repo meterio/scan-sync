@@ -1,6 +1,6 @@
 require('../utils/validateEnv');
-
-import { Network, disconnectDB } from '@meterio/scan-db/dist';
+import { Network } from '../const';
+import { disconnectDB } from '../utils/db';
 
 import { GetNetworkConfig } from '../const';
 import { Net } from '../utils';

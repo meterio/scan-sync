@@ -1,6 +1,8 @@
 import '@meterio/flex';
 
-import { BigNumber, Network, PowBlock, PowTx } from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+import { Network } from '../const';
+import { PowBlock, PowTx } from '../model';
 import Client from 'bitcoin-core';
 import LRU from 'lru-cache';
 

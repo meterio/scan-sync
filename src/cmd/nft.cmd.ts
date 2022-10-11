@@ -1,13 +1,13 @@
-import { Head, HeadRepo, Network, NFTRepo, NFT, LogEventRepo, BlockRepo } from '@meterio/scan-db/dist';
+import { Network } from '../const';
+import { HeadRepo, NFTRepo, LogEventRepo, BlockRepo } from '../repo';
+import { Head, NFT } from '../model';
 import pino from 'pino';
-
 import { GetNetworkConfig, ZeroAddress } from '../const';
-import { InterruptedError, sleep } from '../utils/utils';
+import { InterruptedError, sleep } from '../utils';
 import { CMD } from './cmd';
 import { ERC1155ABI, ERC721ABI, ERC1155, ERC721, abi } from '@meterio/devkit';
 import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
-import { Document } from 'mongoose';
 import { NFTCache } from '../types/nftCache';
 
 const FASTFORWARD_INTERVAL = 300; // 0.3 second gap between each loop
@@ -44,7 +44,7 @@ export class NFTCMD extends CMD {
 
   public async start() {
     this.log.info(`${this.name}: start`);
-    this.loop();
+    await this.loop();
     return;
   }
 

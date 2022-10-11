@@ -1,4 +1,5 @@
-import { BlockRepo, Network } from '@meterio/scan-db/dist';
+import { Network } from '../const';
+import { BlockRepo } from '../repo';
 import { Pos } from './pos-rest';
 
 export const checkNetworkWithDB = async (net: Network) => {

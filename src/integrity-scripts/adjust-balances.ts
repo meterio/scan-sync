@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
-
-import { AccountRepo, BigNumber, HeadRepo, Network, Token, connectDB, disconnectDB } from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+import { Token } from '../const';
+import { AccountRepo, HeadRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
 
 import { PrototypeAddress, ZeroAddress, prototype } from '../const';
-import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
+import { Pos, checkNetworkWithDB, fromWei, runWithOptions } from '../utils';
 
-const adjustBalance = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -93,7 +95,7 @@ const adjustBalance = async () => {
 
 (async () => {
   try {
-    await adjustBalance();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

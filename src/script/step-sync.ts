@@ -1,23 +1,19 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
-
-import { Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
+import { Network } from '../const';
+import { connectDB, disconnectDB } from '../utils/db';
 import { PosCMD } from '../cmd/pos.cmd';
-import { Net, Pos } from '../utils';
-import { getNetworkFromCli } from '../utils/utils';
+import { Net, Pos, runWithOptions } from '../utils';
 
 // other imports
 
-const { network, standby } = getNetworkFromCli();
-console.log(Network[network]);
-const blockNum = 23022537;
-
-const processOneBlock = async (net: Network, standby: boolean, blockNum: number) => {
-  await connectDB(net, standby);
+const runAsync = async (options) => {
+  const { network, standby } = options;
+  const blockNum = 23022537;
+  await connectDB(network, standby);
   console.log('process blockNum: ', blockNum);
-  const cmd = new PosCMD(net);
-  const pos = new Pos(net);
+  const cmd = new PosCMD(network);
+  const pos = new Pos(network);
   const blk = await pos.getBlock(blockNum, 'expanded');
   await cmd.processBlock(blk);
   await disconnectDB();
@@ -25,5 +21,5 @@ const processOneBlock = async (net: Network, standby: boolean, blockNum: number)
 };
 
 (async () => {
-  await processOneBlock(network, standby, blockNum);
+  await runWithOptions(runAsync);
 })();

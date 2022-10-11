@@ -1,22 +1,17 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
+import { connectDB, disconnectDB } from '../utils/db';
 import { PosCMD } from '../cmd/pos.cmd';
-import { Pos, getNetworkFromCli } from '../utils';
+import { Pos, runWithOptions } from '../utils';
 
-// other imports
-
-const { network, standby } = getNetworkFromCli();
-
-const blockNum = 27896;
-
-const processOneBlock = async (net: Network, standby: boolean, blockNum: number) => {
+const runAsync = async (options) => {
   // const blockQueue = new BlockQueue('block');
+  const { network, standby } = options;
   let shutdown = false;
-  const cmd = new PosCMD(net);
-  const posREST = new Pos(net);
+  const blockNum = 27896;
+  const cmd = new PosCMD(network);
+  const posREST = new Pos(network);
   const blk = await posREST.getBlock(blockNum, 'expanded');
   console.log(`Process block ${blockNum} with pos cmd`);
 
@@ -33,7 +28,7 @@ const processOneBlock = async (net: Network, standby: boolean, blockNum: number)
     });
   });
 
-  await connectDB(net, standby);
+  await connectDB(network, standby);
   const result = await cmd.processBlock(blk);
   console.log(result);
 };
@@ -41,7 +36,7 @@ const processOneBlock = async (net: Network, standby: boolean, blockNum: number)
 (async () => {
   // const blockQueue = new BlockQueue('block');
   try {
-    await processOneBlock(network, standby, blockNum);
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`process error: ${e.name} ${e.message} - ${e.stack}`);

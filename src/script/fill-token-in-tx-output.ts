@@ -1,19 +1,14 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
+import { Network } from '../const';
+import { connectDB, disconnectDB } from '../utils/db';
+import { TxRepo } from '../repo';
+import { Pos, runWithOptions } from '../utils';
 
-import { Network, TxRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
-import { Pos, getNetworkFromCli } from '../utils';
-
-const { network, standby } = getNetworkFromCli();
-
-const fillTokenInTxOutput = async (net: Network, standby: boolean) => {
-  const pos = new Pos(net);
-  if (!net) {
-    process.exit(-1);
-  }
-
-  await connectDB(net, standby);
+const runAsync = async (options) => {
+  const { network, standby } = options;
+  const pos = new Pos(network);
+  await connectDB(network, standby);
   const txRepo = new TxRepo();
   let txs = await txRepo.findAll();
   for (let tx of txs) {
@@ -43,7 +38,7 @@ const fillTokenInTxOutput = async (net: Network, standby: boolean) => {
 
 (async () => {
   try {
-    await fillTokenInTxOutput(network, standby);
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { BigNumber, Network, disconnectDB } from '@meterio/scan-db/dist';
-
+import { BigNumber } from 'bignumber.js';
+import { Network } from '../const';
+import { disconnectDB } from '../utils/db';
 import { BoundEvent, GetNetworkConfig, UnboundEvent } from '../const';
 import { Net, Pos, fromWei } from '../utils';
 import { Balance } from './types/balance';

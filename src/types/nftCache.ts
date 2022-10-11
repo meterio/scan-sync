@@ -1,4 +1,6 @@
-import { BigNumber, Token, AccountRepo, Account, BlockConcise, Network, NFT, NFTRepo } from '@meterio/scan-db/dist';
+import { Network } from '../const';
+import { NFT } from '../model';
+import { NFTRepo } from '../repo';
 import axios from 'axios';
 import {
   S3Client,

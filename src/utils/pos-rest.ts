@@ -1,6 +1,5 @@
 import '@meterio/flex';
-
-import { Network, Token } from '@meterio/scan-db/dist';
+import { Network, Token } from '../const';
 import LRU from 'lru-cache';
 import { ERC165, ERC721, ERC1155, ERC721Metadata, ERC20 } from '@meterio/devkit';
 

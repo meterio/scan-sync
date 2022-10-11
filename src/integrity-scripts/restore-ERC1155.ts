@@ -2,23 +2,18 @@
 require('../utils/validateEnv');
 
 import { abi, ERC1155 } from '@meterio/devkit';
-import {
-  HeadRepo,
-  connectDB,
-  disconnectDB,
-  LogEventRepo,
-  Movement,
-  MovementRepo,
-  BigNumber,
-  Token,
-  NFTTransfer,
-} from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+
+import { Movement, NFTTransfer } from '../model';
+import { HeadRepo, LogEventRepo, MovementRepo } from '../repo';
+import { Token } from '../const';
+import { connectDB, disconnectDB } from '../utils/db';
 import { NFTBalanceAuditor } from '../types';
 
-import { checkNetworkWithDB, getNetworkFromCli } from '../utils';
+import { checkNetworkWithDB, runWithOptions } from '../utils';
 
-const run = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -117,7 +112,7 @@ const run = async () => {
 
 (async () => {
   try {
-    await run();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

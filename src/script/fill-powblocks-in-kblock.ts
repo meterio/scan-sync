@@ -1,19 +1,15 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import { BlockRepo, Network, PowInfo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
+import { connectDB, disconnectDB } from '../utils/db';
+import { PowInfo } from '../model';
+import { BlockRepo } from '../repo';
+import { Pos, runWithOptions } from '../utils';
 
-import { Pos, getNetworkFromCli } from '../utils';
-
-const { network, standby } = getNetworkFromCli();
-
-const fillPowblocksInKBlock = async (net: Network, standby: boolean) => {
-  const pos = new Pos(net);
-  if (!net) {
-    process.exit(-1);
-  }
-
-  await connectDB(net, standby);
+const runAsync = async (options) => {
+  const { network, standby } = options;
+  const pos = new Pos(network);
+  await connectDB(network, standby);
   const blockRepo = new BlockRepo();
   let kblks = await blockRepo.findKBlocksWithoutPowBlocks();
   while (!!kblks && kblks.length > 0) {
@@ -40,7 +36,7 @@ const fillPowblocksInKBlock = async (net: Network, standby: boolean) => {
 
 (async () => {
   try {
-    await fillPowblocksInKBlock(network, standby);
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`start error: ${e.name} ${e.message} - ${e.stack}`);

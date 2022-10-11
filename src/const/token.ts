@@ -1,4 +1,4 @@
-import { Network, Token } from '@meterio/scan-db/dist';
+import { Network, Token } from './types';
 export interface TokenBasic {
   name: string;
   address: string;

@@ -2,14 +2,16 @@
 require('../utils/validateEnv');
 
 import { ERC721, ERC1155, abi } from '@meterio/devkit';
-import { HeadRepo, connectDB, disconnectDB, LogEventRepo, BigNumber } from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+import { HeadRepo, LogEventRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
 import axios from 'axios';
 import { ethers } from 'ethers';
 import { PromisePool } from '@supercharge/promise-pool';
 
 import { S3Client, PutObjectCommand, ListObjectsCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
-import { checkNetworkWithDB, getNetworkFromCli, sleep } from '../utils';
+import { checkNetworkWithDB, runWithOptions, sleep } from '../utils';
 import { ZeroAddress } from '../const';
 
 // Set the AWS Region
@@ -53,8 +55,8 @@ const imageInPinata = ['0x90bacf98c0d55255306a910da5959dcd72252ce0'];
 
 const pinataTarget: Target[] = [];
 
-const run = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -305,7 +307,7 @@ const actionUpload = async (tokenAddress, tokenId, isERC721) => {
 
 (async () => {
   try {
-    await run();
+    await runWithOptions(runAsync);
     // const tokenAddress = '0x608203020799f9bda8bfcc3ac60fc7d9b0ba3d78';
     // const tokenId = '2204';
     // const isERC721 = true;

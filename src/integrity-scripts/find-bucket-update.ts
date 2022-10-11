@@ -2,14 +2,14 @@
 require('../utils/validateEnv');
 
 import { ScriptEngine } from '@meterio/devkit';
-import { BigNumber, TxRepo, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
-import { fromWei } from '../utils';
-import { getNetworkFromCli } from '../utils';
+import { BigNumber } from 'bignumber.js';
+import { TxRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
+import { fromWei, runWithOptions } from '../utils';
 
 const blockNum = 9470000;
-const findBucketUpdate = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const txRepo = new TxRepo();
@@ -62,7 +62,7 @@ const findBucketUpdate = async () => {
 
 (async () => {
   try {
-    await findBucketUpdate();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

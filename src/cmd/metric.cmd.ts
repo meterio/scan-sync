@@ -1,40 +1,39 @@
 import { EventEmitter } from 'events';
-
+import { BigNumber } from 'bignumber.js';
+import { Network } from '../const';
 import {
   AccountRepo,
   AlertRepo,
   BlockRepo,
-  Bucket,
   BucketRepo,
   ContractRepo,
   HeadRepo,
-  Network,
-  Validator,
   ValidatorRepo,
-  ValidatorStatus,
-  BigNumber,
-  ABIFragment,
   ABIFragmentRepo,
-  ContractFile,
   ContractFileRepo,
-  getNetworkConstants,
-  ContractType,
-  Token,
-} from '@meterio/scan-db/dist';
+} from '../repo';
+import { ContractFile, Validator, Bucket } from '../model';
 import { ERC20 } from '@meterio/devkit/dist';
 import { toChecksumAddress } from '@meterio/devkit/dist/cry';
 import pino from 'pino';
 
-import { GetNetworkConfig, LockedMeterAddrs, LockedMeterGovAddrs, MetricName, MeterMainnetDomains } from '../const';
+import {
+  GetNetworkConfig,
+  LockedMeterAddrs,
+  LockedMeterGovAddrs,
+  MetricName,
+  Token,
+  ContractType,
+  ValidatorStatus,
+} from '../const';
 import { InterruptedError, Net, Pos, Pow, sleep } from '../utils';
 import { MetricCache } from '../types';
 import { postToSlackChannel } from '../utils/slack';
 import { CMD } from './cmd';
 import axios from 'axios';
-import { EventFragment, FormatTypes, FunctionFragment, Interface } from 'ethers/lib/utils';
-import { ethers } from 'ethers';
+import { FormatTypes, Interface } from 'ethers/lib/utils';
 import PromisePool from '@supercharge/promise-pool/dist';
-
+import { ABIFragment } from '../model/abiFragment.interface';
 const SAMPLING_INTERVAL = 3000;
 
 const SOURCIFY_SERVER_API = 'https://sourcify.dev/server';
@@ -92,7 +91,7 @@ export class MetricCMD extends CMD {
   public async start() {
     await this.beforeStart();
     this.log.info('start');
-    this.loop();
+    await this.loop();
     return;
   }
 
@@ -598,8 +597,8 @@ export class MetricCMD extends CMD {
   private async updateVerifiedContracts(index: number, interval: number) {
     if (index % interval === 0) {
       this.log.info('update verified contract');
-      const netConsts = getNetworkConstants(this.network);
-      const chainId = netConsts.chainId;
+      const conf = GetNetworkConfig(this.network);
+      const chainId = conf.chainId;
       if (!chainId) {
         this.log.info('could not get correct chainId to check verified contracts');
         return;

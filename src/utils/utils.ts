@@ -1,7 +1,7 @@
-import { BigNumber, Network, parseNetwork, Tx } from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
 import { ScriptEngine } from '@meterio/devkit';
-
-import { UNIT_WEI } from '../const';
+import { Network, UNIT_WEI } from '../const';
+import commander from 'commander';
 
 export const MAX_BLOCK_PROPOSERS = 101;
 export const BLOCK_INTERVAL = 10;
@@ -73,16 +73,6 @@ export class WaitNextTickError extends Error {
   }
 }
 
-export const getNetworkFromCli = () => {
-  const args = process.argv.slice(2);
-  if (process.argv.length < 3) {
-    console.log('not valid, usage: ts-node this.ts [main|test]');
-    process.exit(-1);
-  }
-
-  return parseNetwork(process.argv[2]);
-};
-
 export const isHex = (str: string): boolean => {
   return /^[a-f0-9]+$/i.test(str.toLowerCase());
 };
@@ -94,3 +84,36 @@ export const isTraceable = (data: string) => {
 
 WaitNextTickError.prototype.name = 'WaitNextTickError';
 InterruptedError.prototype.name = 'InterruptedError';
+
+const parseNetwork = (value) => {
+  let network: Network;
+  switch (value) {
+    case 'main':
+    case 'metermain':
+      network = Network.MainNet;
+      break;
+    case 'test':
+    case 'metertest':
+      network = Network.TestNet;
+      break;
+    case 'verse-test':
+      network = Network.VerseTest;
+      break;
+    case 'verse-main':
+      network = Network.VerseMain;
+      break;
+    default:
+      throw new commander.InvalidArgumentError('Not a valid network');
+  }
+  return network;
+};
+
+export const runWithOptions = async (runAsync) => {
+  const program = new commander.Command();
+  program
+    .command('run')
+    .requiredOption('-n, --network <network>', 'Network to use', parseNetwork)
+    .option('-s, --standby', 'Standby mode')
+    .action(runAsync);
+  await program.parseAsync(process.argv);
+};

@@ -1,25 +1,16 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
 
-import {
-  HeadRepo,
-  connectDB,
-  disconnectDB,
-  TxRepo,
-  ContractRepo,
-  Tx,
-  Contract,
-  TraceOutput,
-} from '@meterio/scan-db/dist';
+import { HeadRepo, TxRepo, ContractRepo } from '../repo';
+import { TraceOutput } from '../model';
+import { connectDB, disconnectDB } from '../utils/db';
 import { prototype, ZeroAddress } from '../const';
 import { Keccak } from 'sha3';
 
-import { checkNetworkWithDB, getNetworkFromCli, isTraceable, Pos, sleep } from '../utils';
-import { Document } from 'mongoose';
-import { createCipheriv } from 'crypto';
+import { checkNetworkWithDB, isTraceable, Pos, runWithOptions, sleep } from '../utils';
 
-const run = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -139,7 +130,7 @@ const run = async () => {
 
 (async () => {
   try {
-    await run();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

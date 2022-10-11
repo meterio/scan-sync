@@ -1,4 +1,7 @@
-import { BigNumber, Network, NFTBalance, BlockConcise, TokenBalance, TokenBalanceRepo } from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
+import { Network } from '../const';
+import { NFTBalance, BlockConcise, TokenBalance } from '../model';
+import { TokenBalanceRepo } from '../repo';
 import { ZeroAddress } from '../const';
 import { Pos } from '../utils';
 

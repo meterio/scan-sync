@@ -2,49 +2,49 @@ import { EventEmitter } from 'events';
 
 import { abi, cry, ERC20, ERC1155, ERC721 } from '@meterio/devkit';
 import { ScriptEngine } from '@meterio/devkit';
+import { Network } from '../const';
+import {
+  BlockRepo,
+  BoundRepo,
+  CommitteeRepo,
+  HeadRepo,
+  MovementRepo,
+  TxDigestRepo,
+  TxRepo,
+  UnboundRepo,
+  ContractRepo,
+  TokenBalanceRepo,
+  MetricRepo,
+  AccountRepo,
+  LogEventRepo,
+  LogTransferRepo,
+  InternalTxRepo,
+} from '../repo';
+import { Token, ContractType, BlockType } from '../const';
 import {
   Block,
   BlockConcise,
-  BlockRepo,
-  BlockType,
   Bound,
-  BoundRepo,
-  Clause,
   Committee,
   CommitteeMember,
-  CommitteeRepo,
-  Head,
-  HeadRepo,
-  Movement,
-  MovementRepo,
-  Network,
-  Token,
-  Tx,
-  TxDigest,
-  TxDigestRepo,
   TxOutput,
-  TxRepo,
+  Movement,
+  Clause,
+  LogTransfer,
+  InternalTx,
+  Account,
+  LogEvent,
   Unbound,
-  UnboundRepo,
   VMError,
   TraceOutput,
   TokenBalance,
   NFTTransfer,
   Contract,
-  ContractType,
-  ContractRepo,
-  TokenBalanceRepo,
-  MetricRepo,
-  AccountRepo,
-  Account,
-  LogEvent,
-  LogEventRepo,
-  LogTransfer,
-  LogTransferRepo,
-  InternalTxRepo,
-  InternalTx,
-} from '@meterio/scan-db/dist';
-import { BigNumber } from '@meterio/scan-db/dist';
+  Head,
+  Tx,
+  TxDigest,
+} from '../model';
+import { BigNumber } from 'bignumber.js';
 import { sha1 } from 'object-hash';
 import pino from 'pino';
 import { Keccak } from 'sha3';
@@ -63,7 +63,7 @@ import {
   WMTRWithdrawal,
 } from '../const';
 import { Pos, fromWei, isHex } from '../utils';
-import { InterruptedError, isTraceable, sleep } from '../utils/utils';
+import { InterruptedError, isTraceable, sleep } from '../utils';
 import { CMD } from './cmd';
 import { newIterator, LogItem } from '../utils/log-traverser';
 import { AccountCache, TokenBalanceCache } from '../types';
@@ -152,7 +152,7 @@ export class PosCMD extends CMD {
 
   public async start() {
     this.log.info(`${this.name}: start`);
-    this.loop();
+    await this.loop();
     return;
   }
 
@@ -329,7 +329,9 @@ export class PosCMD extends CMD {
   public async loop() {
     let fastforward = true;
 
+    console.log('1111');
     let head = await this.headRepo.findByKey(this.name);
+    console.log('22222222222');
     if (head) {
       await this.cleanUpIncompleteData(head);
     }
@@ -340,6 +342,7 @@ export class PosCMD extends CMD {
           throw new InterruptedError();
         }
 
+        console.log('22222222222');
         let head = await this.headRepo.findByKey(this.name);
         let headNum = !!head ? head.num : -1;
 
@@ -360,6 +363,7 @@ export class PosCMD extends CMD {
           { best: bestNum, head: headNum, mode: fastforward ? 'fast-forward' : 'normal' },
           `start import PoS block from number ${headNum + 1} to ${endNum}`
         );
+        console.log('22222222222');
         // begin import round from headNum+1 to tgtNum
         for (let num = headNum + 1; num <= endNum; num++) {
           // fetch block from RESTful API

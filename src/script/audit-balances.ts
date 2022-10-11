@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 require('../utils/validateEnv');
+import { BigNumber } from 'bignumber.js';
+import { Network } from '../const';
+import { AccountRepo, HeadRepo } from '../repo';
+import { connectDB, disconnectDB } from '../utils/db';
+import { Pos, checkNetworkWithDB, fromWei, runWithOptions } from '../utils';
 
-import { AccountRepo, BigNumber, HeadRepo, Network, connectDB, disconnectDB } from '@meterio/scan-db/dist';
-
-import { Pos, checkNetworkWithDB, fromWei, getNetworkFromCli } from '../utils';
-
-const audit = async () => {
-  const { network, standby } = getNetworkFromCli();
+const runAsync = async (options) => {
+  const { network, standby } = options;
 
   await connectDB(network, standby);
   const headRepo = new HeadRepo();
@@ -69,7 +70,7 @@ const audit = async () => {
 
 (async () => {
   try {
-    await audit();
+    await runWithOptions(runAsync);
     await disconnectDB();
   } catch (e) {
     console.log(`error: ${e.name} ${e.message} - ${e.stack}`);

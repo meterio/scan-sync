@@ -1,5 +1,7 @@
-import { BigNumber, Token, AccountRepo, Account, BlockConcise, Network } from '@meterio/scan-db/dist';
-import { getAccountName, ZeroAddress } from '../const';
+import { BigNumber } from 'bignumber.js';
+import { AccountRepo } from '../repo';
+import { Account, BlockConcise } from '../model';
+import { getAccountName, ZeroAddress, Network, Token } from '../const';
 import { Pos, fromWei } from '../utils';
 
 export class AccountCache {

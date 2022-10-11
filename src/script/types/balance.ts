@@ -1,4 +1,4 @@
-import { BigNumber } from '@meterio/scan-db/dist';
+import { BigNumber } from 'bignumber.js';
 
 import { fromWei } from '../../utils';
 
