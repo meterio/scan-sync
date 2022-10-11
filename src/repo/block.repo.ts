@@ -70,7 +70,7 @@ export default class BlockRepo {
   }
 
   public async countKBlocks() {
-    return this.model.count({ type: BlockType.KBlock });
+    return this.model.countDocuments({ type: BlockType.KBlock });
   }
 
   public async create(block: Block) {
@@ -105,7 +105,7 @@ export default class BlockRepo {
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
     const result = await this.model
       .find(query)
       .sort({ timestamp: -1 })
@@ -120,7 +120,7 @@ export default class BlockRepo {
   }
 
   public async countByBeneficiary(address: string) {
-    return this.model.count({ beneficiary: address.toLowerCase() });
+    return this.model.countDocuments({ beneficiary: address.toLowerCase() });
   }
 
   public async paginateByBeneficiary(address: string, pageNum?: number, limitNum?: number) {

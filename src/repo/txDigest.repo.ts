@@ -34,13 +34,13 @@ export default class TxDigestRepo {
   }
 
   public async countByAddress(address: string) {
-    return this.model.count({ $or: [{ from: address.toLowerCase() }, { to: address.toLowerCase() }] });
+    return this.model.countDocuments({ $or: [{ from: address.toLowerCase() }, { to: address.toLowerCase() }] });
   }
 
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
     const result = await this.model
       .find(query)
       .sort({ 'block.number': -1, txIndex: -1 })
@@ -58,17 +58,18 @@ export default class TxDigestRepo {
   }
 
   public async paginateByAccountInRange(start: number, end: number, addr: string, pageNum?: number, limitNum?: number) {
-    return this.paginate({
-      $and: [
-        { 'block.timestamp': { $gte: start, $lte: end } },
-        {
-          $or: [
-            { from: addr.toLowerCase() },
-            { to: addr.toLowerCase() }
-          ]
-        }
-      ]
-    }, pageNum, limitNum);
+    return this.paginate(
+      {
+        $and: [
+          { 'block.timestamp': { $gte: start, $lte: end } },
+          {
+            $or: [{ from: addr.toLowerCase() }, { to: addr.toLowerCase() }],
+          },
+        ],
+      },
+      pageNum,
+      limitNum
+    );
   }
 
   public async findInRange(startblock: number, endblock: number) {

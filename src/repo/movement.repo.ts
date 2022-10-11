@@ -43,7 +43,7 @@ export default class MovementRepo {
   }
 
   public async countByTokenAddress(tokenAddress: string) {
-    return this.model.count({
+    return this.model.countDocuments({
       tokenAddress: tokenAddress.toLowerCase(),
     });
   }
@@ -83,7 +83,7 @@ export default class MovementRepo {
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
     const result = await this.model
       .find(query)
       .sort({ 'block.number': -1 })
@@ -110,7 +110,7 @@ export default class MovementRepo {
   public async paginateByAccount(addr: string, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
     const query = { $or: [{ from: addr.toLowerCase() }, { to: addr.toLowerCase() }] };
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
     const result = await this.model.aggregate([
       { $match: query },
       { $sort: { 'block.number': -1 } },
@@ -129,7 +129,7 @@ export default class MovementRepo {
   }
 
   public async countERC20TxsByAddress(address: string) {
-    return this.model.count({
+    return this.model.countDocuments({
       $or: [
         { from: address.toLowerCase(), token: Token.ERC20 },
         { to: address.toLowerCase(), token: Token.ERC20 },
@@ -138,7 +138,7 @@ export default class MovementRepo {
   }
 
   public async countERC721TxsByAddress(address: string) {
-    return this.model.count({
+    return this.model.countDocuments({
       $or: [
         { from: address.toLowerCase(), token: Token.ERC721 },
         { to: address.toLowerCase(), token: Token.ERC721 },
@@ -147,7 +147,7 @@ export default class MovementRepo {
   }
 
   public async countERC1155TxsByAddress(address: string) {
-    return this.model.count({
+    return this.model.countDocuments({
       $or: [
         { from: address.toLowerCase(), token: Token.ERC1155 },
         { to: address.toLowerCase(), token: Token.ERC1155 },
@@ -156,7 +156,7 @@ export default class MovementRepo {
   }
 
   public async countNFTTxsByAddress(address: string) {
-    return this.model.count({
+    return this.model.countDocuments({
       $or: [
         { from: address.toLowerCase(), token: Token.ERC721 },
         { to: address.toLowerCase(), token: Token.ERC721 },

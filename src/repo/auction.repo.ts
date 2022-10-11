@@ -15,7 +15,7 @@ export default class AuctionRepo {
 
   public async paginateAllPast(pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.count({ pending: false });
+    const count = await this.model.countDocuments({ pending: false });
     const result = await this.model
       .find({ pending: false })
       .sort({ createTime: -1 })

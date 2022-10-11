@@ -48,7 +48,7 @@ export default class InternalTxRepo {
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
     const result = await this.model
       .find(query)
       .sort({ 'block.number': -1, txIndex: -1 })

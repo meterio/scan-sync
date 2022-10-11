@@ -35,7 +35,7 @@ export default class CommitteeRepo {
   // paginates
   public async paginateAll(pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.committee.count();
+    const count = await this.committee.countDocuments();
     const result = await this.committee
       .find({})
       .sort({ epoch: -1 })

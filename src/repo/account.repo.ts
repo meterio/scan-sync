@@ -22,7 +22,7 @@ export default class AccountRepo {
   }
 
   public async countNonZero() {
-    return this.model.count({
+    return this.model.countDocuments({
       $or: [{ mtrBalance: { $ne: new BigNumber('0') } }, { mtrgBalance: { $ne: new BigNumber('0') } }],
     });
   }

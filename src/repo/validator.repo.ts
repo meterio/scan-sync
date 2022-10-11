@@ -12,7 +12,7 @@ export default class ValidatorRepo {
   }
 
   public async countAll() {
-    return this.model.count();
+    return this.model.countDocuments();
   }
 
   public async findByAccount(address: string) {
@@ -37,7 +37,7 @@ export default class ValidatorRepo {
   }
 
   public async countByStatus(status: ValidatorStatus) {
-    return this.model.count({ status });
+    return this.model.countDocuments({ status });
   }
 
   public async bulkInsert(...models: Validator[]) {
@@ -97,7 +97,7 @@ export default class ValidatorRepo {
       ],
       status: { $in: status },
     };
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
 
     let criteria: any[] = [
       {
@@ -125,7 +125,7 @@ export default class ValidatorRepo {
 
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
     const result = await this.model
       .find(query)
       .limit(limit)
@@ -142,19 +142,21 @@ export default class ValidatorRepo {
     filter: string,
     pageNum?: number,
     limitNum?: number,
-    sort: { sortBy: 'totalVotes' | 'commission' | 'totalPoints', order: 'asc' | 'desc' } = {
+    sort: { sortBy: 'totalVotes' | 'commission' | 'totalPoints'; order: 'asc' | 'desc' } = {
       sortBy: 'totalVotes',
       order: 'desc',
     }
   ) {
-    return this.paginateByFilter(filter, [ValidatorStatus.CANDIDATE, ValidatorStatus.DELEGATE], pageNum, limitNum, { ...sort });
+    return this.paginateByFilter(filter, [ValidatorStatus.CANDIDATE, ValidatorStatus.DELEGATE], pageNum, limitNum, {
+      ...sort,
+    });
   }
 
   public async paginateDelegatesByFilter(
     filter: string,
     pageNum?: number,
     limitNum?: number,
-    sort: { sortBy: 'votingPower' | 'commission' | 'totalPoints', order: 'asc' | 'desc' } = {
+    sort: { sortBy: 'votingPower' | 'commission' | 'totalPoints'; order: 'asc' | 'desc' } = {
       sortBy: 'votingPower',
       order: 'asc',
     }
@@ -166,10 +168,11 @@ export default class ValidatorRepo {
     filter: string,
     pageNum?: number,
     limitNum?: number,
-    sort: { sortBy: 'totalPoints' | 'jailedTime' | 'bailAmount', order: 'asc' | 'desc' } = {
+    sort: { sortBy: 'totalPoints' | 'jailedTime' | 'bailAmount'; order: 'asc' | 'desc' } = {
       sortBy: 'totalPoints',
       order: 'asc',
-    }) {
+    }
+  ) {
     return this.paginateByFilter(filter, [ValidatorStatus.JAILED], pageNum, limitNum, { ...sort });
   }
 }

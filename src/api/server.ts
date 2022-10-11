@@ -1,4 +1,4 @@
-require('./utils/validateEnv');
+require('../utils/validateEnv');
 
 import App from './app';
 import AccountController from './controllers/account.controller';

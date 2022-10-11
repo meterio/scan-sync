@@ -1,4 +1,4 @@
-import { Token } from '../const/model';
+import { Token } from '../../const';
 
 class TokenNotSupported extends Error {
   public token: Token;

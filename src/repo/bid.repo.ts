@@ -43,13 +43,13 @@ export default class BidRepo {
   }
 
   public async countByAddress(address: string) {
-    return this.model.count({ address: address.toLowerCase() });
+    return this.model.countDocuments({ address: address.toLowerCase() });
   }
 
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.count(query);
+    const count = await this.model.countDocuments(query);
     const result = await this.model
       .find(query)
       .limit(limit)
