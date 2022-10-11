@@ -46,5 +46,5 @@ export const serveAPI = async (network: Network, standby: boolean, port: number)
     network,
     standby
   );
-  app.listen(port);
+  await app.listen(port);
 };

@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import * as mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 import { Account } from './account.interface';
 import { blockConciseSchema } from './blockConcise.model';

@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import * as mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 import { ValidatorStatus, enumKeys } from '../const';
 import { Distributor, Validator } from './validator.interface';

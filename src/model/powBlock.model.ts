@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import * as mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 import { PowBlock } from './powBlock.interface';
 

@@ -45,9 +45,9 @@ const runSync = async (task, options) => {
 
 const runAPI = async (options) => {
   console.log(`start query api`);
-  await connectDB(options.network, !!options.standby);
+  // await connectDB(options.network, !!options.standby);
   await serveAPI(options.network, !!options.standby, options.port);
-  await disconnectDB();
+  // await disconnectDB();
 };
 
 const parsePort = (value) => {

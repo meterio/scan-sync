@@ -4,7 +4,7 @@
       "name": "scan-api",
       "instances": "1",
       "script": "./src/main.ts",
-      "args": "api -n $NETWORK",
+      "args": "api -n $NETWORK -p 4000",
       "interpreter": "ts-node",
       "env": {
         "NODE_ENV": "production"

@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import * as mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 import { BlockType, enumKeys } from '../const';
 import { Block, CommitteeMember, QC } from './block.interface';
