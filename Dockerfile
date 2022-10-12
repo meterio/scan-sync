@@ -13,3 +13,4 @@ RUN npm install --production
 RUN apt install -y wget && wget https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem && apt autoremove -y wget
 
 ENTRYPOINT [ "pm2-runtime", "start", "pm2.json", "--only" ]
+CMD ["main"]
