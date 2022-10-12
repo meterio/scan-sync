@@ -14,6 +14,7 @@ import { connectDB, disconnectDB } from './utils/db';
 const commander = require('commander');
 const program = new commander.Command();
 
+console.log('args: ', process.argv);
 const runSync = async (task, options) => {
   console.log(`start to sync on network ${options.network} ${!!options.standby} ${task}`);
   await connectDB(options.network, !!options.standby);
