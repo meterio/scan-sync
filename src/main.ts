@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 require('./utils/validateEnv');
 
+import { Option } from 'commander';
 import { serveAPI } from './api/server';
 import { CMD } from './cmd/cmd';
 import { MetricCMD } from './cmd/metric.cmd';
@@ -93,8 +94,15 @@ program
   .action(runSync);
 program
   .command('api')
-  .requiredOption('-n, --network <network>', 'Network to use', parseNetwork)
-  .requiredOption('-p, --port <port>', 'Port to listen', parsePort)
+  .addOption(
+    new Option('-n, --network <network>', 'Network to use')
+      .env('API_NETWORK')
+      .argParser(parseNetwork)
+      .makeOptionMandatory(true)
+  )
+  .addOption(
+    new Option('-p, --port <port>', 'Port to listen').env('API_PORT').argParser(parsePort).makeOptionMandatory(true)
+  )
   .option('-s, --standby', 'Standby mode')
   .action(runAPI);
 
