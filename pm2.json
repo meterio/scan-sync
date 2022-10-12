@@ -1,41 +1,11 @@
 {
   "apps": [
     {
-      "name": "scan-api-main",
+      "name": "scan-api",
       "instances": "1",
       "script": "./src/main.ts",
-      "args": "api -n main -p 4000",
       "interpreter": "ts-node",
-      "env": {
-        "NODE_ENV": "production"
-      }
-    },
-    {
-      "name": "scan-api-main-standby",
-      "instances": "1",
-      "script": "./src/main.ts",
-      "args": "api -n main -p 4000 -s",
-      "interpreter": "ts-node",
-      "env": {
-        "NODE_ENV": "production"
-      }
-    },
-    {
-      "name": "scan-api-test",
-      "instances": "1",
-      "script": "./src/main.ts",
-      "args": "api -n test -p 4000",
-      "interpreter": "ts-node",
-      "env": {
-        "NODE_ENV": "production"
-      }
-    },
-    {
-      "name": "scan-api-test-standby",
-      "instances": "1",
-      "script": "./src/main.ts",
-      "args": "api -n test -p 4000 -s",
-      "interpreter": "ts-node",
+      "args": "api",
       "env": {
         "NODE_ENV": "production"
       }
