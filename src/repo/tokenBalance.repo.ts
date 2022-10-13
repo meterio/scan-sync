@@ -56,13 +56,13 @@ export default class TokenBalanceRepo {
   }
 
   public async countByTokenAddress(tokenAddress: string) {
-    return this.model.countDocuments({
+    return this.model.count({
       tokenAddress: tokenAddress.toLowerCase(),
     });
   }
 
   public async countByAddress(address: string) {
-    return this.model.countDocuments({ address: address.toLowerCase() });
+    return this.model.count({ address: address.toLowerCase() });
   }
 
   public async countERC20ByAddress(address: string) {
@@ -142,7 +142,7 @@ export default class TokenBalanceRepo {
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.countDocuments(query);
+    const count = await this.model.count(query);
     const result = await this.model
       .find(query)
       .sort({ 'block.number': -1 })
@@ -153,7 +153,7 @@ export default class TokenBalanceRepo {
 
   public async paginateByTokenAddress(tokenAddress: string, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.countDocuments({ tokenAddress: tokenAddress.toLowerCase() });
+    const count = await this.model.count({ tokenAddress: tokenAddress.toLowerCase() });
     const result = await this.model.aggregate([
       { $match: { tokenAddress: tokenAddress.toLowerCase() } },
       { $addFields: { balLen: { $strLenCP: '$balance' } } },
@@ -170,7 +170,7 @@ export default class TokenBalanceRepo {
 
   public async paginateByAddress(address: string, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.countDocuments({ address: address.toLowerCase() });
+    const count = await this.model.count({ address: address.toLowerCase() });
     const result = await this.model.aggregate([
       {
         $match: { address: address.toLowerCase() },

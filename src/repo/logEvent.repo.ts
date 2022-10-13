@@ -28,7 +28,7 @@ export default class LogEventRepo {
   }
 
   public async countByAddress(address: string) {
-    return this.model.countDocuments({ address: address.toLowerCase() });
+    return this.model.count({ address: address.toLowerCase() });
   }
 
   public async exist(txHash: string, clauseIndex: number, logIndex: number) {
@@ -64,7 +64,7 @@ export default class LogEventRepo {
 
   public async paginateByAddress(address: string, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.countDocuments({ address: address.toLowerCase() });
+    const count = await this.model.count({ address: address.toLowerCase() });
     const result = await this.model.aggregate([
       { $match: { address: address.toLowerCase() } },
       { $sort: { 'block.number': -1 } },

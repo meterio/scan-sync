@@ -22,7 +22,7 @@ export default class InternalTxRepo {
   }
 
   public async countByAddress(address: string) {
-    return this.model.countDocuments({ $or: [{ from: address.toLowerCase() }, { to: address.toLowerCase() }] });
+    return this.model.count({ $or: [{ from: address.toLowerCase() }, { to: address.toLowerCase() }] });
   }
 
   public async exist(txHash: string, clauseIndex: number, name: string) {
@@ -48,7 +48,7 @@ export default class InternalTxRepo {
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.countDocuments(query);
+    const count = await this.model.count(query);
     const result = await this.model
       .find(query)
       .sort({ 'block.number': -1, txIndex: -1 })

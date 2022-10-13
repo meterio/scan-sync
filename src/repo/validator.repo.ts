@@ -12,7 +12,7 @@ export default class ValidatorRepo {
   }
 
   public async countAll() {
-    return this.model.countDocuments();
+    return this.model.count();
   }
 
   public async findByAccount(address: string) {
@@ -37,7 +37,7 @@ export default class ValidatorRepo {
   }
 
   public async countByStatus(status: ValidatorStatus) {
-    return this.model.countDocuments({ status });
+    return this.model.count({ status });
   }
 
   public async bulkInsert(...models: Validator[]) {
@@ -97,7 +97,7 @@ export default class ValidatorRepo {
       ],
       status: { $in: status },
     };
-    const count = await this.model.countDocuments(query);
+    const count = await this.model.count(query);
 
     let criteria: any[] = [
       {
@@ -125,7 +125,7 @@ export default class ValidatorRepo {
 
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.countDocuments(query);
+    const count = await this.model.count(query);
     const result = await this.model
       .find(query)
       .limit(limit)

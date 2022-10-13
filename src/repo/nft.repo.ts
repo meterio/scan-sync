@@ -26,7 +26,7 @@ export default class NFTRepo {
   }
 
   public async countByAddress(address: string) {
-    return this.model.countDocuments({ address: address.toLowerCase() });
+    return this.model.count({ address: address.toLowerCase() });
   }
 
   public async findByOwner(owner: string) {
@@ -34,7 +34,7 @@ export default class NFTRepo {
   }
 
   public async countByOwner(owner: string) {
-    return this.model.countDocuments({ owner: owner.toLowerCase() });
+    return this.model.count({ owner: owner.toLowerCase() });
   }
 
   public async findByMinter(minter: string) {
@@ -42,7 +42,7 @@ export default class NFTRepo {
   }
 
   public async countByMinter(minter: string) {
-    return this.model.countDocuments({ minter: minter.toLowerCase() });
+    return this.model.count({ minter: minter.toLowerCase() });
   }
 
   public async findByIDWithOwner(address: string, tokenId: string, owner: string) {
@@ -83,7 +83,7 @@ export default class NFTRepo {
   // paginates
   private async paginate(query: any, pageNum?: number, limitNum?: number) {
     const { page, limit } = formalizePageAndLimit(pageNum, limitNum);
-    const count = await this.model.countDocuments(query);
+    const count = await this.model.count(query);
     const result = await this.model
       .find(query)
       .sort({ tokenId: 1 })

@@ -10,7 +10,7 @@ export default class BucketRepo {
   }
 
   public async countByAccount(address: string) {
-    return this.model.countDocuments({
+    return this.model.count({
       owner: address.toLowerCase(),
     });
   }
@@ -39,7 +39,7 @@ export default class BucketRepo {
   }
 
   public async countByAddress(address: string) {
-    return this.model.countDocuments({ owner: address.toLowerCase() });
+    return this.model.count({ owner: address.toLowerCase() });
   }
 
   public async create(bucket: Bucket) {
