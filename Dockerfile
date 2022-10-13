@@ -1,7 +1,10 @@
 FROM node:18-bullseye
 
+RUN npm install -g pm2
+RUN pm2 install typescript
+
 # Bundle APP files
-WORKDIR /
+WORKDIR /app
 COPY src ./src
 COPY package.json .
 COPY pm2.json .
@@ -9,8 +12,6 @@ COPY tsconfig.json .
 
 # Install app dependencies
 RUN npm install --productin
-RUN npm install -g pm2
-RUN pm2 install typescript
 ENV NPM_CONFIG_LOGLEVEL warn
 RUN apt install -y wget && wget https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem && apt autoremove -y wget
 
