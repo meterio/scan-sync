@@ -63,6 +63,16 @@ const parsePort = (value) => {
   }
 };
 
+const parseStandby = (value) => {
+  if (value === 'yes' || value === 'y' || value === 'Y') {
+    return true;
+  }
+  if (value === 'no' || value === 'n' || value === 'N') {
+    return false;
+  }
+  return !!value;
+};
+
 const parseNetwork = (value) => {
   let network: Network;
   switch (value) {
@@ -103,7 +113,7 @@ program
   .addOption(
     new Option('-p, --port <port>', 'Port to listen').env('API_PORT').argParser(parsePort).makeOptionMandatory(true)
   )
-  .option('-s, --standby', 'Standby mode')
+  .option(new Option('-s, --standby [no]', 'Standby mode').env('API_STANDBY').argParser(parseStandby))
   .action(runAPI);
 
 (async () => {
