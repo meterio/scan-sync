@@ -113,7 +113,7 @@ program
   .addOption(
     new Option('-p, --port <port>', 'Port to listen').env('API_PORT').argParser(parsePort).makeOptionMandatory(true)
   )
-  .option(new Option('-s, --standby [no]', 'Standby mode').env('API_STANDBY').argParser(parseStandby))
+  .addOption(new Option('-s, --standby [no]', 'Standby mode').env('API_STANDBY').argParser(parseStandby))
   .action(runAPI);
 
 (async () => {
